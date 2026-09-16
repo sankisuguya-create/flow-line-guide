@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>3年 リレー しりょう</title>
+<style>
+  :root{ --paper:#EEF3F7; --grid:#C7DAE7; --grid-strong:#A9C6D9;
+         --ink:#143242; --ink-soft:#4B6C80; --marker:#F0912B; --marker-soft:#FBD9AE; }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;min-height:540px}
+  body{
+    font-family:"Noto Sans JP","Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    color:var(--ink); background-color:var(--paper);
+    background-image:
+      repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px 22px),
+      repeating-linear-gradient(to bottom, var(--grid) 0 1px, transparent 1px 22px),
+      repeating-linear-gradient(to right, var(--grid-strong) 0 1px, transparent 1px 110px),
+      repeating-linear-gradient(to bottom, var(--grid-strong) 0 1px, transparent 1px 110px);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .wrap{width:100%;max-width:760px}
+  h1{font-size:clamp(24px,4.4vw,38px);font-weight:900;margin:0 0 28px;line-height:1.35;
+     display:inline-block;
+     background:linear-gradient(transparent 62%, var(--marker-soft) 62% 94%, transparent 94%);padding:0 .1em}
+  .menu{display:grid;gap:18px;grid-template-columns:1fr}
+  @media(min-width:640px){ .menu{grid-template-columns:1fr 1fr} }
+  a.card{
+    display:block;text-decoration:none;color:var(--ink);
+    background:#fff;border:3px solid var(--ink);border-radius:16px;
+    padding:28px 24px;box-shadow:0 3px 0 rgba(20,50,66,.12);
+  }
+  a.card:hover{background:var(--marker-soft)}
+  a.card:focus-visible{outline:4px solid var(--marker);outline-offset:3px}
+  .n{display:block;font-size:13px;font-weight:900;letter-spacing:.18em;color:var(--ink-soft);margin-bottom:8px}
+  .t{display:block;font-size:clamp(20px,3vw,26px);font-weight:900;line-height:1.4}
+  .d{display:block;margin-top:10px;font-size:14px;color:var(--ink-soft);line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>3年 リレー の しりょう</h1>
+  <div class="menu">
+    <a class="card" href="<?= url ?>?p=nyutai" target="_top">
+      <span class="n">01</span>
+      <span class="t">にゅうじょう・<br>たいじょう</span>
+      <span class="d">テントから どこへ ならぶか。おわったら どこへ もどるか。</span>
+    </a>
+    <a class="card" href="<?= url ?>?p=relay" target="_top">
+      <span class="n">02</span>
+      <span class="t">はんしゅうリレー<br>の うごきかた</span>
+      <span class="d">じぶんが どこに いて、つぎに どこへ 行くのか。</span>
+    </a>
+  </div>
+</div>
+</body>
+</html>

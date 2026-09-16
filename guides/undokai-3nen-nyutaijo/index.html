@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>にゅうじょう・たいじょう</title>
+<style>
+  :root{
+    --paper:#EEF3F7; --grid:#C7DAE7; --grid-strong:#A9C6D9;
+    --ink:#143242; --ink-soft:#4B6C80; --marker:#F0912B; --marker-soft:#FBD9AE;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden}
+  body{
+    font-family:"Noto Sans JP","Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    color:var(--ink); background-color:var(--paper);
+    background-image:
+      repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px 22px),
+      repeating-linear-gradient(to bottom, var(--grid) 0 1px, transparent 1px 22px),
+      repeating-linear-gradient(to right, var(--grid-strong) 0 1px, transparent 1px 110px),
+      repeating-linear-gradient(to bottom, var(--grid-strong) 0 1px, transparent 1px 110px);
+    line-height:1.5;
+  }
+  .app{position:fixed;inset:0;display:flex}
+  .side{flex:0 0 236px;width:236px;height:100%;overflow-y:auto;background:#F7FAFC;
+        border-right:2px solid var(--ink);padding:14px 12px 20px;transition:margin-left .22s ease}
+  .app.closed .side{margin-left:-236px}
+  .float{position:absolute;top:12px;left:248px;z-index:20;display:flex;flex-direction:column;gap:8px;
+         width:48px;transition:left .22s ease}
+  .app.closed .float{left:12px}
+  .float button{width:48px;height:48px;padding:0;border-radius:12px;display:grid;place-items:center;font-size:18px;text-align:center}
+  .float button svg{display:block}
+  .stagearea{flex:1;min-width:0;height:100%;padding:4px;display:flex}
+  svg.field{width:100%;height:100%;display:block}
+  h1{font-size:16px;font-weight:900;margin:64px 0 14px;line-height:1.4;display:inline-block;
+     background:linear-gradient(transparent 62%, var(--marker-soft) 62% 94%, transparent 94%);padding:0 .1em}
+  .grp{margin-bottom:14px}
+  .lab{display:block;font-size:12px;font-weight:800;color:var(--ink-soft);letter-spacing:.08em;margin:0 0 6px}
+  button{font:inherit;font-weight:700;color:var(--ink);background:#fff;border:2px solid var(--ink);
+         border-radius:10px;padding:9px 12px;cursor:pointer;line-height:1.2;width:100%;text-align:left}
+  button:hover{background:var(--marker-soft)}
+  button:focus-visible{outline:3px solid var(--marker);outline-offset:2px}
+  button[aria-pressed="true"]{background:var(--marker);border-color:var(--marker)}
+  .seg{display:flex;flex-direction:column;border:2px solid var(--ink);border-radius:10px;overflow:hidden}
+  .seg button{border:none;border-radius:0;border-top:2px solid var(--ink)}
+  .seg button:first-child{border-top:none}
+  .stack{display:flex;flex-direction:column;gap:7px}
+  input[type=range]{width:100%;accent-color:var(--marker)}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side">
+    <h1>にゅうじょう・<br>たいじょう</h1>
+    <div class="grp">
+      <span class="lab">ばめん</span>
+      <span class="seg" id="scenes">
+        <button data-s="in" aria-pressed="true">入場</button>
+        <button data-s="out">退場</button>
+      </span>
+    </div>
+    <div class="grp">
+      <span class="lab">じかん</span>
+      <input type="range" id="scrub" min="0" max="1000" value="0" step="1" aria-label="じかん">
+    </div>
+    <div class="grp">
+      <span class="lab">はやさ</span>
+      <span class="seg" id="speeds">
+        <button data-r="0.25">&times;0.25</button>
+        <button data-r="0.5">&times;0.5</button>
+        <button data-r="1" aria-pressed="true">&times;1</button>
+        <button data-r="2">&times;2</button>
+      </span>
+    </div>
+    <div class="grp">
+      <span class="lab">ひょうじ</span>
+      <div class="stack">
+        <button id="route" aria-pressed="true">どうせん あり</button>
+        <button id="clsnum" aria-pressed="true">クラス番号 あり</button>
+      </div>
+    </div>
+    <div class="grp stack">
+      <button id="again">はじめから</button>
+    </div>
+  </aside>
+
+  <div class="float">
+    <button id="toggle" aria-label="そうさパネル">&#9776;</button>
+    <button id="play" aria-label="さいせい／ていし"></button>
+    <button id="ff" aria-label="はやおくり">&#9654;&#9654;</button>
+    <button id="rew" aria-label="まきもどし">&#9664;&#9664;</button>
+  </div>
+
+  <main class="stagearea">
+    <svg class="field" id="svg" viewBox="0 26 1000 676" preserveAspectRatio="xMidYMid meet"
+         role="img" aria-label="入場・退場の うごきの 図"></svg>
+  </main>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ===== きほん ===== */
+var CX=500, CY=350;
+var RT=185;                          // 隊列が とおる コース上の はんけい
+var R_TENT=250;                      // テントの 中心（コースの そとがわ）
+var ARC=Math.PI*RT, PER=800+2*ARC;
+var HEATS=3;                         // 回戦の 数（4にすると 1組8まい）
+var TL=34, TS=20;                    // 長方形：TL＝進行方向、TS＝よこ幅（縦長に 見える）
+var ALONG=38, ACROSS=24;             // 隊列の 前後／左右 間かく
+var EXT=(HEATS-1)/2*ALONG;
+var SPEED=118, FILLET=58;
+var COL={red:"#D5303B", yellow:"#F2C037", blue:"#1E5FCC", green:"#0F8A4E"};
+var ORDER=["green","blue","yellow","red"];
+var PAIR_L=[0,1], PAIR_R=[2,3];      // 白組＝緑青（左）／赤組＝黄赤（右）
+
+function posAt(s,r){
+  s=((s%PER)+PER)%PER;
+  if(s<400) return {x:700-s, y:CY-r, tx:-1, ty:0};
+  if(s<400+ARC){ var th=1.5*Math.PI-(s-400)/RT;
+    return {x:300+r*Math.cos(th), y:CY+r*Math.sin(th), tx:Math.sin(th), ty:-Math.cos(th)}; }
+  if(s<800+ARC) return {x:300+(s-400-ARC), y:CY+r, tx:1, ty:0};
+  var t2=0.5*Math.PI-(s-(800+ARC))/RT;
+  return {x:700+r*Math.cos(t2), y:CY+r*Math.sin(t2), tx:-Math.sin(t2), ty:Math.cos(t2)};
+}
+function P(s){ return posAt(s,RT); }
+function sTop(x){ return 700-x; }
+function sBot(x){ return 400+ARC+(x-300); }
+var S_L=400+ARC/2, S_R=800+ARC+ARC/2;
+var STAGE={ LA:S_L+55, LB:S_L+185, RA:S_R-55, RB:S_R-185 };
+
+function arcPts(s0,s1,n){ var a=[],i; for(i=0;i<=n;i++) a.push(P(s0+(s1-s0)*i/n)); return a; }
+function unit(p,q){ var dx=q.x-p.x, dy=q.y-p.y, L=Math.sqrt(dx*dx+dy*dy)||1; return {x:dx/L,y:dy/L}; }
+function ease(u){ return u*u*(3-2*u); }
+/* かどを まるめる（2次ベジェ） */
+function bez(a,c,b,n){
+  var out=[],i;
+  for(i=0;i<=n;i++){ var t=i/n, m=1-t;
+    out.push({x:m*m*a.x+2*m*t*c.x+t*t*b.x, y:m*m*a.y+2*m*t*c.y+t*t*b.y}); }
+  return out;
+}
+function prep(pts){
+  var cum=[0],tot=0,i;
+  for(i=0;i<pts.length-1;i++){
+    var dx=pts[i+1].x-pts[i].x, dy=pts[i+1].y-pts[i].y;
+    tot+=Math.sqrt(dx*dx+dy*dy); cum.push(tot);
+  }
+  return {pts:pts,cum:cum,len:tot};
+}
+function at(PP,d){
+  var pts=PP.pts, cum=PP.cum, i;
+  if(d<0) d=0; if(d>PP.len) d=PP.len;
+  for(i=0;i<cum.length-1;i++){
+    if(d<=cum[i+1]||i===cum.length-2){
+      var seg=cum[i+1]-cum[i], k=seg>0?(d-cum[i])/seg:0, u=unit(pts[i],pts[i+1]);
+      return {x:pts[i].x+(pts[i+1].x-pts[i].x)*k, y:pts[i].y+(pts[i+1].y-pts[i].y)*k, ux:u.x, uy:u.y, d:d};
+    }
+  }
+  var u2=unit(pts[pts.length-2],pts[pts.length-1]);
+  return {x:pts[pts.length-1].x,y:pts[pts.length-1].y,ux:u2.x,uy:u2.y,d:d};
+}
+
+/* ===== ブロック ===== */
+var BC={A:{x:600,y:292}, B:{x:400,y:408}, C:{x:400,y:292}, D:{x:600,y:408}};
+function blockPos(kind,c,r){
+  var b=BC[kind], sgn=(kind==="A"||kind==="C")?1:-1;
+  return {x:b.x+sgn*(c-1.5)*ACROSS, y:b.y+sgn*(r-1)*ALONG};
+}
+
+/* ===== 隊列 ===== */
+var scene="in", groups=[], TOTAL=10;
+
+function makeGroup(kind,cols,side,stageS,startT){
+  var cells=[],i,r;
+  for(i=0;i<cols.length;i++) for(r=0;r<HEATS;r++){
+    var c=cols[i];
+    cells.push({c:c,r:r,color:ORDER[c],cls:((r+c)%3)+1,pos:blockPos(kind,c,r)});
+  }
+  var cx=0,cy=0;
+  cells.forEach(function(q){ cx+=q.pos.x; cy+=q.pos.y; });
+  cx/=cells.length; cy/=cells.length;
+
+  var upper=(kind==="A"||kind==="C");
+  var sBlock=upper?sTop(cx):sBot(cx);
+  var ctr={x:cx,y:cy}, base, fadeAt=-1, stageIdx=-1;
+
+  if(scene==="in"){
+    var sEnd=sBlock; if(side==="R"&&upper) sEnd+=PER;
+    var dir=(sEnd>stageS)?1:-1;
+    var arcs=arcPts(stageS,sEnd-dir*FILLET,44);       // かどの R 手前まで
+    var cor=P(sEnd), u2=unit(cor,ctr);
+    var bpt={x:cor.x+u2.x*FILLET, y:cor.y+u2.y*FILLET};
+    base=arcs.concat(bez(arcs[arcs.length-1],cor,bpt,16).slice(1),[ctr]);
+  }else{
+    var sOut=stageS; if(side==="R"&&upper) sOut-=PER;
+    var dir2=(sOut>sBlock)?1:-1;
+    var cor2=P(sBlock), u1=unit(ctr,cor2);
+    var apt={x:cor2.x-u1.x*FILLET, y:cor2.y-u1.y*FILLET};
+    var arcs2=arcPts(sBlock+dir2*FILLET,sOut,44);
+    base=[ctr].concat(bez(apt,cor2,arcs2[0],16).slice(1),arcs2.slice(1));
+    stageIdx=base.length-1;                           // ここが 待機いち
+    var e=posAt(sOut,RT+160);                          // テントの 中へ
+    base.push({x:e.x,y:e.y});
+  }
+  var n=base.length;
+  var u0=unit(base[0],base[1]), un=unit(base[n-2],base[n-1]);
+  base.unshift({x:base[0].x-u0.x*EXT, y:base[0].y-u0.y*EXT});
+  base.push({x:base[base.length-1].x+un.x*EXT, y:base[base.length-1].y+un.y*EXT});
+  var path=prep(base);
+  if(stageIdx>=0) fadeAt=path.cum[stageIdx+1];
+
+  var uB=(scene==="in")?un:u0, vB={x:-uB.y,y:uB.x};
+  var tiles=cells.map(function(q){
+    var dx=q.pos.x-cx, dy=q.pos.y-cy;
+    return {color:q.color, cls:q.cls, a:dx*uB.x+dy*uB.y, b:dx*vB.x+dy*vB.y};
+  });
+  var routeEnd=(fadeAt>0)?(fadeAt+26):(path.len-EXT);
+  return {path:path, tiles:tiles, t0:startT, dur:(path.len-2*EXT)/SPEED,
+          fadeAt:fadeAt, routeEnd:routeEnd};
+}
+
+function buildGroups(){
+  groups=[];
+  /* 白組（青緑）が さきに 動き、そのあと 赤組（赤黄）。下がわの 交さを ふせぐ */
+  var lead=0.5, gap=0.45;
+  if(scene==="in"){
+    groups.push(makeGroup("A",PAIR_L,"L",STAGE.LA,lead));
+    groups.push(makeGroup("A",PAIR_R,"R",STAGE.RA,lead+gap));
+    groups.push(makeGroup("B",PAIR_L,"L",STAGE.LB,lead+gap*2));
+    groups.push(makeGroup("B",PAIR_R,"R",STAGE.RB,lead+gap*3));
+  }else{
+    /* 退場の 下がわだけ 桁が 入れかわるので 白組→赤組に わける */
+    groups.push(makeGroup("C",PAIR_L,"L",STAGE.LA,lead));
+    groups.push(makeGroup("C",PAIR_R,"R",STAGE.RA,lead+gap));
+    groups.push(makeGroup("D",PAIR_L,"L",STAGE.LB,lead+0.35));
+    groups.push(makeGroup("D",PAIR_R,"R",STAGE.RB,lead+3.75));
+  }
+  TOTAL=0;
+  groups.forEach(function(g){ TOTAL=Math.max(TOTAL,g.t0+g.dur); });
+  TOTAL+=1.2;
+}
+
+/* ===== SVG ===== */
+var NS="http://www.w3.org/2000/svg";
+var svg=document.getElementById("svg");
+var gRoute,gTiles,nodes=[];
+function el(n,a){ var e=document.createElementNS(NS,n); for(var k in a) e.setAttribute(k,a[k]); return e; }
+function txt(x,y,s,size,weight,anchor,fill){
+  var t=el("text",{x:x,y:y,"font-size":size||14,"font-weight":weight||700,"text-anchor":anchor||"middle",fill:fill||"#143242"});
+  t.textContent=s; return t;
+}
+function stadium(r){
+  return "M 300,"+(CY-r)+" L 700,"+(CY-r)+" A "+r+","+r+" 0 0 1 700,"+(CY+r)+
+         " L 300,"+(CY+r)+" A "+r+","+r+" 0 0 1 300,"+(CY-r)+" Z";
+}
+
+function build(){
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+
+  svg.appendChild(el("path",{d:stadium(212),fill:"#E2D4BB"}));
+  svg.appendChild(el("path",{d:stadium(116),fill:"#FBFDFE"}));
+  [140,164,188].forEach(function(r){
+    svg.appendChild(el("path",{d:stadium(r),fill:"none",stroke:"#fff","stroke-width":1.5,opacity:.5}));
+  });
+  svg.appendChild(el("path",{d:stadium(212),fill:"none",stroke:"#fff","stroke-width":2.5}));
+  svg.appendChild(el("path",{d:stadium(116),fill:"none",stroke:"#fff","stroke-width":2.5}));
+
+  svg.appendChild(txt(500,52,"鉄棒側",16,900,"middle","#4B6C80"));
+  svg.appendChild(txt(500,690,"校舎側",16,900,"middle","#4B6C80"));
+
+  // 3年生テント（待機いちの すぐ そと）
+  [["L",(STAGE.LA+STAGE.LB)/2,"3年 白組","#1E5FCC"],
+   ["R",(STAGE.RA+STAGE.RB)/2,"3年 赤組","#D5303B"]].forEach(function(t){
+    var p=posAt(t[1],R_TENT), deg=Math.atan2(p.ty,p.tx)*180/Math.PI;
+    var g=el("g",{transform:"translate("+p.x.toFixed(1)+","+p.y.toFixed(1)+") rotate("+deg.toFixed(1)+")"});
+    g.appendChild(el("rect",{x:-120,y:-33,width:240,height:66,rx:10,fill:"#fff",stroke:t[3],"stroke-width":3,opacity:.95}));
+    var tt=txt(0,6,t[2],18,900,"middle",t[3]); g.appendChild(tt);
+    svg.appendChild(g);
+  });
+
+  // ブロックの わく と 回戦ラベル
+  var kinds=(scene==="in")?["A","B"]:["C","D"];
+  kinds.forEach(function(kind){
+    var p0=blockPos(kind,0,0), p3=blockPos(kind,3,HEATS-1);
+    var x=Math.min(p0.x,p3.x)-TS/2-7, y=Math.min(p0.y,p3.y)-TL/2-7;
+    var w=Math.abs(p0.x-p3.x)+TS+14, h=Math.abs(p0.y-p3.y)+TL+14;
+    svg.appendChild(el("rect",{x:x,y:y,width:w,height:h,rx:8,fill:"#fff",opacity:.5,
+      stroke:"#143242","stroke-width":2,"stroke-dasharray":"6 5"}));
+    for(var r=0;r<HEATS;r++){
+      var pa=blockPos(kind,0,r), pb=blockPos(kind,3,r);
+      var lx=(kind==="A"||kind==="D")?Math.max(pa.x,pb.x)+TS/2+24:Math.min(pa.x,pb.x)-TS/2-24;
+      svg.appendChild(txt(lx,pa.y+4,(r+1)+"回戦",11,800,"middle","#4B6C80"));
+    }
+  });
+
+  gRoute=el("g",{opacity:.3}); svg.appendChild(gRoute);
+  gTiles=el("g",{}); svg.appendChild(gTiles);
+  nodes=[];
+  groups.forEach(function(g){
+    var arr=[];
+    g.tiles.forEach(function(t){
+      var box=el("g",{});
+      box.appendChild(el("rect",{x:-TL/2,y:-TS/2,width:TL,height:TS,rx:4,fill:COL[t.color],
+        stroke:"#143242","stroke-width":1.6}));
+      gTiles.appendChild(box);
+      var lab=txt(0,0,String(t.cls),12,900,"middle",(t.color==="yellow")?"#143242":"#fff");
+      gTiles.appendChild(lab);
+      arr.push({box:box,lab:lab});
+    });
+    nodes.push(arr);
+  });
+  drawRoutes();
+}
+function drawRoutes(){
+  while(gRoute.firstChild) gRoute.removeChild(gRoute.firstChild);
+  if(!showRoute) return;
+  groups.forEach(function(g){
+    var d0=EXT, d1=g.routeEnd, q=at(g.path,d0);
+    var d="M "+q.x.toFixed(1)+","+q.y.toFixed(1);
+    for(var dd=d0+9; dd<d1; dd+=9){ q=at(g.path,dd); d+=" L "+q.x.toFixed(1)+","+q.y.toFixed(1); }
+    q=at(g.path,d1); d+=" L "+q.x.toFixed(1)+","+q.y.toFixed(1);
+    gRoute.appendChild(el("path",{d:d,fill:"none",stroke:COL[g.tiles[0].color],"stroke-width":3,
+      "stroke-dasharray":"7 7","stroke-linecap":"round"}));
+  });
+}
+
+function draw(){
+  groups.forEach(function(g,gi){
+    var u;
+    if(clock<=g.t0) u=0; else if(clock>=g.t0+g.dur) u=1; else u=ease((clock-g.t0)/g.dur);
+    var dc=EXT+u*(g.path.len-2*EXT);
+    g.tiles.forEach(function(t,ti){
+      var q=at(g.path,dc+t.a);
+      var vx=-q.uy, vy=q.ux;
+      var x=q.x+vx*t.b, y=q.y+vy*t.b;
+      var deg=Math.atan2(q.uy,q.ux)*180/Math.PI;
+      var op=1;
+      if(g.fadeAt>0) op=Math.max(0,Math.min(1,1-(q.d-(g.fadeAt+30))/40));
+      var n=nodes[gi][ti];
+      n.box.setAttribute("transform","translate("+x.toFixed(1)+","+y.toFixed(1)+") rotate("+deg.toFixed(1)+")");
+      n.box.setAttribute("opacity",op.toFixed(2));
+      n.lab.setAttribute("x",x.toFixed(1)); n.lab.setAttribute("y",(y+4).toFixed(1));
+      n.lab.setAttribute("opacity",(showCls?op:0).toFixed(2));
+    });
+  });
+}
+
+/* ===== ループ ===== */
+var clock=0, paused=false, rate=1, last=0, rewinding=false, ffing=false;
+var showRoute=true, showCls=true;
+var scrub=document.getElementById("scrub");
+function syncScrub(){ scrub.value=Math.round(clock/TOTAL*1000); }
+function frame(ts){
+  if(!last) last=ts;
+  var dt=Math.min(0.05,(ts-last)/1000); last=ts;
+  if(rewinding) clock=Math.max(0,clock-dt*2.5);
+  else if(ffing) clock=Math.min(TOTAL,clock+dt*3);
+  else if(!paused) clock=Math.min(TOTAL,clock+dt*rate);
+  syncScrub(); draw();
+  requestAnimationFrame(frame);
+}
+
+/* ===== そうさ ===== */
+var playBtn=document.getElementById("play");
+var ICON_PLAY='<svg viewBox="0 0 24 24" width="22" height="22"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg>';
+var ICON_PAUSE='<svg viewBox="0 0 24 24" width="22" height="22"><rect x="6" y="4" width="4.5" height="16" fill="currentColor"/><rect x="13.5" y="4" width="4.5" height="16" fill="currentColor"/></svg>';
+function setPlayIcon(){ playBtn.innerHTML=paused?ICON_PLAY:ICON_PAUSE; }
+playBtn.addEventListener("click",function(){ paused=!paused; setPlayIcon(); });
+function hold(id,on,off){
+  var b=document.getElementById(id);
+  function d(e){ e.preventDefault(); on(); b.setAttribute("aria-pressed","true"); }
+  function u(){ off(); b.setAttribute("aria-pressed","false"); }
+  b.addEventListener("mousedown",d); b.addEventListener("touchstart",d,{passive:false});
+  ["mouseup","mouseleave","touchend","touchcancel"].forEach(function(e){ b.addEventListener(e,u); });
+}
+hold("rew",function(){rewinding=true;},function(){rewinding=false;});
+hold("ff",function(){ffing=true;},function(){ffing=false;});
+scrub.addEventListener("input",function(){
+  paused=true; setPlayIcon(); clock=parseInt(scrub.value,10)/1000*TOTAL; draw();
+});
+document.getElementById("toggle").addEventListener("click",function(){
+  document.getElementById("app").classList.toggle("closed");
+});
+Array.prototype.forEach.call(document.querySelectorAll("#speeds button"),function(b){
+  b.addEventListener("click",function(){
+    rate=parseFloat(b.dataset.r);
+    Array.prototype.forEach.call(document.querySelectorAll("#speeds button"),function(x){
+      x.setAttribute("aria-pressed",x===b?"true":"false"); });
+  });
+});
+Array.prototype.forEach.call(document.querySelectorAll("#scenes button"),function(b){
+  b.addEventListener("click",function(){
+    scene=b.dataset.s;
+    Array.prototype.forEach.call(document.querySelectorAll("#scenes button"),function(x){
+      x.setAttribute("aria-pressed",x===b?"true":"false"); });
+    buildGroups(); build(); clock=0; draw();
+  });
+});
+document.getElementById("route").addEventListener("click",function(){
+  showRoute=!showRoute; this.setAttribute("aria-pressed",showRoute?"true":"false");
+  this.textContent=showRoute?"どうせん あり":"どうせん なし"; drawRoutes();
+});
+document.getElementById("clsnum").addEventListener("click",function(){
+  showCls=!showCls; this.setAttribute("aria-pressed",showCls?"true":"false");
+  this.textContent=showCls?"クラス番号 あり":"クラス番号 なし"; draw();
+});
+document.getElementById("again").addEventListener("click",function(){ clock=0; draw(); });
+
+buildGroups(); build(); setPlayIcon(); draw();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
