@@ -23,29 +23,13 @@ gas/
 |---|---|
 | `Code.gs` | `PAGES` に資料を1箇所で定義。ルーティングともくじへの受け渡し |
 | `index.html` | もくじ。`PAGES` から組み立てる。**資料を足しても触らない** |
-| `<場面>.html` | 資料の本体。`guides/` 版のコピー（CSS2行だけ違う） |
+| `<場面>.html` | 資料の本体。手元での確認とGAS配信の両方に使う |
 | `README.md` | そのプロジェクトの公開手順 |
 
 資料を1本足す手順は `../docs/tsuika.md`。
 
-## guides版とのちがい
+## 手元で確認する
 
-`gas/*/<場面>.html` は `guides/<行事>/<学年>-<場面>/index.html` のコピーで、
-**差分はCSS2行だけ**。GASがiframeで表示するため、高さの指定が異なる。
-
-```
-guides: html,body{margin:0;padding:0;height:100%;overflow:hidden}
-        .app{position:fixed;inset:0;display:flex}
-gas:    html,body{margin:0;padding:0;height:100%;min-height:540px;overflow:hidden}
-        .app{position:relative;display:flex;height:100%;min-height:540px}
-```
-
-**中身を直したら両方に反映すること。** 反映できたかは diff で確かめる。
-上の2行以外の差分が出たら、どちらかが古い。
-
-```bash
-diff guides/undokai/3nen-nyutaijo/index.html gas/undokai/nyutai.html
-```
-
-一本化していないのは、gas版が4GB機で動作確認済みの状態だからで、
-統合すると再確認が要る。資料が増えて実害が出たら `../docs/kikaku.md` 4節を読んで判断する。
+`<場面>.html` は単一ファイルで完結しているため、そのままブラウザで開ける。
+GASのiframe表示に必要な `min-height` はローカル表示でも問題ないため、別版は作らない。
+修正先を `gas/` に一本化し、配信版への反映漏れを防ぐ。
