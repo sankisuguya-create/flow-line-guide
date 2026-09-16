@@ -47,11 +47,10 @@
 
 ## 5. 資料を1本足すとき
 
-1. `guides/undokai/<学年>-<場面>/index.html` を作る（`../../docs/tsuika.md`）
-2. このディレクトリに `<場面>.html` としてGAS版を置く
-3. `Code.gs` の `PAGES` に1行足す
-4. GASエディタにHTMLファイルを追加し、`Code.gs` を貼り直す
-5. 「デプロイを管理」→ 新バージョン
+1. このディレクトリに `<場面>.html` を作る（`../../docs/tsuika.md`）
+2. `Code.gs` の `PAGES` に1行足す
+3. GASエディタにHTMLファイルを追加し、`Code.gs` を貼り直す
+4. 「デプロイを管理」→ 新バージョン
 
 **もくじ（`index.html`）は触らない。** `PAGES` から自動で組み立てている。
 

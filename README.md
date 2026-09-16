@@ -15,11 +15,7 @@ flow-line-guide/
 ├─ docs/
 │   ├─ kikaku.md                    共通規格の設計メモ（型の見分け方・作るときの落とし穴）
 │   └─ tsuika.md                    資料を1本足す手順
-├─ guides/                          資料の本体。行事ごとにまとめる
-│   └─ undokai/
-│       ├─ 3nen-nyutaijo/index.html 運動会 3年 入場・前つめ・退場
-│       └─ 3nen-relay/index.html    運動会 3年 半周リレーの動き方
-└─ gas/                             配信用。行事ごとに1プロジェクト＝1URL
+└─ gas/                             資料の本体と配信用ファイル
     ├─ README.md                    配信の方針
     └─ undokai/
         ├─ Code.gs                  PAGES に資料を1箇所で定義
@@ -29,29 +25,28 @@ flow-line-guide/
         └─ README.md                このプロジェクトの公開手順
 ```
 
-行事が増えたら `guides/ongakukai/` `gas/ongakukai/` のように階層を1つ足す。
+行事が増えたら `gas/ongakukai/` のように階層を1つ足す。
 **階層は行事までで止める。** 学年でさらに分けると、全学年共通の資料の置き場が歯抜けになる。
 
-各 `guides/*/*/index.html` は**単一ファイルで完結**する。外部CSS・外部JS・外部画像を一切使わない。
+各 `gas/*/<場面>.html` は**単一ファイルで完結**する。外部CSS・外部JS・外部画像を一切使わない。
 ダブルクリックでブラウザが開けば動く。オフラインでも動く。
+
+`guides` 版はGAS版とCSS 2行しか違わず、GAS版も手元のブラウザで開けるため廃止した。
+今後は `gas/` だけを正本とし、二重管理による反映漏れを防ぐ。
 
 ## 命名
 
-```
-guides/<行事>/<学年>-<場面>/index.html
-gas/<行事>/<場面>.html
-```
+`gas/<行事>/<場面>.html`
 
-例：`guides/undokai/3nen-nyutaijo/` / `guides/ongakukai/zengaku-idou/`
+例：`gas/undokai/nyutai.html` / `gas/ongakukai/idou.html`
 
-ローマ字・小文字・ハイフン区切り。GASのファイル名に流用しやすくするため。
-GAS側は行事ごとにプロジェクトが分かれるので、行事の接頭辞を付けない。
+ローマ字・小文字で命名する。行事ごとにプロジェクトが分かれるので、行事の接頭辞は付けない。
 
 ## 使う
 
 ### 手元で開く
 
-`guides/<行事>/<資料>/index.html` をブラウザで開くだけ。
+`gas/<行事>/<場面>.html` をブラウザで開くだけ。
 
 ### 児童・職員に配る
 
@@ -71,7 +66,7 @@ Classroomの資料としてHTMLファイルを添付する方法は、児童側�
 
 ## 収録している資料
 
-### 運動会 3年 入場・前つめ・退場（`undokai/3nen-nyutaijo`）
+### 運動会 3年 入場・前つめ・退場（`gas/undokai/nyutai.html`）
 
 場面は3つ。
 
@@ -82,7 +77,7 @@ Classroomの資料としてHTMLファイルを添付する方法は、児童側�
 
 6枚1組（2列×3行）の隊列が形を保ったまま移動する。長方形1つが4人。
 
-### 運動会 3年 半周リレーの動き方（`undokai/3nen-relay`）
+### 運動会 3年 半周リレーの動き方（`gas/undokai/relay.html`）
 
 1人の児童の動きを最初から最後まで追える。
 未走列 → 次走待ち場所 → レーン → 走る → 走り終えた列。
