@@ -13,42 +13,49 @@
 flow-line-guide/
 ├─ README.md                        これ
 ├─ docs/
-│   └─ kikaku.md                    共通規格の設計メモ（今後の拡張方針）
-├─ guides/                          資料の本体。1ディレクトリ＝1資料
-│   ├─ undokai-3nen-nyutaijo/
-│   │   └─ index.html               運動会 3年 入場・退場
-│   └─ undokai-3nen-relay/
-│       └─ index.html               運動会 3年 半周リレーの動き方
-└─ gas/                             Google Apps Script で公開する一式
-    ├─ Code.gs
-    ├─ index.html                   もくじ
-    ├─ relay.html
-    ├─ nyutai.html
-    └─ README.md                    公開手順
+│   ├─ kikaku.md                    共通規格の設計メモ（型の見分け方・作るときの落とし穴）
+│   └─ tsuika.md                    資料を1本足す手順
+├─ guides/                          資料の本体。行事ごとにまとめる
+│   └─ undokai/
+│       ├─ 3nen-nyutaijo/index.html 運動会 3年 入場・前つめ・退場
+│       └─ 3nen-relay/index.html    運動会 3年 半周リレーの動き方
+└─ gas/                             配信用。行事ごとに1プロジェクト＝1URL
+    ├─ README.md                    配信の方針
+    └─ undokai/
+        ├─ Code.gs                  PAGES に資料を1箇所で定義
+        ├─ index.html               もくじ（PAGESから自動生成）
+        ├─ nyutai.html
+        ├─ relay.html
+        └─ README.md                このプロジェクトの公開手順
 ```
 
-各 `guides/*/index.html` は**単一ファイルで完結**する。外部CSS・外部JS・外部画像を一切使わない。
+行事が増えたら `guides/ongakukai/` `gas/ongakukai/` のように階層を1つ足す。
+**階層は行事までで止める。** 学年でさらに分けると、全学年共通の資料の置き場が歯抜けになる。
+
+各 `guides/*/*/index.html` は**単一ファイルで完結**する。外部CSS・外部JS・外部画像を一切使わない。
 ダブルクリックでブラウザが開けば動く。オフラインでも動く。
 
 ## 命名
 
 ```
-guides/<行事>-<学年>-<場面>/
+guides/<行事>/<学年>-<場面>/index.html
+gas/<行事>/<場面>.html
 ```
 
-例：`undokai-3nen-nyutaijo` / `ongakukai-zengaku-idou` / `undokai-3nen-relay`
+例：`guides/undokai/3nen-nyutaijo/` / `guides/ongakukai/zengaku-idou/`
 
 ローマ字・小文字・ハイフン区切り。GASのファイル名に流用しやすくするため。
+GAS側は行事ごとにプロジェクトが分かれるので、行事の接頭辞を付けない。
 
 ## 使う
 
 ### 手元で開く
 
-`guides/<資料>/index.html` をブラウザで開くだけ。
+`guides/<行事>/<資料>/index.html` をブラウザで開くだけ。
 
 ### 児童・職員に配る
 
-`gas/README.md` の手順で Google Apps Script のウェブアプリとして公開する。
+`gas/<行事>/README.md` の手順で Google Apps Script のウェブアプリとして公開する。
 URLをClassroomに貼れば児童はクリックするだけで開ける。
 Classroomの資料としてHTMLファイルを添付する方法は、児童側でダウンロードが必要になり使えない。
 
@@ -59,18 +66,23 @@ Classroomの資料としてHTMLファイルを添付する方法は、児童側�
 | ▶ / ‖ | 再生・停止 |
 | ▶▶ / ◀◀ | 押している間だけ早送り・巻き戻し |
 | じかん | どこへでも飛べる。未再生の先へも進める |
-| はやさ | ×0.125 〜 ×1 |
+| はやさ | 入退場は ×0.25〜×2、リレーは ×0.125〜×1 |
 | ≡ | 操作パネルの開閉。畳むと図が全幅になる |
 
 ## 収録している資料
 
-### 運動会 3年 入場・退場（`undokai-3nen-nyutaijo`）
+### 運動会 3年 入場・前つめ・退場（`undokai/3nen-nyutaijo`）
 
-テントから入場し、トラック内側の隊形に並ぶまで。退場はその逆でテントへ消えるまで。
+場面は3つ。
+
+- **入場**：テントから入場し、トラック内側の隊形に並ぶまで。最終回戦が先頭。
+- **前つめ**：1回戦が出る → 残りの列が1つ前に詰める、の繰り返し。
+  出た回戦は出発ブロックで消え、走り終わりブロックに現れる。
+- **退場**：隊形からテントへ消えるまで。1回戦が先頭。
+
 6枚1組（2列×3行）の隊列が形を保ったまま移動する。長方形1つが4人。
-入場は最終回戦が先頭、退場は1回戦が先頭。
 
-### 運動会 3年 半周リレーの動き方（`undokai-3nen-relay`）
+### 運動会 3年 半周リレーの動き方（`undokai/3nen-relay`）
 
 1人の児童の動きを最初から最後まで追える。
 未走列 → 次走待ち場所 → レーン → 走る → 走り終えた列。
@@ -78,5 +90,5 @@ Classroomの資料としてHTMLファイルを添付する方法は、児童側�
 
 ## 今後
 
-新しい行事を足すときは `docs/kikaku.md` を読むこと。
+資料を足す手順は `docs/tsuika.md`。設計方針は `docs/kikaku.md`。
 現状の2本は個別実装だが、共通化できる層とできない層を切り分けてある。

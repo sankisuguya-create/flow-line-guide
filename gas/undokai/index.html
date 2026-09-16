@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<title>3年 リレー しりょう</title>
+<title><?= eventTitle ?></title>
 <style>
   :root{ --paper:#EEF3F7; --grid:#C7DAE7; --grid-strong:#A9C6D9;
          --ink:#143242; --ink-soft:#4B6C80; --marker:#F0912B; --marker-soft:#FBD9AE; }
@@ -38,18 +38,15 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>3年 リレー の しりょう</h1>
+  <h1><?= eventTitle ?></h1>
   <div class="menu">
-    <a class="card" href="<?= url ?>?p=nyutai" target="_top">
-      <span class="n">01</span>
-      <span class="t">にゅうじょう・<br>たいじょう</span>
-      <span class="d">テントから どこへ ならぶか。おわったら どこへ もどるか。</span>
+    <? for (var i = 0; i < pages.length; i++) { ?>
+    <a class="card" href="<?= url ?>?p=<?= pages[i].key ?>" target="_top">
+      <span class="n"><?= pages[i].grade ?></span>
+      <span class="t"><?!= pages[i].title ?></span>
+      <span class="d"><?= pages[i].desc ?></span>
     </a>
-    <a class="card" href="<?= url ?>?p=relay" target="_top">
-      <span class="n">02</span>
-      <span class="t">はんしゅうリレー<br>の うごきかた</span>
-      <span class="d">じぶんが どこに いて、つぎに どこへ 行くのか。</span>
-    </a>
+    <? } ?>
   </div>
 </div>
 </body>
