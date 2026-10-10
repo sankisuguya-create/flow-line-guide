@@ -31,6 +31,7 @@ export function compile(plan, space) {
       if (u === null) return null;
       if (u === b) break;
       done.add(u);
+      if (u !== a && (space.noThrough || []).includes(u)) continue; // 水の中などは 通り抜けに使わない
       for (const { to, e } of adj[u] || []) {
         const nd = d[u] + cost(u, to, e);
         if (d[to] === undefined || nd < d[to]) { d[to] = nd; prev[to] = u; }
