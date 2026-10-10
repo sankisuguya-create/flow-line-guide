@@ -1,64 +1,556 @@
 {
-  "id": "pool",
-  "title": "プール周り",
-  "unit": "m",
-  "status": "仮",
-  "statusNote": "配置図・写真を受け取る前の略図。プール25m×7レーン以外の寸法と向きは推定。",
-  "sources": [
-    { "kind": "計画書", "ref": "4年 水泳 第1時 指導計画（開始時の整列場所の図）" }
-  ],
-  "known": [
-    { "what": "プールの長さ", "value": 25, "source": "一般的な学校プール（推定）" }
-  ],
-  "size": [52, 30],
-  "areas": [
-    { "id": "school", "kind": "room",  "label": "校舎（教室）", "rect": [0, 17, 5.5, 12.5], "note": "実際は離れている。教室〜入り口は時間を手で与える" },
-    { "id": "deck",   "kind": "deck",  "label": "プールサイド", "rect": [18.5, 1, 33, 28] },
-    { "id": "pool",   "kind": "water", "label": "プール（7レーン）", "rect": [24.5, 2, 25, 12], "lanes": 7 },
-    { "id": "shower", "kind": "box",   "label": "シャワー", "rect": [19.2, 3, 2.6, 10] },
-    { "id": "kotai",  "kind": "room",  "label": "更衣室", "sub": "男子・女子", "rect": [9.5, 17.5, 8, 11] },
-    { "id": "door",   "kind": "box",   "label": "入り口", "rect": [6.6, 21.8, 1.8, 2.4] }
-  ],
-  "points": {
-    "room.1": [1.6, 20.5], "room.2": [4.0, 20.5], "room.3": [1.6, 24.0], "room.4": [4.0, 24.0], "room.W": [2.8, 27.4],
-    "hall": [5.8, 23],
-    "door": [7.5, 23],
-    "kutsu.12": [7.5, 27.2], "kutsu.34": [7.5, 18.8],
-    "kotai.in": [9.9, 23], "kotai.out": [17.1, 23],
-    "kotai.1": [11.8, 20.3], "kotai.2": [15.2, 20.3], "kotai.3": [15.2, 26.0], "kotai.4": [11.8, 26.0],
-    "out": [20.5, 23],
-    "deckL": [20.5, 16],
-    "shower": [20.5, 8],
-    "showerOut": [23, 8],
-    "edge.1": [28, 15.4], "edge.2": [34, 15.4], "edge.3": [40, 15.4], "edge.4": [46, 15.4],
-    "pool.1": [28, 8], "pool.2": [34, 8], "pool.3": [40, 8], "pool.4": [46, 8],
-    "line.1": [29, 18.8], "line.2": [40, 18.8], "line.3": [40, 23.2], "line.4": [29, 23.2],
-    "watch": [24.5, 27]
+ "id": "pool",
+ "title": "プール周り（3F）",
+ "unit": "m",
+ "status": "仮",
+ "statusNote": "手描きの配置図から起こした。未確認：①デッキ左下の小さな四角（ベンチ？）②上ばきの「くぼみ」「入り口の横」の位置 ③階段の上り口がどこへ出るか ④更衣室の扉の位置（図の二重線を扉と読んだ）。組は男女に分かれるが、図では組を1つにまとめて更衣室の前に置く。",
+ "sources": [
+  {
+   "kind": "手描きの配置図",
+   "ref": "利用者の手描き（2026-10-10 受領）。写真はリポジトリに置かない"
   },
-  "pointLabels": {
-    "kutsu.12": "上ばき 1・2組",
-    "kutsu.34": "上ばき 3・4組"
+  {
+   "kind": "計画書",
+   "ref": "4年 水泳 第1時 指導計画（開始時の整列場所の図）"
+  }
+ ],
+ "known": [
+  {
+   "what": "プールの長さ",
+   "value": 25,
+   "source": "手描き図の 25m の矢印（紙の上で約630px → 1m≒25px で全体を換算）"
+  }
+ ],
+ "size": [
+  60,
+  38
+ ],
+ "areas": [
+  {
+   "id": "deck",
+   "kind": "deck",
+   "label": "プールサイド",
+   "rect": [
+    15,
+    0.6,
+    43.8,
+    24.2
+   ]
   },
-  "paths": [
-    ["room.1", "hall"], ["room.2", "hall"], ["room.3", "hall"], ["room.4", "hall"], ["room.W", "hall"],
-    ["hall", "door", { "minutes": 3, "note": "教室からプールまで（実測していない）" }],
-    ["door", "kutsu.12"], ["door", "kutsu.34"],
-    ["door", "kotai.in"],
-    ["kotai.in", "kotai.1"], ["kotai.in", "kotai.4"], ["kotai.1", "kotai.2"], ["kotai.4", "kotai.3"],
-    ["kotai.2", "kotai.out"], ["kotai.3", "kotai.out"],
-    ["kotai.out", "out"],
-    ["out", "deckL", { "oneway": true }],
-    ["deckL", "shower", { "oneway": true }],
-    ["shower", "showerOut"],
-    ["showerOut", "edge.1"],
-    ["edge.1", "edge.2"], ["edge.2", "edge.3"], ["edge.3", "edge.4"],
-    ["edge.1", "pool.1"], ["edge.2", "pool.2"], ["edge.3", "pool.3"], ["edge.4", "pool.4"],
-    ["edge.1", "line.1"], ["edge.3", "line.2"],
-    ["line.1", "line.2"], ["line.1", "line.4"], ["line.2", "line.3"], ["line.4", "line.3"],
-    ["out", "line.4"],
-    ["out", "watch"]
+  {
+   "id": "pool",
+   "kind": "water",
+   "label": "プール（7レーン）",
+   "rect": [
+    24,
+    6.2,
+    25,
+    11.2
+   ],
+   "lanes": 7
+  },
+  {
+   "id": "shower",
+   "kind": "box",
+   "label": "シャワー",
+   "rect": [
+    15,
+    7.8,
+    4.2,
+    8.6
+   ]
+  },
+  {
+   "id": "wall",
+   "kind": "room",
+   "label": "",
+   "rect": [
+    19.4,
+    7.8,
+    0.8,
+    8.6
+   ]
+  },
+  {
+   "id": "girls",
+   "kind": "room",
+   "label": "女子更衣室",
+   "rect": [
+    2,
+    17,
+    8.2,
+    4.6
+   ]
+  },
+  {
+   "id": "boys",
+   "kind": "room",
+   "label": "男子更衣室",
+   "rect": [
+    2,
+    21.8,
+    8.2,
+    5
+   ]
+  },
+  {
+   "id": "hall",
+   "kind": "box",
+   "label": "通路",
+   "rect": [
+    10.2,
+    17,
+    6,
+    9.6
+   ]
+  },
+  {
+   "id": "gate",
+   "kind": "box",
+   "label": "出入口",
+   "rect": [
+    16.2,
+    16.6,
+    1.2,
+    9.2
+   ]
+  },
+  {
+   "id": "bench",
+   "kind": "box",
+   "label": "",
+   "rect": [
+    18.8,
+    22.2,
+    4.6,
+    2
+   ]
+  },
+  {
+   "id": "rouka",
+   "kind": "room",
+   "label": "3F 廊下",
+   "rect": [
+    0,
+    26.8,
+    26,
+    6
+   ]
+  },
+  {
+   "id": "rouka2",
+   "kind": "room",
+   "label": "",
+   "rect": [
+    16.4,
+    24.8,
+    9.6,
+    12.8
+   ]
+  },
+  {
+   "id": "stairs",
+   "kind": "box",
+   "label": "階段（2Fへ）",
+   "sub": "おどり場",
+   "rect": [
+    26.2,
+    24.8,
+    11.4,
+    12.6
+   ]
+  },
+  {
+   "id": "floor2",
+   "kind": "room",
+   "label": "2F 教室（別の階）",
+   "rect": [
+    42,
+    29,
+    17,
+    8.4
+   ]
+  }
+ ],
+ "points": {
+  "room.1": [
+   44.5,
+   33
   ],
-  "marks": [
-    { "kind": "oneway", "from": "out", "to": "shower", "label": "一方通行" }
+  "room.2": [
+   49,
+   33
+  ],
+  "room.3": [
+   53.5,
+   33
+  ],
+  "room.4": [
+   44.5,
+   36
+  ],
+  "room.W": [
+   50,
+   36
+  ],
+  "st2": [
+   29,
+   36.4
+  ],
+  "land": [
+   35.6,
+   33.5
+  ],
+  "upB": [
+   31,
+   31
+  ],
+  "upT": [
+   31,
+   25.8
+  ],
+  "rouka": [
+   22,
+   28
+  ],
+  "kutsu.12": [
+   13.7,
+   28.6
+  ],
+  "kutsu.34": [
+   18.2,
+   29.4
+  ],
+  "door": [
+   13.7,
+   26.6
+  ],
+  "hall": [
+   13.7,
+   21.6
+  ],
+  "gDoor": [
+   10.4,
+   19.2
+  ],
+  "bDoor": [
+   10.4,
+   24.2
+  ],
+  "kotai.1": [
+   5,
+   18.6
+  ],
+  "kotai.2": [
+   8,
+   20.2
+  ],
+  "kotai.3": [
+   5,
+   23.4
+  ],
+  "kotai.4": [
+   8,
+   25.2
+  ],
+  "gateIn": [
+   16.8,
+   21.6
+  ],
+  "out": [
+   18.6,
+   20.2
+  ],
+  "deckL": [
+   17.1,
+   17.2
+  ],
+  "shower": [
+   17.1,
+   12
+  ],
+  "showerOut": [
+   17.1,
+   4.6
+  ],
+  "west.n": [
+   21.6,
+   4.6
+  ],
+  "west.s": [
+   21.6,
+   18.4
+  ],
+  "edge.1": [
+   27.5,
+   18.4
+  ],
+  "edge.2": [
+   33.5,
+   18.4
+  ],
+  "edge.3": [
+   39.5,
+   18.4
+  ],
+  "edge.4": [
+   45.5,
+   18.4
+  ],
+  "pool.1": [
+   27.5,
+   11.8
+  ],
+  "pool.2": [
+   33.5,
+   11.8
+  ],
+  "pool.3": [
+   39.5,
+   11.8
+  ],
+  "pool.4": [
+   45.5,
+   11.8
+  ],
+  "line.1": [
+   30,
+   20.4
+  ],
+  "line.2": [
+   42,
+   20.4
+  ],
+  "line.3": [
+   42,
+   23.2
+  ],
+  "line.4": [
+   30,
+   23.2
+  ],
+  "watch": [
+   21.1,
+   21.2
   ]
+ },
+ "pointLabels": {
+  "kutsu.12": "上ばき 1・2組（仮）",
+  "kutsu.34": "上ばき 3・4組（仮）"
+ },
+ "paths": [
+  [
+   "room.1",
+   "st2",
+   {
+    "minutes": 2,
+    "note": "2F教室〜階段（実測していない）"
+   }
+  ],
+  [
+   "room.2",
+   "st2",
+   {
+    "minutes": 2
+   }
+  ],
+  [
+   "room.3",
+   "st2",
+   {
+    "minutes": 2
+   }
+  ],
+  [
+   "room.4",
+   "st2",
+   {
+    "minutes": 2
+   }
+  ],
+  [
+   "room.W",
+   "st2",
+   {
+    "minutes": 2
+   }
+  ],
+  [
+   "st2",
+   "land"
+  ],
+  [
+   "land",
+   "upB"
+  ],
+  [
+   "upB",
+   "upT"
+  ],
+  [
+   "upT",
+   "rouka"
+  ],
+  [
+   "rouka",
+   "kutsu.12"
+  ],
+  [
+   "rouka",
+   "kutsu.34"
+  ],
+  [
+   "kutsu.12",
+   "door"
+  ],
+  [
+   "kutsu.34",
+   "door"
+  ],
+  [
+   "rouka",
+   "door"
+  ],
+  [
+   "door",
+   "hall"
+  ],
+  [
+   "hall",
+   "gDoor"
+  ],
+  [
+   "hall",
+   "bDoor"
+  ],
+  [
+   "gDoor",
+   "kotai.1"
+  ],
+  [
+   "gDoor",
+   "kotai.2"
+  ],
+  [
+   "bDoor",
+   "kotai.3"
+  ],
+  [
+   "bDoor",
+   "kotai.4"
+  ],
+  [
+   "hall",
+   "gateIn"
+  ],
+  [
+   "gateIn",
+   "out"
+  ],
+  [
+   "out",
+   "deckL",
+   {
+    "oneway": true
+   }
+  ],
+  [
+   "deckL",
+   "shower",
+   {
+    "oneway": true
+   }
+  ],
+  [
+   "shower",
+   "showerOut",
+   {
+    "oneway": true
+   }
+  ],
+  [
+   "showerOut",
+   "west.n"
+  ],
+  [
+   "west.n",
+   "west.s"
+  ],
+  [
+   "out",
+   "west.s"
+  ],
+  [
+   "west.s",
+   "edge.1"
+  ],
+  [
+   "edge.1",
+   "edge.2"
+  ],
+  [
+   "edge.2",
+   "edge.3"
+  ],
+  [
+   "edge.3",
+   "edge.4"
+  ],
+  [
+   "edge.1",
+   "pool.1"
+  ],
+  [
+   "edge.2",
+   "pool.2"
+  ],
+  [
+   "edge.3",
+   "pool.3"
+  ],
+  [
+   "edge.4",
+   "pool.4"
+  ],
+  [
+   "edge.1",
+   "line.1"
+  ],
+  [
+   "edge.3",
+   "line.2"
+  ],
+  [
+   "line.1",
+   "line.2"
+  ],
+  [
+   "line.1",
+   "line.4"
+  ],
+  [
+   "line.2",
+   "line.3"
+  ],
+  [
+   "line.4",
+   "line.3"
+  ],
+  [
+   "out",
+   "line.4"
+  ],
+  [
+   "out",
+   "watch"
+  ]
+ ],
+ "marks": [
+  {
+   "kind": "oneway",
+   "from": "out",
+   "to": "showerOut",
+   "label": "一方通行"
+  }
+ ]
 }
