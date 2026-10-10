@@ -64,7 +64,6 @@ SP.areas.forEach(function(a){
     var cx=x+w/2, cy=y+h/2, m=0.12;
     var p0={left:[x+w*(1-m),cy],right:[x+w*m,cy],up:[cx,y+h*(1-m)],down:[cx,y+h*m]}[a.up];
     var p1={left:[x+w*m,cy],right:[x+w*(1-m),cy],up:[cx,y+h*m],down:[cx,y+h*(1-m)]}[a.up];
-    BASE+='<line class="stair-ar" x1="'+p0[0]+'" y1="'+p0[1]+'" x2="'+p1[0]+'" y2="'+p1[1]+'" marker-end="url(#as)"/>';
     if(a.to) LABELS+='<text class="lbl s stair-to" x="'+(hor?(a.up==="right"?x+w*0.2:x+w*0.8):x+w/2)+'" y="'+(y+h/2)+'" style="fill:#fff">'+a.to+'</text>';
     return;
   }
@@ -104,36 +103,39 @@ if(SP.status!=="確認済") BASE+='<text class="kari" x="8" y="'+(SP.size[1]*S-8
 var G=PL.groups;
 function posAt(g,t){
   var K=g.keys,i;
-  if(t<=K[0][0]) return {x:K[0][1],y:K[0][2],seg:-1};
+  if(t<=K[0][0]) return {x:K[0][1],y:K[0][2],seg:-1,i:0,u:0};
   for(i=0;i<K.length-1;i++){
     if(t<K[i+1][0]){
-      var a=K[i],b=K[i+1],u=(t-a[0])/(b[0]-a[0]), mv=(a[1]!==b[1]||a[2]!==b[2]);
-      return {x:a[1]+(b[1]-a[1])*u, y:a[2]+(b[2]-a[2])*u, seg:mv?i:-1};
+      var a=K[i],b=K[i+1],u=(t-a[0])/(b[0]-a[0]), mv=(a[1]!==b[1]||a[2]!==b[2]||b[4]===1);
+      return {x:a[1]+(b[1]-a[1])*u, y:a[2]+(b[2]-a[2])*u, seg:mv?i:-1, i:i, u:u};
     }
   }
-  i=K.length-1; return {x:K[i][1],y:K[i][2],seg:-1};
+  i=K.length-1; return {x:K[i][1],y:K[i][2],seg:-1,i:i,u:0};
 }
-// 組の描き方：止まっている所に隊形（space.forms）があれば その隊形、それ以外（移動中など）は 8列のかたまり。
-// 点の大きさは背の高さ：隊形では 端（低い）→ プール中央側（高い）へ 大きくなる。
-var BODY={};
-function formAt(p){ var F=SP.forms||[]; for(var i=0;i<F.length;i++){ var a=F[i].at; if(Math.abs(a[0]-p.x)<1e-3&&Math.abs(a[1]-p.y)<1e-3) return F[i]; } return null; }
-function groupBody(g,form){
-  var key=g.id+(form?"@"+form.at.join(","):""); if(BODY[key]) return BODY[key];
-  var n=g.n||32, out="", pts=[], top;
-  if(form){
-    var rows=form.rows||2, per=Math.ceil(n/rows), gap=0.6*S, rg=1.0*S, sg=(form.tall==="+x"||form.tall==="+y")?1:-1;
-    for(var i=0;i<n;i++){ var k=i%per, row=Math.floor(i/per), along=(k-(per-1)/2)*gap*sg, across=(row-(rows-1)/2)*rg;
-      var rad=(0.17+0.13*k/Math.max(1,per-1))*S;                       // k=0 が端（低い）
-      pts.push(form.along==="x"?[along,across,rad]:[across,along,rad]); }
-    top=-(form.along==="x"?rows*rg/2:per*gap/2)-14;
-  } else {
-    var cols=8, rws=Math.ceil(n/cols), d=0.45*S;
-    for(var j=0;j<n;j++) pts.push([((j%cols)-(cols-1)/2)*d,(Math.floor(j/cols)-(rws-1)/2)*d,d*0.42]);
-    top=-(rws/2)*d-12;
-  }
-  pts.forEach(function(q){ out+='<circle class="kid" cx="'+q[0].toFixed(1)+'" cy="'+q[1].toFixed(1)+'" r="'+q[2].toFixed(1)+'" style="fill:'+(g.color||"#fff")+'"/>'; });
-  out+='<rect class="tag" x="-22" y="'+(top-11)+'" width="44" height="22" rx="11"/><text y="'+top+'">'+g.label+'</text>';
-  return BODY[key]=out;
+// 組の描き方：児童ひとりずつの点。隊形（g.forms）がある間は その位置、移動中は 8列のかたまり。
+// 隊形が変わる区間（key[4]=1）は ひとりずつ動かし、1列目（プール側）から先に動く。点の大きさ＝背の高さ（g.rad）。
+function slotsOf(g,key){
+  if(key[3]&&g.forms[key[3]]) return g.forms[key[3]];
+  var cols=8, rws=Math.ceil(g.n/cols), d=0.45, out=[];
+  for(var j=0;j<g.n;j++) out.push([key[1]+((j%cols)-(cols-1)/2)*d, key[2]+(Math.floor(j/cols)-(rws-1)/2)*d]);
+  return out;
+}
+function kidsAt(g,t){
+  var p=posAt(g,t), K=g.keys, a=K[p.i], b=K[p.i+1];
+  if(p.seg<0||!b) return slotsOf(g,{1:p.x,2:p.y,3:(p.seg<0?a[3]:null)});
+  if(b[4]===1){ var A=slotsOf(g,a), B=slotsOf(g,b), out=[];
+    for(var j=0;j<g.n;j++){ var row=Math.floor(j/g.per), u=Math.max(0,Math.min(1,(p.u-row*0.45)/0.55)); u=u*u*(3-2*u);
+      out.push([A[j][0]+(B[j][0]-A[j][0])*u, A[j][1]+(B[j][1]-A[j][1])*u]); }
+    return out; }
+  return slotsOf(g,{1:p.x,2:p.y,3:null});
+}
+function groupSvg(g,t){
+  var ks=kidsAt(g,t), out="", minY=1e9, sx=0;
+  for(var j=0;j<ks.length;j++){ var q=ks[j];
+    out+='<circle class="kid" cx="'+r(q[0])+'" cy="'+r(q[1])+'" r="'+(g.rad[j]*S).toFixed(1)+'" style="fill:'+(g.color||"#fff")+'"/>';
+    if(q[1]<minY) minY=q[1]; sx+=q[0]; }
+  var tx=r(sx/ks.length), ty=r(minY)-14;
+  return out+'<rect class="tag" x="'+(tx-22)+'" y="'+(ty-11)+'" width="44" height="22" rx="11"/><text x="'+tx+'" y="'+ty+'">'+g.label+'</text>';
 }
 function anyMoving(t){ for(var i=0;i<G.length;i++) if(posAt(G[i],t).seg>=0) return true; return false; }
 function phaseIdx(t){ var k=0; PL.phases.forEach(function(p,i){ if(t>=p.at) k=i; }); return k; }
@@ -162,7 +164,7 @@ function draw(){
   var order=G.filter(function(g){return g!==sel;}); if(sel) order.push(sel);
   order.forEach(function(g){
     var p=posAt(g,clock), cls="g"+(g.style==="watch"?" watch":"")+(sel?(g===sel?" me":" dim"):"");
-    s+='<g class="'+cls+'" transform="translate('+r(p.x)+' '+r(p.y)+')">'+groupBody(g,p.seg<0?formAt(p):null)+'</g>';
+    s+='<g class="'+cls+'">'+groupSvg(g,clock)+'</g>';
   });
   svg.innerHTML=s;
 

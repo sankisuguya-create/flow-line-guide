@@ -42,31 +42,77 @@ export function compile(plan, space) {
   const edgeOf = (a, b) => (adj[a] || []).find(x => x.to === b).e;
 
   const idx = {};
+  // 児童ひとりずつの位置（m）。j 番目の児童：列 row=floor(j/per)（0＝プール側の列）、k=j%per（0＝端＝背の低い児童）
+  const rows2 = n => Math.ceil(n / 2);
+  const radius = (k, per) => +(0.17 + 0.13 * k / Math.max(1, per - 1)).toFixed(3);   // 点の大きさ＝背の高さ
+  const FORMS = space.forms || {};
+  function lineSlots(pt, name, n) {           // 整列・体操：2列。tall の向きへ 背が高くなる、pool の向きが 1列目
+    const F = FORMS[pt], f = F.forms[name], per = rows2(n), sx = F.tall[0] === "+" ? 1 : -1, sy = F.pool[0] === "+" ? 1 : -1;
+    const cx = f.cx ?? P[pt][0], cy = P[pt][1], out = [];
+    for (let j = 0; j < n; j++) { const row = Math.floor(j / per), k = j % per;
+      const x = F.tall.endsWith("x") ? cx + sx * (k - (per - 1) / 2) * f.gap : cx + (row ? -1 : 1) * sy * f.rowGap / 2;
+      const y = F.tall.endsWith("x") ? cy + (row === 0 ? 1 : -1) * sy * f.rowGap / 2 : cy + sx * (k - (per - 1) / 2) * f.gap;
+      out.push([+x.toFixed(2), +y.toFixed(2)]); }
+    return out;
+  }
+  // 入水の隊形：水面を rows 列に等分し、各列を 東西に等分。左半分・右半分に2組が入り、背の低い児童が両端
+  const LAY = plan.layouts || {};
+  function layoutSlots(name, gid) {
+    const L = LAY[name], ar = space.areas.find(x => x.id === L.area).rect, pl = L.place[gid];
+    const mates = Object.entries(L.place).filter(([id, q]) => q.half !== pl.half && String(q.rows) === String(pl.rows)).map(([id]) => id);
+    const n = plan.groups.find(x => x.id === gid).n || 32, per = rows2(n);
+    const other = mates.length ? rows2(plan.groups.find(x => x.id === mates[0]).n || 32) : per;
+    const total = per + other, out = [];
+    for (let j = 0; j < n; j++) { const row = Math.floor(j / per), k = j % per;
+      const slot = pl.half === "left" ? k : total - 1 - k;
+      out.push([+(ar[0] + (slot + 0.5) * ar[2] / total).toFixed(2), +(ar[1] + (pl.rows[row] + 0.5) * ar[3] / L.rows).toFixed(2)]); }
+    return out;
+  }
+  const cen = sl => [+(sl.reduce((s, q) => s + q[0], 0) / sl.length).toFixed(2), +(sl.reduce((s, q) => s + q[1], 0) / sl.length).toFixed(2)];
   const groups = plan.groups.map(g => {
     const k = (idx[g.script] = (idx[g.script] ?? -1) + 1);
-    const v = { ...g.vars, k };
-    const keys = []; let at = null, t = null;
-    const put = (tt, p) => keys.push([+tt.toFixed(3), +P[p][0].toFixed(2), +P[p][1].toFixed(2)]);
+    const v = { ...g.vars, k }, n = g.n || 32, per = rows2(n);
+    const forms = {}, keys = []; let at = null, t = null, form = null;
+    // key = [時刻, x, y, 隊形名|null, 隊形を ひとりずつ動かして変えるか(1)]
+    const put = (tt, xy, fm, morph) => keys.push([+tt.toFixed(3), +xy[0].toFixed(2), +xy[1].toFixed(2), fm || null, morph ? 1 : 0]);
+    const arrive = p => { const F = FORMS[p]; if (!F) return null; const name = Object.keys(F.forms)[0], key = p + "|" + name;
+      forms[key] ||= lineSlots(p, name, n); return key; };
+    const here = () => form ? cen(forms[form]) : P[at];
     for (const step of plan.scripts[g.script]) {
       if (step.place) {
         const p = fill(step.place, v); if (!P[p]) { warn.push(`${g.label}: 場所 ${p} がない`); continue; }
-        at = p; t = hm(step.at); put(t, p); continue;
+        at = p; t = hm(step.at); form = arrive(p); put(t, here(), form); continue;
       }
       let dep = hm(step.at) + (step.stagger || 0) * k;
       if (dep < t - 1e-9) { warn.push(`${g.label}: ${step.at} の出発が 前の到着 ${clock(t)} より早い → ${clock(t)} にずらした`); dep = t; }
-      put(dep, at); t = dep;
+      put(dep, here(), form); t = dep;
+      if (step.form) {                                   // その場で隊形を変える（体操の隊形など）
+        const key = at + "|" + step.form;
+        if (!FORMS[at]?.forms[step.form]) { warn.push(`${g.label}: ${at} に 隊形「${step.form}」がない`); continue; }
+        forms[key] ||= lineSlots(at, step.form, n); form = key; t += step.dur || 0.5; put(t, here(), form, true); continue;
+      }
+      if (step.layout) {                                 // 入水：1列目から ひとりずつ 水の中の位置へ
+        if (!LAY[step.layout]?.place[g.id]) { warn.push(`${g.label}: 配置「${step.layout}」に この組がない`); continue; }
+        const key = "@" + step.layout; forms[key] ||= layoutSlots(step.layout, g.id);
+        const p = fill(step.point, v); P[p] = cen(forms[key]);   // 水の中の点を 隊形の中心に合わせる（あとの経路の起点）
+        form = key; at = p; t += step.dur || 1.6; put(t, here(), form, true); continue;
+      }
+      form = null; put(t, P[at], null);
       for (const raw of step.to) {
         const tg = typeof raw === "string" ? { p: raw } : raw, p = fill(tg.p, v);
         if (!P[p]) { warn.push(`${g.label}: 場所 ${p} がない`); continue; }
         const r = route(at, p);
         if (!r) { warn.push(`${g.label}: ${at} → ${p} へ行ける通路がない（一方通行を確認）`); continue; }
-        for (let i = 1; i < r.length; i++) { t += cost(r[i - 1], r[i], edgeOf(r[i - 1], r[i])); put(t, r[i]); }
+        for (let i = 1; i < r.length; i++) { t += cost(r[i - 1], r[i], edgeOf(r[i - 1], r[i])); put(t, P[r[i]]); }
         at = p;
-        if (tg.wait) { t += tg.wait; put(t, p); }
+        if (tg.wait) { t += tg.wait; put(t, P[p]); }
       }
+      form = arrive(at); if (form) { t += 0.3; put(t, here(), form, true); }
     }
-    return { id: g.id, label: g.label, style: g.style || "", color: g.color || "", n: g.n || 32, vars: v, keys };
+    const rad = Array.from({ length: n }, (_, j) => radius(j % per, per));
+    return { id: g.id, label: g.label, style: g.style || "", color: g.color || "", n, per, rad, forms, vars: v, keys };
   });
+
 
   // すれちがいの検査：2組が 2m 以内で 向かい合って動いている（同じ向きに続いて歩くのは ふつうなので 数えない）
   const vel = (g, t) => { const K = g.keys;
@@ -109,7 +155,7 @@ export function compile(plan, space) {
     warn,
     data: {
       scale: SCALE,
-      space: { title: space.title, status: space.status, up: space.up || "", walls: space.walls || [], doors: space.doors || [], forms: Object.entries(space.forms || {}).map(([k, f]) => ({ ...f, at: P[k] })), size: space.size, areas: space.areas, marks, pointLabels },
+      space: { title: space.title, status: space.status, up: space.up || "", walls: space.walls || [], doors: space.doors || [],  size: space.size, areas: space.areas, marks, pointLabels },
       plan: {
         key: plan.key, title: plan.title, subtitle: plan.subtitle || "", start: hm(plan.start), end: hm(plan.end),
         groups, signals: (plan.signals || []).map(s => ({ ...s, at: hm(s.at) })),
