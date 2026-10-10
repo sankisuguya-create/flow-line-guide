@@ -85,6 +85,22 @@ export function compile(plan, space) {
   const end = Math.max(...groups.map(g => g.keys[g.keys.length - 1][0]));
   if (end > hm(plan.end)) warn.push(`最後の到着 ${clock(end)} が end ${plan.end} より遅い`);
 
+  // 描き方の検査：壁で囲む区画どうしの すき間（0〜0.6m）は 作らない。扉は 壁（区画の辺）の上に置く
+  const walled = space.areas.filter(a => a.kind !== "mark" && a.kind !== "water");
+  const near = (u, v) => Math.abs(u - v) > 1e-6 && Math.abs(u - v) < 0.6;
+  const overlap = (a0, a1, b0, b1) => Math.min(a1, b1) - Math.max(a0, b0) > 0.3;
+  for (let i = 0; i < walled.length; i++) for (let j = i + 1; j < walled.length; j++) {
+    const [ax, ay, aw, ah] = walled[i].rect, [bx, by, bw, bh] = walled[j].rect;
+    if (overlap(ay, ay + ah, by, by + bh) && (near(ax + aw, bx) || near(bx + bw, ax))) warn.push(`すき間 ${walled[i].id} と ${walled[j].id}（左右）：辺をそろえる`);
+    if (overlap(ax, ax + aw, bx, bx + bw) && overlap(ay, ay + ah, by, by + bh) && !(walled[i].kind === "deck" || walled[j].kind === "deck"))
+      warn.push(`重なり ${walled[i].id} と ${walled[j].id}：辺で接するように分ける（重なると 中に壁の線が出る）`);
+    if (overlap(ax, ax + aw, bx, bx + bw) && (near(ay + ah, by) || near(by + bh, ay))) warn.push(`すき間 ${walled[i].id} と ${walled[j].id}（上下）：辺をそろえる`);
+  }
+  const onEdge = (p) => walled.some(a => { const [x, y, w, h] = a.rect, e = 1e-6;
+    return ((Math.abs(p[0] - x) < e || Math.abs(p[0] - x - w) < e) && p[1] >= y - e && p[1] <= y + h + e) ||
+           ((Math.abs(p[1] - y) < e || Math.abs(p[1] - y - h) < e) && p[0] >= x - e && p[0] <= x + w + e); });
+  for (const d of space.doors || []) if (!onEdge(d.from) || !onEdge(d.to)) warn.push(`扉 ${d.label || ""}${JSON.stringify(d.from)} が 区画の辺の上にない`);
+  for (const w of space.walls || []) if (w[0][0] !== w[1][0] && w[0][1] !== w[1][1]) warn.push(`壁 ${JSON.stringify(w)} が 縦か横に なっていない`);
   // 一方通行の しるしは 経路の点列にして渡す
   const marks = (space.marks || []).map(m => ({ ...m, pts: (route(m.from, m.to) || []).map(p => P[p]) }));
   const pointLabels = Object.fromEntries(Object.entries(space.pointLabels || {}).map(([k, text]) => [k, { text, at: P[k] }]));
@@ -92,7 +108,7 @@ export function compile(plan, space) {
     warn,
     data: {
       scale: SCALE,
-      space: { title: space.title, status: space.status, up: space.up || "", size: space.size, areas: space.areas, marks, pointLabels },
+      space: { title: space.title, status: space.status, up: space.up || "", walls: space.walls || [], doors: space.doors || [], size: space.size, areas: space.areas, marks, pointLabels },
       plan: {
         key: plan.key, title: plan.title, subtitle: plan.subtitle || "", start: hm(plan.start), end: hm(plan.end),
         groups, signals: (plan.signals || []).map(s => ({ ...s, at: hm(s.at) })),

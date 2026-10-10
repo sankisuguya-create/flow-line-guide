@@ -14,26 +14,74 @@ document.title=PL.title; $("h1").innerHTML=PL.title.replace(" ","<br>")+(PL.subt
 function r(v){return Math.round(v*S*10)/10;}
 var BASE='<defs><marker id="ar" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#A8A08A"/></marker>'+
   '<marker id="am" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3" markerHeight="3" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--me)"/></marker></defs>';
-// 同じ zone の矩形は 壁で区切られていない ひとつながりの場所。
-// 太い線で全部を描いてから 塗りだけを重ねると、外まわりの輪郭だけが残り、つなぎ目に線が出ない。
-var ZONES={};
-SP.areas.forEach(function(a){ if(a.zone) (ZONES[a.zone]=ZONES[a.zone]||[]).push(a); });
-var zoneDone={};
+/* 場の描き方の決まり（docs/hub.md「描き方」）
+   線＝壁。同じ zone の矩形は壁のない ひとつながりの場所なので、外まわりだけを線にする。
+   kind "mark" は床の上の目印（シャワー・見学場所）で、壁ではないので点線。
+   kind "stairs" は踏み段の平行線＋上る向きの矢印。扉は壁の切れ目＋両端の枠、開口は切れ目だけ。 */
+var FILL={deck:"var(--deck)",water:"var(--water)",room:"var(--bldg)",box:"#fff",stairs:"#fff",mark:"none"};
+function rc(b,cls,st){ return '<rect class="'+cls+'" x="'+r(b.rect[0])+'" y="'+r(b.rect[1])+'" width="'+r(b.rect[2])+'" height="'+r(b.rect[3])+'"'+(st||"")+'/>'; }
+var LABELS="";
+var walled=SP.areas.filter(function(a){return a.kind!=="mark";});
+// 書く順は areas の順。zone は その最初の矩形の所で、線→塗りを まとめて描く（後の区画を 塗りで消さないため）
+var zdone={};
+walled.forEach(function(a){
+  if(!a.zone){ BASE+=rc(a,"zone a-"+a.kind,' style="stroke-width:2"'); return; }
+  if(zdone[a.zone]) return; zdone[a.zone]=1;
+  var zs=walled.filter(function(b){return b.zone===a.zone;});
+  zs.forEach(function(b){ BASE+=rc(b,"a-"+b.kind,' style="stroke:none"'); });
+  zs.forEach(function(b){ zoneEdges(b,zs).forEach(function(e){
+    BASE+='<line class="zwall" x1="'+r(e[0])+'" y1="'+r(e[1])+'" x2="'+r(e[2])+'" y2="'+r(e[3])+'"/>'; }); });
+});
+// 矩形 b の4辺から、同じ zone の別の矩形と接している区間を引いた残り＝外まわりの壁
+function zoneEdges(b,zs){
+  var x=b.rect[0],y=b.rect[1],X=x+b.rect[2],Y=y+b.rect[3],E=1e-6,out=[];
+  function sub(lo,hi,cuts){ var segs=[[lo,hi]]; cuts.forEach(function(c){ var n=[]; segs.forEach(function(s){
+      if(c[1]<=s[0]+E||c[0]>=s[1]-E){ n.push(s); return; } if(c[0]>s[0]+E) n.push([s[0],c[0]]); if(c[1]<s[1]-E) n.push([c[1],s[1]]); }); segs=n; }); return segs; }
+  [[y,"h",x,X,-1],[Y,"h",x,X,1],[x,"v",y,Y,-1],[X,"v",y,Y,1]].forEach(function(ed){
+    var at=ed[0],cuts=[];
+    zs.forEach(function(o){ if(o===b) return; var ox=o.rect[0],oy=o.rect[1],OX=ox+o.rect[2],OY=oy+o.rect[3];
+      if(ed[1]==="h"&&Math.abs((ed[4]<0?OY:oy)-at)<E) cuts.push([Math.max(ox,ed[2]),Math.min(OX,ed[3])]);
+      if(ed[1]==="v"&&Math.abs((ed[4]<0?OX:ox)-at)<E) cuts.push([Math.max(oy,ed[2]),Math.min(OY,ed[3])]); });
+    sub(ed[2],ed[3],cuts).forEach(function(sg){ out.push(ed[1]==="h"?[sg[0],at,sg[1],at]:[at,sg[0],at,sg[1]]); });
+  });
+  return out;
+}
 SP.areas.forEach(function(a){
   var x=r(a.rect[0]),y=r(a.rect[1]),w=r(a.rect[2]),h=r(a.rect[3]);
-  if(a.zone){
-    if(!zoneDone[a.zone]){ zoneDone[a.zone]=1; var zs=ZONES[a.zone], q=function(b,cls,st){ return '<rect class="'+cls+'" x="'+r(b.rect[0])+'" y="'+r(b.rect[1])+'" width="'+r(b.rect[2])+'" height="'+r(b.rect[3])+'"'+st+'/>'; };
-      zs.forEach(function(b){ BASE+=q(b,"zone a-"+b.kind,' style="stroke-width:4"'); });
-      zs.forEach(function(b){ BASE+=q(b,"a-"+b.kind,' style="stroke:none"'); }); }
-  } else BASE+='<rect class="zone a-'+a.kind+'" x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="8"/>';
+  if(a.kind==="mark") BASE+=rc(a,"mk");
   if(a.lanes){ for(var i=1;i<a.lanes;i++){ var ly=y+h*i/a.lanes;
     BASE+='<line x1="'+(x+4)+'" x2="'+(x+w-4)+'" y1="'+ly+'" y2="'+ly+'" stroke="#fff" stroke-width="2" stroke-dasharray="8 6"/>'; } }
-  if(a.kind==="deck") BASE+='<text class="lbl s" x="'+(x+w-10)+'" y="'+(y+h-14)+'" style="text-anchor:end">'+a.label+'</text>';
-  else if(a.kind==="box"&&h>w*2) BASE+='<text class="lbl s" x="'+(x+w/2)+'" y="'+(y-10)+'">'+a.label+'</text>';
-  else if(a.kind==="box"&&h<w*1.6&&h<60) BASE+='<text class="lbl s" x="'+(x+w/2)+'" y="'+(y+h+14)+'">'+a.label+'</text>';
-  else BASE+='<text class="lbl'+(a.kind==="water"?" water":(a.kind==="box"?" s":""))+'" x="'+(x+w/2)+'" y="'+(y+18)+'">'+a.label+'</text>'+
+  if(a.kind==="stairs"){
+    // up：上る向き（図の上下左右 up/down/left/right）。踏み段の線は 実寸（約0.3m）だと 詰まって読めないので 0.6m ごと
+    var hor=(a.up==="left"||a.up==="right"), L=hor?a.rect[2]:a.rect[3], n=Math.floor(L/0.6);
+    for(var j=1;j<n;j++){ var d=j*0.6*S;
+      BASE+= hor?'<line class="tread" x1="'+(x+d)+'" x2="'+(x+d)+'" y1="'+y+'" y2="'+(y+h)+'"/>'
+                :'<line class="tread" y1="'+(y+d)+'" y2="'+(y+d)+'" x1="'+x+'" x2="'+(x+w)+'"/>'; }
+    var cx=x+w/2, cy=y+h/2, m=0.12;
+    var p0={left:[x+w*(1-m),cy],right:[x+w*m,cy],up:[cx,y+h*(1-m)],down:[cx,y+h*m]}[a.up];
+    var p1={left:[x+w*m,cy],right:[x+w*(1-m),cy],up:[cx,y+h*m],down:[cx,y+h*(1-m)]}[a.up];
+    BASE+='<line class="stair-ar" x1="'+p0[0]+'" y1="'+p0[1]+'" x2="'+p1[0]+'" y2="'+p1[1]+'" marker-end="url(#as)"/>';
+    if(a.to) LABELS+='<text class="lbl s stair-to" x="'+p0[0]+'" y="'+(p0[1]+(hor?22:0))+'">'+a.to+'</text>';
+    return;
+  }
+  if(!a.label) return;
+  if(a.kind==="deck") LABELS+='<text class="lbl s" x="'+(x+w-10)+'" y="'+(y+h-14)+'" style="text-anchor:end">'+a.label+'</text>';
+  else if(h>w*2&&w<100) LABELS+='<text class="lbl s" x="'+(x+w/2)+'" y="'+(y+14)+'">'+a.label+'</text>';
+  else if(h<w*1.6&&h<60) LABELS+='<text class="lbl s" x="'+(x+w/2)+'" y="'+(y+h/2)+'">'+a.label+'</text>';
+  else LABELS+='<text class="lbl'+(a.kind==="water"?" water":(a.kind==="box"||a.kind==="mark"?" s":""))+'" x="'+(x+w/2)+'" y="'+(y+18)+'">'+a.label+'</text>'+
     (a.sub?'<text class="lbl s" x="'+(x+w/2)+'" y="'+(y+h-14)+'">'+a.sub+'</text>':'');
 });
+(SP.walls||[]).forEach(function(wl){ BASE+='<line class="wall" x1="'+r(wl[0][0])+'" y1="'+r(wl[0][1])+'" x2="'+r(wl[1][0])+'" y2="'+r(wl[1][1])+'"/>'; });
+(SP.doors||[]).forEach(function(d){
+  // 壁の上の a→b の区間を、手前の場所の塗りで消して 切れ目にする。扉なら 両端に 壁と直交する枠
+  var a=[r(d.from[0]),r(d.from[1])], b=[r(d.to[0]),r(d.to[1])], v=(a[0]===b[0]), k=0.35*S;
+  BASE+='<line x1="'+a[0]+'" y1="'+a[1]+'" x2="'+b[0]+'" y2="'+b[1]+'" stroke="'+(FILL[d.fill]||"#fff")+'" stroke-width="6"/>';
+  if(d.kind!=="open") [a,b].forEach(function(p){
+    BASE+= v?'<line class="jamb" x1="'+(p[0]-k)+'" x2="'+(p[0]+k)+'" y1="'+p[1]+'" y2="'+p[1]+'"/>'
+            :'<line class="jamb" y1="'+(p[1]-k)+'" y2="'+(p[1]+k)+'" x1="'+p[0]+'" x2="'+p[0]+'"/>'; });
+  if(d.label) LABELS+='<text class="lbl s door-l" x="'+((a[0]+b[0])/2+(v?14:0))+'" y="'+((a[1]+b[1])/2+(v?0:-10))+'" style="text-anchor:'+(v?"start":"middle")+'">'+d.label+'</text>';
+});
+BASE=BASE.replace("</defs>",'<marker id="as" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--ink-soft)"/></marker></defs>');
 (SP.marks||[]).forEach(function(m){
   if(m.kind!=="oneway") return;
   var pts=m.pts.map(function(p){return r(p[0])+" "+r(p[1]);});
@@ -44,6 +92,7 @@ SP.areas.forEach(function(a){
 Object.keys(SP.pointLabels||{}).forEach(function(k){
   var p=SP.pointLabels[k]; BASE+='<text class="pl" x="'+r(p.at[0])+'" y="'+(r(p.at[1])+(p.at[1]>SP.size[1]/2?34:-24))+'">'+p.text+'</text>';
 });
+BASE+=LABELS;
 if(SP.up) BASE+='<text class="lbl s" x="'+(SP.size[0]*S-8)+'" y="18" style="text-anchor:end">▲ '+SP.up+'</text>';
 if(SP.status!=="確認済") BASE+='<text class="kari" x="8" y="'+(SP.size[1]*S-8)+'">※ 仮の地図（じっさいの配置と ちがうことがあります）</text>';
 
