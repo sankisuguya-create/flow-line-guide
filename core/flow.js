@@ -54,6 +54,10 @@ SP.areas.forEach(function(a){
   if(a.kind==="stairs"){
     // up：上る向き（図の上下左右 up/down/left/right）。踏み段の線は 実寸（約0.3m）だと 詰まって読めないので 0.6m ごと
     var hor=(a.up==="left"||a.up==="right"), L=hor?a.rect[2]:a.rect[3], n=Math.floor(L/0.6);
+    // 別の階へ下りていく階段（to がある）は、下りる先に向かって 黒く消えていく。この図の外へ続くことを示す
+    if(a.to){ var gid="fade-"+a.id, dir={right:[1,0,0,0],left:[0,0,1,0],up:[0,1,0,0],down:[0,0,0,1]}[a.up];
+      BASE=BASE.replace("</defs>",'<linearGradient id="'+gid+'" x1="'+dir[0]+'" y1="'+dir[1]+'" x2="'+dir[2]+'" y2="'+dir[3]+'"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#111"/></linearGradient></defs>');
+      BASE+='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="url(#'+gid+')"/>'; }
     for(var j=1;j<n;j++){ var d=j*0.6*S;
       BASE+= hor?'<line class="tread" x1="'+(x+d)+'" x2="'+(x+d)+'" y1="'+y+'" y2="'+(y+h)+'"/>'
                 :'<line class="tread" y1="'+(y+d)+'" y2="'+(y+d)+'" x1="'+x+'" x2="'+(x+w)+'"/>'; }
@@ -61,7 +65,7 @@ SP.areas.forEach(function(a){
     var p0={left:[x+w*(1-m),cy],right:[x+w*m,cy],up:[cx,y+h*(1-m)],down:[cx,y+h*m]}[a.up];
     var p1={left:[x+w*m,cy],right:[x+w*(1-m),cy],up:[cx,y+h*m],down:[cx,y+h*(1-m)]}[a.up];
     BASE+='<line class="stair-ar" x1="'+p0[0]+'" y1="'+p0[1]+'" x2="'+p1[0]+'" y2="'+p1[1]+'" marker-end="url(#as)"/>';
-    if(a.to) LABELS+='<text class="lbl s stair-to" x="'+p0[0]+'" y="'+(p0[1]+(hor?22:0))+'">'+a.to+'</text>';
+    if(a.to) LABELS+='<text class="lbl s stair-to" x="'+(hor?(a.up==="right"?x+w*0.2:x+w*0.8):x+w/2)+'" y="'+(y+h/2)+'" style="fill:#fff">'+a.to+'</text>';
     return;
   }
   if(!a.label) return;
