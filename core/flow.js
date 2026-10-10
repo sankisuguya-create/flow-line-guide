@@ -113,15 +113,27 @@ function posAt(g,t){
   }
   i=K.length-1; return {x:K[i][1],y:K[i][2],seg:-1};
 }
+// 組の描き方：止まっている所に隊形（space.forms）があれば その隊形、それ以外（移動中など）は 8列のかたまり。
+// 点の大きさは背の高さ：隊形では 端（低い）→ プール中央側（高い）へ 大きくなる。
 var BODY={};
-function groupBody(g){
-  if(BODY[g.id]) return BODY[g.id];
-  var n=g.n||32, cols=8, rows=Math.ceil(n/cols), d=0.45*S, out="";
-  for(var i=0;i<n;i++){ var c=i%cols, rr=Math.floor(i/cols);
-    out+='<circle class="kid" cx="'+((c-(cols-1)/2)*d).toFixed(1)+'" cy="'+((rr-(rows-1)/2)*d).toFixed(1)+'" r="'+(d*0.42).toFixed(1)+'" style="fill:'+(g.color||"#fff")+'"/>'; }
-  var top=-(rows/2)*d-12;
+function formAt(p){ var F=SP.forms||[]; for(var i=0;i<F.length;i++){ var a=F[i].at; if(Math.abs(a[0]-p.x)<1e-3&&Math.abs(a[1]-p.y)<1e-3) return F[i]; } return null; }
+function groupBody(g,form){
+  var key=g.id+(form?"@"+form.at.join(","):""); if(BODY[key]) return BODY[key];
+  var n=g.n||32, out="", pts=[], top;
+  if(form){
+    var rows=form.rows||2, per=Math.ceil(n/rows), gap=0.6*S, rg=1.0*S, sg=(form.tall==="+x"||form.tall==="+y")?1:-1;
+    for(var i=0;i<n;i++){ var k=i%per, row=Math.floor(i/per), along=(k-(per-1)/2)*gap*sg, across=(row-(rows-1)/2)*rg;
+      var rad=(0.17+0.13*k/Math.max(1,per-1))*S;                       // k=0 が端（低い）
+      pts.push(form.along==="x"?[along,across,rad]:[across,along,rad]); }
+    top=-(form.along==="x"?rows*rg/2:per*gap/2)-14;
+  } else {
+    var cols=8, rws=Math.ceil(n/cols), d=0.45*S;
+    for(var j=0;j<n;j++) pts.push([((j%cols)-(cols-1)/2)*d,(Math.floor(j/cols)-(rws-1)/2)*d,d*0.42]);
+    top=-(rws/2)*d-12;
+  }
+  pts.forEach(function(q){ out+='<circle class="kid" cx="'+q[0].toFixed(1)+'" cy="'+q[1].toFixed(1)+'" r="'+q[2].toFixed(1)+'" style="fill:'+(g.color||"#fff")+'"/>'; });
   out+='<rect class="tag" x="-22" y="'+(top-11)+'" width="44" height="22" rx="11"/><text y="'+top+'">'+g.label+'</text>';
-  return BODY[g.id]=out;
+  return BODY[key]=out;
 }
 function anyMoving(t){ for(var i=0;i<G.length;i++) if(posAt(G[i],t).seg>=0) return true; return false; }
 function phaseIdx(t){ var k=0; PL.phases.forEach(function(p,i){ if(t>=p.at) k=i; }); return k; }
@@ -150,7 +162,7 @@ function draw(){
   var order=G.filter(function(g){return g!==sel;}); if(sel) order.push(sel);
   order.forEach(function(g){
     var p=posAt(g,clock), cls="g"+(g.style==="watch"?" watch":"")+(sel?(g===sel?" me":" dim"):"");
-    s+='<g class="'+cls+'" transform="translate('+r(p.x)+' '+r(p.y)+')">'+groupBody(g)+'</g>';
+    s+='<g class="'+cls+'" transform="translate('+r(p.x)+' '+r(p.y)+')">'+groupBody(g,p.seg<0?formAt(p):null)+'</g>';
   });
   svg.innerHTML=s;
 

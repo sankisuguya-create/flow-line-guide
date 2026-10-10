@@ -108,7 +108,7 @@ export function compile(plan, space) {
     warn,
     data: {
       scale: SCALE,
-      space: { title: space.title, status: space.status, up: space.up || "", walls: space.walls || [], doors: space.doors || [], size: space.size, areas: space.areas, marks, pointLabels },
+      space: { title: space.title, status: space.status, up: space.up || "", walls: space.walls || [], doors: space.doors || [], forms: Object.entries(space.forms || {}).map(([k, f]) => ({ ...f, at: P[k] })), size: space.size, areas: space.areas, marks, pointLabels },
       plan: {
         key: plan.key, title: plan.title, subtitle: plan.subtitle || "", start: hm(plan.start), end: hm(plan.end),
         groups, signals: (plan.signals || []).map(s => ({ ...s, at: hm(s.at) })),
