@@ -35,6 +35,7 @@ SP.areas.forEach(function(a){
 Object.keys(SP.pointLabels||{}).forEach(function(k){
   var p=SP.pointLabels[k]; BASE+='<text class="pl" x="'+r(p.at[0])+'" y="'+(r(p.at[1])+(p.at[1]>SP.size[1]/2?34:-24))+'">'+p.text+'</text>';
 });
+if(SP.up) BASE+='<text class="lbl s" x="'+(SP.size[0]*S-8)+'" y="18" style="text-anchor:end">▲ '+SP.up+'</text>';
 if(SP.status!=="確認済") BASE+='<text class="kari" x="8" y="'+(SP.size[1]*S-8)+'">※ 仮の地図（じっさいの配置と ちがうことがあります）</text>';
 
 /* ===== うごき ===== */
