@@ -14,9 +14,18 @@ document.title=PL.title; $("h1").innerHTML=PL.title.replace(" ","<br>")+(PL.subt
 function r(v){return Math.round(v*S*10)/10;}
 var BASE='<defs><marker id="ar" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#A8A08A"/></marker>'+
   '<marker id="am" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3" markerHeight="3" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--me)"/></marker></defs>';
+// 同じ zone の矩形は 壁で区切られていない ひとつながりの場所。
+// 太い線で全部を描いてから 塗りだけを重ねると、外まわりの輪郭だけが残り、つなぎ目に線が出ない。
+var ZONES={};
+SP.areas.forEach(function(a){ if(a.zone) (ZONES[a.zone]=ZONES[a.zone]||[]).push(a); });
+var zoneDone={};
 SP.areas.forEach(function(a){
   var x=r(a.rect[0]),y=r(a.rect[1]),w=r(a.rect[2]),h=r(a.rect[3]);
-  BASE+='<rect class="zone a-'+a.kind+'" x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="8"/>';
+  if(a.zone){
+    if(!zoneDone[a.zone]){ zoneDone[a.zone]=1; var zs=ZONES[a.zone], q=function(b,cls,st){ return '<rect class="'+cls+'" x="'+r(b.rect[0])+'" y="'+r(b.rect[1])+'" width="'+r(b.rect[2])+'" height="'+r(b.rect[3])+'"'+st+'/>'; };
+      zs.forEach(function(b){ BASE+=q(b,"zone a-"+b.kind,' style="stroke-width:4"'); });
+      zs.forEach(function(b){ BASE+=q(b,"a-"+b.kind,' style="stroke:none"'); }); }
+  } else BASE+='<rect class="zone a-'+a.kind+'" x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="8"/>';
   if(a.lanes){ for(var i=1;i<a.lanes;i++){ var ly=y+h*i/a.lanes;
     BASE+='<line x1="'+(x+4)+'" x2="'+(x+w-4)+'" y1="'+ly+'" y2="'+ly+'" stroke="#fff" stroke-width="2" stroke-dasharray="8 6"/>'; } }
   if(a.kind==="deck") BASE+='<text class="lbl s" x="'+(x+w-10)+'" y="'+(y+h-14)+'" style="text-anchor:end">'+a.label+'</text>';
