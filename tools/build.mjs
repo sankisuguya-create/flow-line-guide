@@ -49,6 +49,18 @@ export function compile(plan, space) {
   function lineSlots(pt, name, n) {           // 整列・体操：2列。tall の向きへ 背が高くなる、pool の向きが 1列目
     const F = FORMS[pt], f = F.forms[name], per = rows2(n), sx = F.tall[0] === "+" ? 1 : -1, sy = F.pool[0] === "+" ? 1 : -1;
     const cx = f.cx ?? P[pt][0], cy = P[pt][1], out = [];
+    if (f.path) {                                // 線に沿って並ぶ（角で直角に曲がる）。始点＝中央側＝背の高い児童
+      const seg = []; let tot = 0;
+      for (let i = 1; i < f.path.length; i++) { const [a, b] = [f.path[i - 1], f.path[i]], L = Math.hypot(b[0] - a[0], b[1] - a[1]); seg.push({ a, b, L, s: tot }); tot += L; }
+      for (let j = 0; j < n; j++) { const row = Math.floor(j / per), k = j % per, d = Math.min(tot, (per - 1 - k) * f.gap);
+        const sg = seg.find(q => d <= q.s + q.L + 1e-9) || seg[seg.length - 1], u = (d - sg.s) / sg.L;
+        const dx = (sg.b[0] - sg.a[0]) / sg.L, dy = (sg.b[1] - sg.a[1]) / sg.L;
+        const nx = f.side === "right" ? -dy : dy, ny = f.side === "right" ? dx : -dx;   // プール側の向き
+        const off = (row === 0 ? 1 : -1) * f.rowGap / 2;
+        out.push([+(sg.a[0] + dx * sg.L * u + nx * off).toFixed(2), +(sg.a[1] + dy * sg.L * u + ny * off).toFixed(2)]); }
+      if ((per - 1) * f.gap > tot + 1e-9) warn.push(`隊形 ${pt} ${name}：線の長さ ${tot.toFixed(1)}m に ${per}人が入らない`);
+      return out;
+    }
     for (let j = 0; j < n; j++) { const row = Math.floor(j / per), k = j % per;
       const x = F.tall.endsWith("x") ? cx + sx * (k - (per - 1) / 2) * f.gap : cx + (row ? -1 : 1) * sy * f.rowGap / 2;
       const y = F.tall.endsWith("x") ? cy + (row === 0 ? 1 : -1) * sy * f.rowGap / 2 : cy + sx * (k - (per - 1) / 2) * f.gap;
@@ -83,7 +95,7 @@ export function compile(plan, space) {
         const p = fill(step.place, v); if (!P[p]) { warn.push(`${g.label}: 場所 ${p} がない`); continue; }
         at = p; t = hm(step.at); form = arrive(p); put(t, here(), form); continue;
       }
-      let dep = hm(step.at) + (step.stagger || 0) * k;
+      let dep = step.at ? hm(step.at) + (step.stagger || 0) * k : t;   // at が無ければ 前の動きのすぐ後
       if (dep < t - 1e-9) { warn.push(`${g.label}: ${step.at} の出発が 前の到着 ${clock(t)} より早い → ${clock(t)} にずらした`); dep = t; }
       put(dep, here(), form); t = dep;
       if (step.form) {                                   // その場で隊形を変える（体操の隊形など）
