@@ -22,6 +22,7 @@ export function compile(plan, space) {
   }
   const dist = (a, b) => Math.hypot(P[a][0] - P[b][0], P[a][1] - P[b][1]);
   const cost = (a, b, e) => (e.minutes ?? dist(a, b) / speed / 60);
+  let VIA = null;   // 手順の via。通路の only と一致するときだけ その通路を使う（退場専用の道など）
   function route(a, b) {
     if (a === b) return [a];
     const d = { [a]: 0 }, prev = {}, done = new Set();
@@ -33,6 +34,7 @@ export function compile(plan, space) {
       done.add(u);
       if (u !== a && (space.noThrough || []).includes(u)) continue; // 水の中などは 通り抜けに使わない
       for (const { to, e } of adj[u] || []) {
+        if (e.only && e.only !== VIA) continue;
         const nd = d[u] + cost(u, to, e);
         if (d[to] === undefined || nd < d[to]) { d[to] = nd; prev[to] = u; }
       }
@@ -81,7 +83,8 @@ export function compile(plan, space) {
     return out;
   }
   const cen = sl => [+(sl.reduce((s, q) => s + q[0], 0) / sl.length).toFixed(2), +(sl.reduce((s, q) => s + q[1], 0) / sl.length).toFixed(2)];
-  const groups = plan.groups.map(g => {
+  const SYNC = {}, READY = {};
+  const compileGroups = () => plan.groups.map(g => {
     const k = (idx[g.script] = (idx[g.script] ?? -1) + 1);
     const v = { ...g.vars, k }, n = g.n || 32, per = rows2(n);
     const forms = {}, keys = []; let at = null, t = null, form = null;
@@ -95,7 +98,10 @@ export function compile(plan, space) {
         const p = fill(step.place, v); if (!P[p]) { warn.push(`${g.label}: 場所 ${p} がない`); continue; }
         at = p; t = hm(step.at); form = arrive(p); put(t, here(), form); continue;
       }
-      let dep = step.at ? hm(step.at) + (step.stagger || 0) * k : t;   // at が無ければ 前の動きのすぐ後
+      VIA = step.via || null;
+      if (step.sync) (READY[step.sync] ||= []).push(t);
+      let dep = step.sync && SYNC[step.sync] !== undefined ? SYNC[step.sync]
+              : step.at ? hm(step.at) + (step.stagger || 0) * k : t;   // at が無ければ 前の動きのすぐ後。sync は全員そろった時刻
       if (dep < t - 1e-9) { warn.push(`${g.label}: ${step.at} の出発が 前の到着 ${clock(t)} より早い → ${clock(t)} にずらした`); dep = t; }
       put(dep, here(), form); t = dep;
       if (step.form) {                                   // その場で隊形を変える（体操の隊形など）
@@ -124,6 +130,13 @@ export function compile(plan, space) {
     const rad = Array.from({ length: n }, (_, j) => radius(j % per, per));
     return { id: g.id, label: g.label, style: g.style || "", color: g.color || "", n, per, rad, forms, vars: v, keys };
   });
+  for (const kk in idx) delete idx[kk];
+  let groups = compileGroups();
+  if (Object.keys(READY).length) {   // sync：全員の準備が終わった時刻（0.5分単位で切り上げ）に そろえて もう一度組み立てる
+    for (const [nm, ts] of Object.entries(READY)) SYNC[nm] = Math.ceil(Math.max(...ts) * 2) / 2;
+    for (const kk in idx) delete idx[kk];
+    warn.length = 0; groups = compileGroups();
+  }
 
 
   // すれちがいの検査：2組が 2m 以内で 向かい合って動いている（同じ向きに続いて歩くのは ふつうなので 数えない）
@@ -170,8 +183,8 @@ export function compile(plan, space) {
       space: { title: space.title, status: space.status, up: space.up || "", walls: space.walls || [], doors: space.doors || [],  size: space.size, areas: space.areas, marks, pointLabels },
       plan: {
         key: plan.key, title: plan.title, subtitle: plan.subtitle || "", start: hm(plan.start), end: hm(plan.end),
-        groups, signals: (plan.signals || []).map(s => ({ ...s, at: hm(s.at) })),
-        phases: plan.phases.map(p => ({ ...p, at: hm(p.at) })),
+        groups, signals: (plan.signals || []).map(s => ({ ...s, at: s.sync ? SYNC[s.sync] : hm(s.at) })),
+        phases: plan.phases.map(p => ({ ...p, at: p.sync ? SYNC[p.sync] : hm(p.at) })).sort((a, b) => a.at - b.at),
       },
     },
   };
