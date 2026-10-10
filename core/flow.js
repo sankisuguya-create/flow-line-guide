@@ -113,6 +113,16 @@ function posAt(g,t){
   }
   i=K.length-1; return {x:K[i][1],y:K[i][2],seg:-1};
 }
+var BODY={};
+function groupBody(g){
+  if(BODY[g.id]) return BODY[g.id];
+  var n=g.n||32, cols=8, rows=Math.ceil(n/cols), d=0.45*S, out="";
+  for(var i=0;i<n;i++){ var c=i%cols, rr=Math.floor(i/cols);
+    out+='<circle class="kid" cx="'+((c-(cols-1)/2)*d).toFixed(1)+'" cy="'+((rr-(rows-1)/2)*d).toFixed(1)+'" r="'+(d*0.42).toFixed(1)+'" style="fill:'+(g.color||"#fff")+'"/>'; }
+  var top=-(rows/2)*d-12;
+  out+='<rect class="tag" x="-22" y="'+(top-11)+'" width="44" height="22" rx="11"/><text y="'+top+'">'+g.label+'</text>';
+  return BODY[g.id]=out;
+}
 function anyMoving(t){ for(var i=0;i<G.length;i++) if(posAt(G[i],t).seg>=0) return true; return false; }
 function phaseIdx(t){ var k=0; PL.phases.forEach(function(p,i){ if(t>=p.at) k=i; }); return k; }
 function clockStr(t){ var m=Math.floor(t+1e-6); return Math.floor(m/60)+":"+("0"+(m%60)).slice(-2); }
@@ -140,7 +150,7 @@ function draw(){
   var order=G.filter(function(g){return g!==sel;}); if(sel) order.push(sel);
   order.forEach(function(g){
     var p=posAt(g,clock), cls="g"+(g.style==="watch"?" watch":"")+(sel?(g===sel?" me":" dim"):"");
-    s+='<g class="'+cls+'" transform="translate('+r(p.x)+' '+r(p.y)+')"><rect x="-27" y="-17" width="54" height="34" rx="8"/><text>'+g.label+'</text></g>';
+    s+='<g class="'+cls+'" transform="translate('+r(p.x)+' '+r(p.y)+')">'+groupBody(g)+'</g>';
   });
   svg.innerHTML=s;
 

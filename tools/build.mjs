@@ -64,7 +64,7 @@ export function compile(plan, space) {
         if (tg.wait) { t += tg.wait; put(t, p); }
       }
     }
-    return { id: g.id, label: g.label, style: g.style || "", vars: v, keys };
+    return { id: g.id, label: g.label, style: g.style || "", color: g.color || "", n: g.n || 32, vars: v, keys };
   });
 
   // すれちがいの検査：2組が 2m 以内で 向かい合って動いている（同じ向きに続いて歩くのは ふつうなので 数えない）
