@@ -1,0 +1,85 @@
+:root{
+    --paper:#EEF3F7; --grid:#C7DAE7; --grid-strong:#A9C6D9;
+    --ink:#143242; --ink-soft:#4B6C80; --marker:#F0912B; --marker-soft:#FBD9AE;
+    --water:#BFE0F5; --deck:#F6F1E4; --bldg:#E3E0D6; --me:#0B5CAD; --warn:#B3261E;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;min-height:540px;overflow:hidden}
+  body{
+    font-family:"Hiragino Sans","Yu Gothic UI","BIZ UDPGothic","Noto Sans JP",sans-serif;
+    color:var(--ink); background-color:var(--paper);
+    background-image:
+      repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px 22px),
+      repeating-linear-gradient(to bottom, var(--grid) 0 1px, transparent 1px 22px),
+      repeating-linear-gradient(to right, var(--grid-strong) 0 1px, transparent 1px 110px),
+      repeating-linear-gradient(to bottom, var(--grid-strong) 0 1px, transparent 1px 110px);
+    line-height:1.5;
+  }
+  .app{position:relative;display:flex;height:100%;min-height:540px}
+  .side{flex:0 0 236px;width:236px;height:100%;overflow-y:auto;background:#F7FAFC;
+        border-right:2px solid var(--ink);padding:14px 12px 20px;transition:margin-left .22s ease}
+  .app.closed .side{margin-left:-236px}
+  .float{position:absolute;top:12px;left:248px;z-index:20;display:flex;flex-direction:column;gap:8px;width:48px;transition:left .22s ease}
+  .app.closed .float{left:12px}
+  .float button{width:48px;height:48px;padding:0;border-radius:12px;display:grid;place-items:center;font-size:18px;text-align:center}
+  .stagearea{flex:1;min-width:0;height:100%;padding:4px 4px 4px 64px;display:flex;flex-direction:column}
+  svg.field{flex:1;min-height:0;width:100%;display:block}
+  h1{font-size:16px;font-weight:900;margin:64px 0 14px;line-height:1.4;display:inline-block;
+     background:linear-gradient(transparent 62%, var(--marker-soft) 62% 94%, transparent 94%);padding:0 .1em}
+  .grp{margin-bottom:14px}
+  .lab{display:block;font-size:12px;font-weight:800;color:var(--ink-soft);letter-spacing:.08em;margin:0 0 6px}
+  button{font:inherit;font-weight:700;color:var(--ink);background:#fff;border:2px solid var(--ink);
+         border-radius:10px;padding:9px 12px;cursor:pointer;line-height:1.2;width:100%;text-align:left;touch-action:manipulation}
+  button:hover{background:var(--marker-soft)}
+  button:focus-visible{outline:3px solid var(--marker);outline-offset:2px}
+  button[aria-pressed="true"]{background:var(--marker);border-color:var(--marker)}
+  .seg{display:flex;flex-direction:column;border:2px solid var(--ink);border-radius:10px;overflow:hidden}
+  .seg button{border:none;border-radius:0;border-top:2px solid var(--ink)}
+  .seg button:first-child{border-top:none}
+  .seg.row{flex-direction:row;flex-wrap:wrap}
+  .seg.row button{flex:1 1 30%;text-align:center;border-top:none;border-left:2px solid var(--ink);padding:9px 0}
+  .seg.row button:first-child{border-left:none}
+  .seg.row button.wide{flex-basis:100%;border-left:none;border-bottom:2px solid var(--ink)}
+  .chap button{font-size:13px;padding:6px 10px;font-weight:600}
+  .chap button span{display:inline-block;width:3.2em;font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+  .chap button.now{background:var(--marker-soft)}
+  input[type=range]{width:100%;accent-color:var(--marker)}
+
+  /* いま なにを しているか（図の上の帯） */
+  .cap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 10px;margin:4px 0;
+       background:#fff;border:2px solid var(--ink);border-radius:12px;min-height:56px}
+  .cap .clock{font-size:26px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--me)}
+  .cap .who{font-size:14px;font-weight:800;background:var(--ink);color:#fff;border-radius:6px;padding:1px 8px}
+  .cap .say{font-size:20px;font-weight:800}
+  .cap .chip{font-size:14px;font-weight:700;border:2px solid var(--ink-soft);border-radius:999px;padding:0 10px;background:#fff}
+  .cap .chip.mine{border-color:var(--me);background:#E3EEFA}
+  .cap .chip.warn{border-color:var(--warn);color:var(--warn)}
+  rt{font-size:.5em}
+
+  /* 図 */
+  .lbl{font-size:18px;font-weight:800;fill:var(--ink-soft);text-anchor:middle;dominant-baseline:middle}
+  .lbl.s{font-size:14px;font-weight:600}
+  .zone{stroke:#8E9AA3;stroke-width:2}
+  .g rect{fill:#fff;stroke:var(--ink);stroke-width:2.5}
+  .g text{font-size:15px;font-weight:900;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+  .g.watch rect{stroke-dasharray:5 3}
+  .g.dim{opacity:.22}
+  .g.me rect{fill:var(--me);stroke:var(--me)}
+  .g.me text{fill:#fff}
+  .trail{fill:none;stroke:var(--me);stroke-width:3;stroke-dasharray:3 7;stroke-linecap:round;opacity:.65}
+  .trail.go{stroke-width:7;stroke-dasharray:none;opacity:1}
+  .oneway{fill:none;stroke:#A8A08A;stroke-width:3;stroke-dasharray:10 8}
+
+  @media (max-height:540px){ html,body,.app{min-height:0} .cap{min-height:0;padding:2px 8px} .cap .chip{display:none} .float button{width:42px;height:42px} .float{gap:6px} }
+  @media (max-width:760px){
+    .side{position:absolute;z-index:15;left:0;top:0;box-shadow:4px 0 12px rgba(0,0,0,.15)}
+    .stagearea{padding-left:64px}
+    .cap .say{font-size:17px} .cap .clock{font-size:22px}
+  }
+  /* 場の描きわけ（space.json の kind） */
+  .a-deck{fill:var(--deck)} .a-water{fill:var(--water)} .a-room{fill:var(--bldg)} .a-box{fill:#fff}
+  .lbl.water{fill:#0B4F86}
+  .pl{font-size:12px;font-weight:600;fill:var(--ink-soft);text-anchor:middle}
+  .kari{font-size:13px;font-weight:800;fill:var(--warn)}
+  .sig rect{fill:#fff;stroke:var(--warn);stroke-width:3}
+  .sig text{font-size:20px;font-weight:800;fill:var(--warn);text-anchor:middle;dominant-baseline:middle}

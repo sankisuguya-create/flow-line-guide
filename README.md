@@ -5,24 +5,26 @@
 
 紙の隊形図では伝わらない「時間の流れ」と「自分ひとりの動き」を扱うことが目的。
 
+素材（物・場・操作UI）の集約先も兼ね、計画書から資料を生成できる（[docs/hub.md](docs/hub.md)）。
+**校舎・プールの間取りを置くため、このリポジトリは非公開で運用する。**
+
 ---
 
 ## 構成
 
 ```
 flow-line-guide/
-├─ README.md                        これ
+├─ README.md
 ├─ docs/
-│   ├─ kikaku.md                    共通規格の設計メモ（型の見分け方・作るときの落とし穴）
-│   └─ tsuika.md                    資料を1本足す手順
-└─ gas/                             資料の本体と配信用ファイル
-    ├─ README.md                    配信の方針
-    └─ undokai/
-        ├─ Code.gs                  PAGES に資料を1箇所で定義
-        ├─ index.html               もくじ（PAGESから自動生成）
-        ├─ nyutai.html
-        ├─ relay.html
-        └─ README.md                このプロジェクトの公開手順
+│   ├─ hub.md        素材の集約と生成の仕組み（space.json・plan.json の書き方）
+│   ├─ kikaku.md     共通規格の設計メモ（3層・型の見分け方・落とし穴）
+│   └─ tsuika.md     資料を1本足す手順
+├─ objects/          物（実寸mmの絵）。いまは desk-layout の複製
+├─ spaces/<場>/      場（実寸mの区画・点・通路）
+├─ core/             操作UI（再生部・見た目・ひな形）
+├─ plans/<行事>/     中身（計画書から起こしたデータ）
+├─ tools/            build.mjs（生成・検査）／check.mjs（撮影）／align.html（間取り合わせ）
+└─ gas/<行事>/       配る1ファイルHTMLと GAS配信一式
 ```
 
 行事が増えたら `gas/ongakukai/` のように階層を1つ足す。
@@ -65,6 +67,10 @@ Classroomの資料としてHTMLファイルを添付する方法は、児童側�
 | ≡ | 操作パネルの開閉。畳むと図が全幅になる |
 
 ## 収録している資料
+
+### 水泳 4年 1回目の動き（`gas/suiei/dai1ji.html`、生成）
+
+`plans/suiei/dai1ji.json` から生成。4クラスと見学者がプール周りを同時に動く。「だれを見る」で自分の組だけを追える。地図は**仮**（配置図・写真で `align.html` を使って確認済にする）。
 
 ### 運動会 3年 入場・前つめ・退場（`gas/undokai/nyutai.html`）
 

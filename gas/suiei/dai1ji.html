@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- このファイルは tools/build.mjs が作る。直接直さず plans/ と spaces/ と core/ を直す -->
+<title>4年 すいえい 1回目</title>
+<style>
+:root{
+    --paper:#EEF3F7; --grid:#C7DAE7; --grid-strong:#A9C6D9;
+    --ink:#143242; --ink-soft:#4B6C80; --marker:#F0912B; --marker-soft:#FBD9AE;
+    --water:#BFE0F5; --deck:#F6F1E4; --bldg:#E3E0D6; --me:#0B5CAD; --warn:#B3261E;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;min-height:540px;overflow:hidden}
+  body{
+    font-family:"Hiragino Sans","Yu Gothic UI","BIZ UDPGothic","Noto Sans JP",sans-serif;
+    color:var(--ink); background-color:var(--paper);
+    background-image:
+      repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px 22px),
+      repeating-linear-gradient(to bottom, var(--grid) 0 1px, transparent 1px 22px),
+      repeating-linear-gradient(to right, var(--grid-strong) 0 1px, transparent 1px 110px),
+      repeating-linear-gradient(to bottom, var(--grid-strong) 0 1px, transparent 1px 110px);
+    line-height:1.5;
+  }
+  .app{position:relative;display:flex;height:100%;min-height:540px}
+  .side{flex:0 0 236px;width:236px;height:100%;overflow-y:auto;background:#F7FAFC;
+        border-right:2px solid var(--ink);padding:14px 12px 20px;transition:margin-left .22s ease}
+  .app.closed .side{margin-left:-236px}
+  .float{position:absolute;top:12px;left:248px;z-index:20;display:flex;flex-direction:column;gap:8px;width:48px;transition:left .22s ease}
+  .app.closed .float{left:12px}
+  .float button{width:48px;height:48px;padding:0;border-radius:12px;display:grid;place-items:center;font-size:18px;text-align:center}
+  .stagearea{flex:1;min-width:0;height:100%;padding:4px 4px 4px 64px;display:flex;flex-direction:column}
+  svg.field{flex:1;min-height:0;width:100%;display:block}
+  h1{font-size:16px;font-weight:900;margin:64px 0 14px;line-height:1.4;display:inline-block;
+     background:linear-gradient(transparent 62%, var(--marker-soft) 62% 94%, transparent 94%);padding:0 .1em}
+  .grp{margin-bottom:14px}
+  .lab{display:block;font-size:12px;font-weight:800;color:var(--ink-soft);letter-spacing:.08em;margin:0 0 6px}
+  button{font:inherit;font-weight:700;color:var(--ink);background:#fff;border:2px solid var(--ink);
+         border-radius:10px;padding:9px 12px;cursor:pointer;line-height:1.2;width:100%;text-align:left;touch-action:manipulation}
+  button:hover{background:var(--marker-soft)}
+  button:focus-visible{outline:3px solid var(--marker);outline-offset:2px}
+  button[aria-pressed="true"]{background:var(--marker);border-color:var(--marker)}
+  .seg{display:flex;flex-direction:column;border:2px solid var(--ink);border-radius:10px;overflow:hidden}
+  .seg button{border:none;border-radius:0;border-top:2px solid var(--ink)}
+  .seg button:first-child{border-top:none}
+  .seg.row{flex-direction:row;flex-wrap:wrap}
+  .seg.row button{flex:1 1 30%;text-align:center;border-top:none;border-left:2px solid var(--ink);padding:9px 0}
+  .seg.row button:first-child{border-left:none}
+  .seg.row button.wide{flex-basis:100%;border-left:none;border-bottom:2px solid var(--ink)}
+  .chap button{font-size:13px;padding:6px 10px;font-weight:600}
+  .chap button span{display:inline-block;width:3.2em;font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+  .chap button.now{background:var(--marker-soft)}
+  input[type=range]{width:100%;accent-color:var(--marker)}
+
+  /* いま なにを しているか（図の上の帯） */
+  .cap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 10px;margin:4px 0;
+       background:#fff;border:2px solid var(--ink);border-radius:12px;min-height:56px}
+  .cap .clock{font-size:26px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--me)}
+  .cap .who{font-size:14px;font-weight:800;background:var(--ink);color:#fff;border-radius:6px;padding:1px 8px}
+  .cap .say{font-size:20px;font-weight:800}
+  .cap .chip{font-size:14px;font-weight:700;border:2px solid var(--ink-soft);border-radius:999px;padding:0 10px;background:#fff}
+  .cap .chip.mine{border-color:var(--me);background:#E3EEFA}
+  .cap .chip.warn{border-color:var(--warn);color:var(--warn)}
+  rt{font-size:.5em}
+
+  /* 図 */
+  .lbl{font-size:18px;font-weight:800;fill:var(--ink-soft);text-anchor:middle;dominant-baseline:middle}
+  .lbl.s{font-size:14px;font-weight:600}
+  .zone{stroke:#8E9AA3;stroke-width:2}
+  .g rect{fill:#fff;stroke:var(--ink);stroke-width:2.5}
+  .g text{font-size:15px;font-weight:900;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+  .g.watch rect{stroke-dasharray:5 3}
+  .g.dim{opacity:.22}
+  .g.me rect{fill:var(--me);stroke:var(--me)}
+  .g.me text{fill:#fff}
+  .trail{fill:none;stroke:var(--me);stroke-width:3;stroke-dasharray:3 7;stroke-linecap:round;opacity:.65}
+  .trail.go{stroke-width:7;stroke-dasharray:none;opacity:1}
+  .oneway{fill:none;stroke:#A8A08A;stroke-width:3;stroke-dasharray:10 8}
+
+  @media (max-height:540px){ html,body,.app{min-height:0} .cap{min-height:0;padding:2px 8px} .cap .chip{display:none} .float button{width:42px;height:42px} .float{gap:6px} }
+  @media (max-width:760px){
+    .side{position:absolute;z-index:15;left:0;top:0;box-shadow:4px 0 12px rgba(0,0,0,.15)}
+    .stagearea{padding-left:64px}
+    .cap .say{font-size:17px} .cap .clock{font-size:22px}
+  }
+  /* 場の描きわけ（space.json の kind） */
+  .a-deck{fill:var(--deck)} .a-water{fill:var(--water)} .a-room{fill:var(--bldg)} .a-box{fill:#fff}
+  .lbl.water{fill:#0B4F86}
+  .pl{font-size:12px;font-weight:600;fill:var(--ink-soft);text-anchor:middle}
+  .kari{font-size:13px;font-weight:800;fill:var(--warn)}
+  .sig rect{fill:#fff;stroke:var(--warn);stroke-width:3}
+  .sig text{font-size:20px;font-weight:800;fill:var(--warn);text-anchor:middle;dominant-baseline:middle}
+
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side">
+    <h1 id="h1"></h1>
+    <div class="grp">
+      <span class="lab">だれを 見る？</span>
+      <span class="seg row" id="who"></span>
+    </div>
+    <div class="grp">
+      <span class="lab">じかん</span>
+      <input type="range" id="scrub" min="0" max="1000" value="0" step="1" aria-label="じかん">
+    </div>
+    <div class="grp">
+      <span class="lab">はやさ</span>
+      <span class="seg row" id="speeds">
+        <button data-r="0.5">×0.5</button><button data-r="1" aria-pressed="true">×1</button><button data-r="2">×2</button>
+      </span>
+    </div>
+    <div class="grp">
+      <span class="lab">とぶ</span>
+      <div class="seg chap" id="chap"></div>
+    </div>
+  </aside>
+  <div class="float">
+    <button id="toggle" aria-label="そうさパネル">&#9776;</button>
+    <button id="play" aria-label="さいせい／ていし"></button>
+    <button id="ff" aria-label="はやおくり">&#9654;&#9654;</button>
+    <button id="rew" aria-label="まきもどし">&#9664;&#9664;</button>
+  </div>
+  <main class="stagearea">
+    <div class="cap" id="cap" aria-live="polite"></div>
+    <svg class="field" id="svg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="うごきの 図"></svg>
+  </main>
+</div>
+<script>
+var DATA = {"scale":20,"space":{"title":"プール周り","status":"仮","size":[52,30],"areas":[{"id":"school","kind":"room","label":"校舎（教室）","rect":[0,17,5.5,12.5],"note":"実際は離れている。教室〜入り口は時間を手で与える"},{"id":"deck","kind":"deck","label":"プールサイド","rect":[18.5,1,33,28]},{"id":"pool","kind":"water","label":"プール（7レーン）","rect":[24.5,2,25,12],"lanes":7},{"id":"shower","kind":"box","label":"シャワー","rect":[19.2,3,2.6,10]},{"id":"kotai","kind":"room","label":"更衣室","sub":"男子・女子","rect":[9.5,17.5,8,11]},{"id":"door","kind":"box","label":"入り口","rect":[6.6,21.8,1.8,2.4]}],"marks":[{"kind":"oneway","from":"out","to":"shower","label":"一方通行","pts":[[20.5,23],[20.5,16],[20.5,8]]}],"pointLabels":{"kutsu.12":{"text":"上ばき 1・2組","at":[7.5,27.2]},"kutsu.34":{"text":"上ばき 3・4組","at":[7.5,18.8]}}},"plan":{"key":"dai1ji","title":"4年 すいえい 1回目","subtitle":"6月10日（1・2時間目）","start":505,"end":636,"groups":[{"id":"1","label":"1組","style":"","vars":{"c":1,"kutsu":"kutsu.12","kutsuName":"入り口前のくぼみ","k":0},"keys":[[505,1.6,20.5],[515,1.6,20.5],[515.102,5.8,23],[518.102,7.5,23],[518.189,7.5,27.2],[518.277,7.5,23],[518.327,9.9,23],[518.396,11.8,20.3],[525,11.8,20.3],[525.071,15.2,20.3],[525.14,17.1,23],[525.21,20.5,23],[525.388,29,23.2],[525.479,29,18.8],[540,29,18.8],[540.074,28,15.4],[540.26,23,8],[540.312,20.5,8],[541.812,20.5,8],[541.864,23,8],[542.05,28,15.4],[551,28,15.4],[551.154,28,8],[565,28,8],[565.154,28,15.4],[565.228,29,18.8],[571,29,18.8],[571.074,28,15.4],[571.228,28,8],[610,28,8],[610.154,28,15.4],[611,28,15.4],[611.074,29,18.8],[611.166,29,23.2],[611.343,20.5,23],[611.488,20.5,16],[611.655,20.5,8],[612.655,20.5,8],[612.707,23,8],[612.893,28,15.4],[612.967,29,18.8],[620,29,18.8],[620.092,29,23.2],[620.269,20.5,23],[620.34,17.1,23],[620.408,15.2,20.3],[620.479,11.8,20.3],[626.479,11.8,20.3],[626.548,9.9,23],[626.598,7.5,23],[626.686,7.5,27.2],[626.773,7.5,23],[629.773,5.8,23],[629.875,1.6,20.5]]},{"id":"2","label":"2組","style":"","vars":{"c":2,"kutsu":"kutsu.12","kutsuName":"入り口前のくぼみ","k":1},"keys":[[505,4,20.5],[516.5,4,20.5],[516.564,5.8,23],[519.564,7.5,23],[519.652,7.5,27.2],[519.739,7.5,23],[519.789,9.9,23],[519.858,11.8,20.3],[519.929,15.2,20.3],[526,15.2,20.3],[526.069,17.1,23],[526.14,20.5,23],[526.317,29,23.2],[526.408,29,18.8],[526.638,40,18.8],[542.5,40,18.8],[542.729,29,18.8],[542.803,28,15.4],[542.989,23,8],[543.041,20.5,8],[544.541,20.5,8],[544.593,23,8],[544.779,28,15.4],[544.904,34,15.4],[551,34,15.4],[551.154,34,8],[565,34,8],[565.154,34,15.4],[565.279,40,15.4],[565.35,40,18.8],[571,40,18.8],[571.071,40,15.4],[571.196,34,15.4],[571.35,34,8],[610,34,8],[610.154,34,15.4],[612.5,34,15.4],[612.625,28,15.4],[612.699,29,18.8],[612.791,29,23.2],[612.968,20.5,23],[613.113,20.5,16],[613.28,20.5,8],[614.28,20.5,8],[614.332,23,8],[614.518,28,15.4],[614.592,29,18.8],[614.821,40,18.8],[621,40,18.8],[621.092,40,23.2],[621.321,29,23.2],[621.498,20.5,23],[621.569,17.1,23],[621.638,15.2,20.3],[627.638,15.2,20.3],[627.708,11.8,20.3],[627.777,9.9,23],[627.827,7.5,23],[627.915,7.5,27.2],[628.002,7.5,23],[631.002,5.8,23],[631.066,4,20.5]]},{"id":"3","label":"3組","style":"","vars":{"c":3,"kutsu":"kutsu.34","kutsuName":"入り口の横","k":2},"keys":[[505,1.6,24],[518,1.6,24],[518.09,5.8,23],[521.09,7.5,23],[521.177,7.5,18.8],[521.265,7.5,23],[521.315,9.9,23],[521.389,11.8,26],[521.46,15.2,26],[527,15.2,26],[527.074,17.1,23],[527.145,20.5,23],[527.322,29,23.2],[527.551,40,23.2],[545,40,23.2],[545.092,40,18.8],[545.321,29,18.8],[545.395,28,15.4],[545.581,23,8],[545.633,20.5,8],[547.133,20.5,8],[547.185,23,8],[547.371,28,15.4],[547.496,34,15.4],[547.621,40,15.4],[551,40,15.4],[551.154,40,8],[565,40,8],[565.154,40,15.4],[565.225,40,18.8],[565.317,40,23.2],[571,40,23.2],[571.092,40,18.8],[571.163,40,15.4],[571.317,40,8],[610,40,8],[610.154,40,15.4],[614,40,15.4],[614.071,40,18.8],[614.163,40,23.2],[614.392,29,23.2],[614.569,20.5,23],[614.715,20.5,16],[614.881,20.5,8],[615.881,20.5,8],[615.933,23,8],[616.119,28,15.4],[616.193,29,18.8],[616.285,29,23.2],[616.514,40,23.2],[622,40,23.2],[622.229,29,23.2],[622.406,20.5,23],[622.477,17.1,23],[622.551,15.2,26],[628.551,15.2,26],[628.622,11.8,26],[628.696,9.9,23],[628.746,7.5,23],[628.833,7.5,18.8],[628.921,7.5,23],[631.921,5.8,23],[632.011,1.6,24]]},{"id":"4","label":"4組","style":"","vars":{"c":4,"kutsu":"kutsu.34","kutsuName":"入り口の横","k":3},"keys":[[505,4,24],[519.5,4,24],[519.543,5.8,23],[522.543,7.5,23],[522.63,7.5,18.8],[522.718,7.5,23],[522.768,9.9,23],[522.842,11.8,26],[528,11.8,26],[528.071,15.2,26],[528.145,17.1,23],[528.216,20.5,23],[528.393,29,23.2],[547.5,29,23.2],[547.592,29,18.8],[547.666,28,15.4],[547.852,23,8],[547.904,20.5,8],[549.404,20.5,8],[549.456,23,8],[549.642,28,15.4],[549.767,34,15.4],[549.892,40,15.4],[550.017,46,15.4],[551,46,15.4],[551.154,46,8],[565,46,8],[565.154,46,15.4],[565.279,40,15.4],[565.35,40,18.8],[565.442,40,23.2],[565.671,29,23.2],[571,29,23.2],[571.092,29,18.8],[571.321,40,18.8],[571.392,40,15.4],[571.517,46,15.4],[571.671,46,8],[610,46,8],[610.154,46,15.4],[615.5,46,15.4],[615.625,40,15.4],[615.696,40,18.8],[615.788,40,23.2],[616.017,29,23.2],[616.194,20.5,23],[616.34,20.5,16],[616.506,20.5,8],[617.506,20.5,8],[617.558,23,8],[617.744,28,15.4],[617.818,29,18.8],[617.91,29,23.2],[623,29,23.2],[623.177,20.5,23],[623.248,17.1,23],[623.322,15.2,26],[623.393,11.8,26],[629.393,11.8,26],[629.467,9.9,23],[629.517,7.5,23],[629.604,7.5,18.8],[629.692,7.5,23],[632.692,5.8,23],[632.735,4,24]]},{"id":"W","label":"見学","style":"watch","vars":{"c":"W","kutsu":"kutsu.12","k":0},"keys":[[505,2.8,27.4],[516,2.8,27.4],[516.111,5.8,23],[519.111,7.5,23],[519.198,7.5,27.2],[519.286,7.5,23],[519.336,9.9,23],[519.405,11.8,20.3],[519.476,15.2,20.3],[519.544,17.1,23],[519.615,20.5,23],[519.733,24.5,27],[608,24.5,27],[608.118,20.5,23],[608.189,17.1,23],[608.257,15.2,20.3],[608.328,11.8,20.3],[608.397,9.9,23],[608.447,7.5,23],[608.535,7.5,27.2],[608.622,7.5,23],[611.622,5.8,23],[611.733,2.8,27.4]]}],"signals":[{"at":551,"text":"🔔 カーン　1回 → 入る"},{"at":565,"text":"🔔 カーン カーン　2回 → 出る"},{"at":571,"text":"🔔 カーン　1回 → 入る"},{"at":610,"text":"🔔 カーン カーン　2回 → 出る"}],"phases":[{"at":505,"say":"教室で 朝の会","chips":["水泳カードを出す"]},{"at":515,"say":"上ばきを置いて 更衣室へ","chips":["🚻 先にトイレ","手はタオルの外"],"mine":"上ばき：{kutsuName}","by":{"W":{"say":"上ばきを置いて 見学の場所へ","chips":["着がえない"]}}},{"at":525,"say":"着がえた組から ならぶ","chips":["🚶 歩く","一方通行","バディを作る"],"by":{"W":{"say":"見学の場所で まつ","chips":[]}}},{"at":535,"say":"高瀨先生の話","chips":["ふざけない","体がへん → すぐ先生へ","🔔 1回=入る 2回=出る 連打=きんきゅう"]},{"at":540,"say":"体そう → シャワー（1組から）","chips":["ぼうし・ゴーグルは その場"],"mine":"シャワーは {c}番目","by":{"W":{"say":"体そうは いっしょに","chips":["シャワーは まつ"]}}},{"at":550,"say":"バディ！ → 水に入る","chips":["①足 ②手 ③頭 ④むね","後ろ向きに しずかに"],"by":{"W":{"say":"見学の場所で 見る","chips":[]}}},{"at":565,"say":"上がって 休けい","chips":["💧 水分","🚻 トイレ","バディ！"],"by":{"W":{"say":"水分・トイレ","chips":["💧 水分"]}}},{"at":570,"say":"泳ぐ力を 見てもらう","chips":["クラスごと","7レーンを何本？"],"by":{"W":{"say":"記録を書く","chips":["先生に たのまれた記録"]}}},{"at":590,"say":"クラスで 練習","chips":["ボビング","うく"],"by":{"W":{"say":"見学の場所で 見る","chips":[]}}},{"at":608,"say":"上がる → シャワー → 体そう","chips":["バディ！","ふり返り"],"by":{"W":{"say":"先に教室へ → かぎを開ける","chips":["🔑 かぎ"]}}},{"at":620,"say":"着がえて 教室へ","chips":[],"warn":"わすれ物 注意！","by":{"W":{"say":"教室で まつ","chips":[],"warn":""}}}]}};
+</script>
+<script>
+/* 導線資料の 再生部（層1 操作UI ＋ 層2 場の描画）。
+   中身（層3）は DATA にある。DATA は tools/build.mjs が plans/ と spaces/ から作る。
+   位置は 時刻 t の 純関数（keys を 線形補間）。状態は 時刻と 選んだ組だけ。 */
+(function(){
+"use strict";
+var S=DATA.scale, SP=DATA.space, PL=DATA.plan;
+var T0=PL.start, T1=PL.end;
+var $=function(id){return document.getElementById(id);};
+var svg=$("svg"), cap=$("cap"), scrub=$("scrub");
+svg.setAttribute("viewBox","0 0 "+SP.size[0]*S+" "+SP.size[1]*S);
+document.title=PL.title; $("h1").innerHTML=PL.title.replace(" ","<br>")+(PL.subtitle?'<br><small>'+PL.subtitle+'</small>':'');
+
+/* ===== 場（space.json）を 描く。変わらないので 1回だけ ===== */
+function r(v){return Math.round(v*S*10)/10;}
+var BASE='<defs><marker id="ar" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#A8A08A"/></marker>'+
+  '<marker id="am" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3" markerHeight="3" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--me)"/></marker></defs>';
+SP.areas.forEach(function(a){
+  var x=r(a.rect[0]),y=r(a.rect[1]),w=r(a.rect[2]),h=r(a.rect[3]);
+  BASE+='<rect class="zone a-'+a.kind+'" x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="8"/>';
+  if(a.lanes){ for(var i=1;i<a.lanes;i++){ var ly=y+h*i/a.lanes;
+    BASE+='<line x1="'+(x+4)+'" x2="'+(x+w-4)+'" y1="'+ly+'" y2="'+ly+'" stroke="#fff" stroke-width="2" stroke-dasharray="8 6"/>'; } }
+  if(a.kind==="deck") BASE+='<text class="lbl s" x="'+(x+w-10)+'" y="'+(y+h-14)+'" style="text-anchor:end">'+a.label+'</text>';
+  else if(a.kind==="box"&&h>w*2) BASE+='<text class="lbl s" x="'+(x+w/2)+'" y="'+(y-10)+'">'+a.label+'</text>';
+  else if(a.kind==="box"&&h<w*1.6&&h<60) BASE+='<text class="lbl s" x="'+(x+w/2)+'" y="'+(y+h+14)+'">'+a.label+'</text>';
+  else BASE+='<text class="lbl'+(a.kind==="water"?" water":(a.kind==="box"?" s":""))+'" x="'+(x+w/2)+'" y="'+(y+18)+'">'+a.label+'</text>'+
+    (a.sub?'<text class="lbl s" x="'+(x+w/2)+'" y="'+(y+h-14)+'">'+a.sub+'</text>':'');
+});
+(SP.marks||[]).forEach(function(m){
+  if(m.kind!=="oneway") return;
+  var pts=m.pts.map(function(p){return r(p[0])+" "+r(p[1]);});
+  BASE+='<path class="oneway" d="M'+pts.join("L")+'" marker-end="url(#ar)"/>';
+  var q=m.pts[Math.floor(m.pts.length/2)];
+  BASE+='<text class="lbl s" x="'+(r(q[0])+12)+'" y="'+r(q[1])+'" style="text-anchor:start">'+m.label+'</text>';
+});
+Object.keys(SP.pointLabels||{}).forEach(function(k){
+  var p=SP.pointLabels[k]; BASE+='<text class="pl" x="'+r(p.at[0])+'" y="'+(r(p.at[1])+(p.at[1]>SP.size[1]/2?34:-24))+'">'+p.text+'</text>';
+});
+if(SP.status!=="確認済") BASE+='<text class="kari" x="8" y="'+(SP.size[1]*S-8)+'">※ 仮の地図（じっさいの配置と ちがうことがあります）</text>';
+
+/* ===== うごき ===== */
+var G=PL.groups;
+function posAt(g,t){
+  var K=g.keys,i;
+  if(t<=K[0][0]) return {x:K[0][1],y:K[0][2],seg:-1};
+  for(i=0;i<K.length-1;i++){
+    if(t<K[i+1][0]){
+      var a=K[i],b=K[i+1],u=(t-a[0])/(b[0]-a[0]), mv=(a[1]!==b[1]||a[2]!==b[2]);
+      return {x:a[1]+(b[1]-a[1])*u, y:a[2]+(b[2]-a[2])*u, seg:mv?i:-1};
+    }
+  }
+  i=K.length-1; return {x:K[i][1],y:K[i][2],seg:-1};
+}
+function anyMoving(t){ for(var i=0;i<G.length;i++) if(posAt(G[i],t).seg>=0) return true; return false; }
+function phaseIdx(t){ var k=0; PL.phases.forEach(function(p,i){ if(t>=p.at) k=i; }); return k; }
+function clockStr(t){ var m=Math.floor(t+1e-6); return Math.floor(m/60)+":"+("0"+(m%60)).slice(-2); }
+function fill(s,v){ return String(s).replace(/\{(\w+)\}/g,function(_,k){ return v&&v[k]!==undefined?v[k]:""; }); }
+
+var who=load("who","all"), clock=T0, paused=true, rate=1, hold=0;
+if(who!=="all"&&!G.some(function(g){return g.id===who;})) who="all";
+
+function draw(){
+  var s=BASE, sel=null;
+  G.forEach(function(g){ if(g.id===who) sel=g; });
+  var pi=phaseIdx(clock), ph=PL.phases[pi], nx=PL.phases[pi+1];
+  if(sel){
+    // いまの場面の あいだに 通る道（点線）と、いま 動いている区間（太線）
+    var tA=ph.at, tB=nx?nx.at:T1+1, st=posAt(sel,tA), pts=[[st.x,st.y]];
+    sel.keys.forEach(function(k){ if(k[0]<=tA||k[0]>tB) return; var l=pts[pts.length-1]; if(l[0]!==k[1]||l[1]!==k[2]) pts.push([k[1],k[2]]); });
+    if(pts.length>1) s+='<path class="trail" marker-end="url(#am)" d="M'+pts.map(function(p){return r(p[0])+" "+r(p[1]);}).join("L")+'"/>';
+    var now=posAt(sel,clock);
+    if(now.seg>=0){ var a=sel.keys[now.seg], b=sel.keys[now.seg+1];
+      s+='<path class="trail go" d="M'+r(a[1])+" "+r(a[2])+"L"+r(b[1])+" "+r(b[2])+'" marker-end="url(#am)"/>'; }
+  }
+  (PL.signals||[]).forEach(function(b){ if(clock>=b.at-1&&clock<b.at+1.5){
+    var cx=SP.size[0]*S*0.62;
+    s+='<g class="sig"><rect x="'+(cx-200)+'" y="6" width="400" height="44" rx="10"/><text x="'+cx+'" y="29">'+b.text+'</text></g>'; } });
+  var order=G.filter(function(g){return g!==sel;}); if(sel) order.push(sel);
+  order.forEach(function(g){
+    var p=posAt(g,clock), cls="g"+(g.style==="watch"?" watch":"")+(sel?(g===sel?" me":" dim"):"");
+    s+='<g class="'+cls+'" transform="translate('+r(p.x)+' '+r(p.y)+')"><rect x="-27" y="-17" width="54" height="34" rx="8"/><text>'+g.label+'</text></g>';
+  });
+  svg.innerHTML=s;
+
+  // 帯：選んだ組の ことばに 差しかえる
+  var w=ph, v=sel?sel.vars:null;
+  if(sel&&ph.by&&ph.by[sel.id]) w=Object.assign({},ph,ph.by[sel.id],{mine:null});
+  var chips=[];
+  if(sel&&w.mine) chips.push('<span class="chip mine">'+fill(w.mine,v)+'</span>');
+  (w.chips||[]).forEach(function(c){ chips.push('<span class="chip">'+fill(c,v)+'</span>'); });
+  if(w.warn) chips.push('<span class="chip warn">⚠ '+w.warn+'</span>');
+  cap.innerHTML='<span class="clock">'+clockStr(clock)+'</span><span class="who">'+(sel?sel.label:"ぜんぶ")+'</span><span class="say">'+fill(w.say,v)+'</span>'+chips.join("");
+  Array.prototype.forEach.call($("chap").children,function(b,i){ b.classList.toggle("now",i===pi); });
+  scrub.value=Math.round((clock-T0)/(T1-T0)*1000);
+}
+
+/* ===== 再生 =====
+   動いている間は 実時間の 約10倍（1分＝6びょう）。だれも 動かない間は 1分＝0.3びょう で 飛ばす */
+var last=null;
+function frame(now){
+  if(last!==null&&!paused){
+    var dt=Math.min(0.1,(now-last)/1000), dir=hold||1, sp=(hold?4:1)*rate*(anyMoving(clock)?1/6:1/0.3);
+    clock+=dir*dt*sp;
+    if(clock>=T1){clock=T1;if(!hold){paused=true;setPlayIcon();}}
+    if(clock<=T0){clock=T0;if(hold<0){hold=0;paused=true;setPlayIcon();}}
+    draw();
+  }
+  last=now; requestAnimationFrame(frame);
+}
+var playBtn=$("play");
+var ICON_PLAY='<svg width="18" height="18" viewBox="0 0 18 18"><path d="M4 2L16 9L4 16z" fill="currentColor"/></svg>';
+var ICON_PAUSE='<svg width="18" height="18" viewBox="0 0 18 18"><rect x="3" y="2" width="4" height="14" fill="currentColor"/><rect x="11" y="2" width="4" height="14" fill="currentColor"/></svg>';
+function setPlayIcon(){ playBtn.innerHTML=paused?ICON_PLAY:ICON_PAUSE; }
+playBtn.onclick=function(){ if(clock>=T1) clock=T0; paused=!paused; setPlayIcon(); };
+function holdBtn(id,d){
+  var b=$(id), was;
+  b.addEventListener("pointerdown",function(e){ e.preventDefault(); was=paused; paused=false; hold=d; });
+  ["pointerup","pointerleave","pointercancel"].forEach(function(ev){ b.addEventListener(ev,function(){ if(hold){ hold=0; paused=was; setPlayIcon(); } }); });
+}
+holdBtn("ff",1); holdBtn("rew",-1);
+scrub.addEventListener("input",function(){ paused=true; setPlayIcon(); clock=T0+(T1-T0)*scrub.value/1000; draw(); });
+$("toggle").onclick=function(){ $("app").classList.toggle("closed"); };
+$("speeds").onclick=function(e){ var b=e.target.closest("button"); if(!b) return;
+  rate=+b.dataset.r; Array.prototype.forEach.call(this.children,function(x){x.setAttribute("aria-pressed",x===b);}); };
+$("chap").innerHTML=PL.phases.map(function(p,i){ return '<button data-i="'+i+'"><span>'+clockStr(p.at)+'</span>'+fill(p.say,{})+'</button>'; }).join("");
+$("chap").onclick=function(e){ var b=e.target.closest("button"); if(!b) return; clock=PL.phases[+b.dataset.i].at; paused=false; setPlayIcon(); draw(); };
+var whoEl=$("who");
+whoEl.innerHTML='<button data-w="all" class="wide">ぜんぶ</button>'+G.map(function(g){return '<button data-w="'+g.id+'">'+g.label+'</button>';}).join("");
+function setWho(w){ who=w; save("who",w); Array.prototype.forEach.call(whoEl.children,function(x){x.setAttribute("aria-pressed",x.dataset.w===w);}); draw(); }
+whoEl.onclick=function(e){ var b=e.target.closest("button"); if(b) setWho(b.dataset.w); };
+document.addEventListener("keydown",function(e){
+  if(e.key===" "){ e.preventDefault(); playBtn.click(); }
+  if(e.key==="ArrowRight"){ clock=Math.min(T1,clock+1); draw(); }
+  if(e.key==="ArrowLeft"){ clock=Math.max(T0,clock-1); draw(); }
+});
+function load(k,d){ try{ var v=localStorage.getItem(PL.key+"."+k); return v===null?d:v; }catch(e){ return d; } }
+function save(k,v){ try{ localStorage.setItem(PL.key+"."+k,v); }catch(e){} }
+if(window.innerWidth<760||window.innerHeight<500) $("app").classList.add("closed");
+setPlayIcon(); setWho(who); requestAnimationFrame(frame);
+})();
+
+</script>
+</body>
+</html>
