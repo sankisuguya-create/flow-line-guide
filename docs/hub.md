@@ -31,7 +31,8 @@
   "points": { "line.1": [29, 18.8], ... },   // 組ごとの場所は <名前>.<組> にする
   "pointLabels": { "kutsu.12": "上ばき 1・2組" },
   "paths": [ ["a","b"], ["a","b",{ "oneway": true }], ["a","b",{ "minutes": 3 }] ],
-  "marks": [ { "kind": "oneway", "from", "to", "label" } ]
+  "marks": [ { "kind": "oneway", "from", "to", "label" } ],
+  "views": [ { "label": "プール", "rect": [x,y,w,h] } ]   // 「どこを見る？」で寄せて映す範囲
 }
 ```
 

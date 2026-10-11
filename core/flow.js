@@ -7,7 +7,15 @@ var S=DATA.scale, SP=DATA.space, PL=DATA.plan;
 var T0=PL.start, T1=PL.end;
 var $=function(id){return document.getElementById(id);};
 var svg=$("svg"), cap=$("cap"), scrub=$("scrub");
-svg.setAttribute("viewBox","0 0 "+SP.size[0]*S+" "+SP.size[1]*S);
+// どこを見る：space.views の範囲に寄せて大きく映す（ぜんぶ＝地図全体）。選んだ場所は保存する
+var VIEWS=[{label:"ぜんぶ",rect:[0,0,SP.size[0],SP.size[1]]}].concat(SP.views||[]);
+function setView(i){ var v=VIEWS[i]||VIEWS[0], m=0.6, q=v.rect;
+  svg.setAttribute("viewBox",[(q[0]-m)*S,(q[1]-m)*S,(q[2]+2*m)*S,(q[3]+2*m)*S].join(" "));
+  Array.prototype.forEach.call($("views").children,function(b,j){ b.setAttribute("aria-pressed",j===i); });
+  try{ localStorage.setItem(PL.key+".view",i); }catch(e){} }
+$("views").innerHTML=VIEWS.map(function(v,i){ return '<button data-v="'+i+'"'+(i===0?' class="wide"':'')+'>'+v.label+'</button>'; }).join("");
+$("views").onclick=function(e){ var b=e.target.closest("button"); if(b) setView(+b.dataset.v); };
+if(VIEWS.length<2) $("viewGrp").style.display="none";
 document.title=PL.title; $("h1").innerHTML=PL.title.replace(" ","<br>")+(PL.subtitle?'<br><small>'+PL.subtitle+'</small>':'');
 
 /* ===== 場（space.json）を 描く。変わらないので 1回だけ ===== */
@@ -222,5 +230,5 @@ document.addEventListener("keydown",function(e){
 function load(k,d){ try{ var v=localStorage.getItem(PL.key+"."+k); return v===null?d:v; }catch(e){ return d; } }
 function save(k,v){ try{ localStorage.setItem(PL.key+"."+k,v); }catch(e){} }
 if(window.innerWidth<760||window.innerHeight<500) $("app").classList.add("closed");
-setPlayIcon(); setWho(who); requestAnimationFrame(frame);
+setPlayIcon(); setWho(who); var v0=0; try{ v0=+(localStorage.getItem(PL.key+".view")||0); }catch(e){} setView(v0); requestAnimationFrame(frame);
 })();
