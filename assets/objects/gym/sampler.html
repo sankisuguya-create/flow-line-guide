@@ -31,7 +31,7 @@
 <header>
   <h1>体育館の用具の図（試作）</h1>
   <label>跳び箱の段数 <input type="range" id="dan" min="1" max="8" value="8"><span id="danV">8</span>段</label>
-  <label>白マット <select id="matSize"><option value="L">120×240×6cm</option><option value="S">90×180×5cm</option></select></label>
+  <label>白マット <select id="matSize"><option value="L">9号 120×240×6cm</option><option value="S">6号 90×180×5cm</option></select></label>
   <label>厚いマット <select id="thick"><option value="400">200×300×40cm</option><option value="500">200×300×50cm</option></select></label>
   <label><input type="checkbox" id="handles" checked> 取っ手を見せる</label>
 </header>
@@ -43,8 +43,8 @@
 var SPEC={
   tobibako:{ name:"跳び箱", note:"仮：小型8段 上面700×300・底面900×640・高さ1000mm（1段目300、2段目から100）",
              top:{L:700,W:300}, bottom:{L:900,W:640}, h1:300, hn:100, pad:50, tiers:8 },
-  mat:{ name:"白マット", sizes:{ L:{W:1200,L:2400,T:60,quilt:5,handles:5,note:"幅1200×長さ2400×厚さ60mm（製品の表示）"},
-                                 S:{W:900,L:1800,T:50,quilt:4,handles:4,note:"幅900×長さ1800×厚さ50mm（製品の表示）"} } },
+  mat:{ name:"白マット", sizes:{ L:{W:1200,L:2400,T:60,quilt:5,handles:5,note:"9号：幅1200×長さ2400×厚さ60mm（製品の表示）"},
+                                 S:{W:900,L:1800,T:50,quilt:4,handles:4,note:"6号：幅900×長さ1800×厚さ50mm（製品の表示）"} } },
   thick:{ name:"厚いマット（2つ折り）", note:"幅2000×長さ3000×厚さ400／500mm（製品の表示）。長さの中ほどで2つに折れる", W:2000, L:3000, handles:4 },
   cone:{ name:"カラーコーン", note:"仮：高さ700mm、台380mm角（一般的な大きさ）", H:700, base:380, baseT:40, r0:150, r1:22, band:[330,450] },
   board:{ name:"ロイター板", note:"仮：長さ1000×幅600、低い端50mm〜高い端180mm。助走は低い端から", L:1000, W:600, lo:50, hi:180, layer:30 }
