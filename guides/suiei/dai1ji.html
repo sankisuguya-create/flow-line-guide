@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- このファイルは tools/build.mjs が作る。直接直さず plans/ と spaces/ と core/ を直す -->
+<!-- このファイルは engine/tools/build.mjs が作る。直接直さず guides/<行事>/plans・spaces、assets/、engine/player/ を直す -->
 <title>4年 すいえい 1回目</title>
 <style>
 :root{
@@ -152,7 +152,7 @@ var DATA = {"scale":20,"space":{"title":"プールエリア＋4年の教室（�
 </script>
 <script>
 /* 導線資料の 再生部（層1 操作UI ＋ 層2 場の描画）。
-   中身（層3）は DATA にある。DATA は tools/build.mjs が plans/ と spaces/ から作る。
+   中身（層3）は DATA にある。DATA は engine/tools/build.mjs が guides/<行事>/plans と 場（spaces）から作る。
    位置は 時刻 t の 純関数（keys を 線形補間）。状態は 時刻と 選んだ組だけ。 */
 (function(){
 "use strict";

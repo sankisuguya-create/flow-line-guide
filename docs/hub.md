@@ -10,24 +10,26 @@
 
 | 置き場 | 層 | 中身 |
 |---|---|---|
-| `objects/<物>/` | 物 | 机・用具などの絵（実寸 mm）。いまは desk-layout の複製（`objects/desk/ORIGIN.md`） |
-| `spaces/<場>/space.json` | 場 | 区画・点・通路（実寸 m）。確認状態（仮／確認済）と出典を持つ |
-| `core/` | 操作UI | 再生部 `flow.js`・見た目 `flow.css`・ひな形 `page.html` |
-| `plans/<行事>/<場面>.json` | 中身 | 組・動き・場面のことば・合図・未確定事項 |
-| `gas/<行事>/<場面>.html` | 生成物 | `tools/build.mjs` が作る。直接直さない |
-| `tools/` | 道具 | `build.mjs`（生成と検査）・`check.mjs`（ブラウザで撮って確かめる）・`align.html`（間取り合わせ） |
+| `assets/objects/<分類>/` | 物 | 用具の立体（実寸 mm）。gym＝跳び箱・ロイター板・マット。desk は desk-layout の複製（`assets/objects/desk/ORIGIN.md`） |
+| `assets/spaces/<場>/space.json` | 場 | 区画・点・通路（実寸 m）。確認状態（仮／確認済）と出典を持つ |
+| `engine/player/` | 操作UI | 再生部 `flow.js`・見た目 `flow.css`・ひな形 `page.html` |
+| `guides/<行事>/plans/<場面>.json` | 中身 | 組・動き・場面のことば・合図・未確定事項 |
+| `guides/<行事>/<場面>.html` | 生成物 | `engine/tools/build.mjs` が作る。配布にも GAS にも同じファイルを使う。直接直さない |
+| `engine/tools/` | 道具 | `build.mjs`（生成と検査）・`check.mjs`（ブラウザで撮って確かめる）・`align.html`（間取り合わせ） |
 
-既存の `gas/undokai/nyutai.html` `relay.html` は手書きのまま残す（模擬型のリレーはデータ化しない。`kikaku.md` 1節）。
+既存の `guides/undokai/nyutai.html` `relay.html` は手書きのまま残す（模擬型のリレーはデータ化しない。`kikaku.md` 1節）。
 
 ## 基礎の場と上乗せ（extends）
+
+場は `guides/<行事>/spaces/<id>/` → `assets/spaces/<id>/` の順に探す（資料だけの上乗せは資料のそばに、基礎は素材に）。
 
 場所ごとの**基礎データ**（区画・壁・扉・階段・動線の決まり・標準の待機場所と隊形）は授業から独立させ、
 授業ごとの差分だけを上乗せする。
 
 | 置き場 | 中身 |
 |---|---|
-| `spaces/pool-area/` | **プールエリア基礎**。プール指導の資料はここから始める。見本：`plans/pool-area/kihon.json` → `gas/pool-area/kihon.html` |
-| `spaces/<授業>/` | `"extends": "pool-area"`。教室など授業固有の区画・点・通路、組と場所の対応（`alias`: `{"line.1": "line.SE"}`）、ラベルの上書き |
+| `assets/spaces/pool-area/` | **プールエリア基礎**。プール指導の資料はここから始める。見本：`guides/pool-area/plans/kihon.json` → `guides/pool-area/kihon.html` |
+| `guides/<行事>/spaces/<授業>/` | `"extends": "pool-area"`。教室など授業固有の区画・点・通路、組と場所の対応（`alias`: `{"line.1": "line.SE"}`）、ラベルの上書き |
 
 基礎の点の名前は組番号に依らない（`line.SE`＝南東の整列場所、`kutsu.yokoE`＝入口の東の上ばき置き場）。
 上乗せは 区画・通路・出典・注を**足し**、点・隊形・ラベル・別名を**上書き**する。
@@ -111,8 +113,8 @@
 ## 生成と検査
 
 ```bash
-node tools/build.mjs plans/suiei/dai1ji.json   # 生成。引数なしで plans/ を全部
-node tools/check.mjs gas/suiei/dai1ji.html <撮影先>   # Chromebook幅とスマホ横で撮る
+node engine/tools/build.mjs guides/suiei/plans/dai1ji.json   # 生成。引数なしで guides/*/plans/ を全部
+node engine/tools/check.mjs guides/suiei/dai1ji.html <撮影先>   # Chromebook幅とスマホ横で撮る
 ```
 
 `build.mjs` が止める（終了コード1）もの：存在しない点・行けない経路（一方通行の向き違い）・前の到着より早い出発。
@@ -120,4 +122,4 @@ node tools/check.mjs gas/suiei/dai1ji.html <撮影先>   # Chromebook幅とス�
 すれちがいは計画の穴であることが多い。時間をずらすか通路を分けるかを先生に聞く。
 
 ## 再生の速さ
-動いている間は実時間の約10倍（1分＝6秒）、だれも動いていない間は1分＝0.3秒で飛ばす（`core/flow.js`）。
+動いている間は実時間の約10倍（1分＝6秒）、だれも動いていない間は1分＝0.3秒で飛ばす（`engine/player/flow.js`）。

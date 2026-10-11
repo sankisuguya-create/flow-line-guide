@@ -1,5 +1,5 @@
 /* 導線資料の 再生部（層1 操作UI ＋ 層2 場の描画）。
-   中身（層3）は DATA にある。DATA は tools/build.mjs が plans/ と spaces/ から作る。
+   中身（層3）は DATA にある。DATA は engine/tools/build.mjs が guides/<行事>/plans と 場（spaces）から作る。
    位置は 時刻 t の 純関数（keys を 線形補間）。状態は 時刻と 選んだ組だけ。 */
 (function(){
 "use strict";

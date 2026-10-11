@@ -5,7 +5,7 @@
  * 資料を 1本 足すときに 手を 入れるのは 下の PAGES だけ。
  * もくじ（index）は PAGES から 組み立てるので、さわらなくてよい。
  *
- *  ?p=dai1ji  … 4年 すいえい 1回目の うごき（plans/suiei/dai1ji.json から生成）
+ *  ?p=dai1ji  … 4年 すいえい 1回目の うごき（plans/dai1ji.json から生成）
  *  無指定     … もくじ
  */
 

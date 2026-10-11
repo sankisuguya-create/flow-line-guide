@@ -1,6 +1,6 @@
 # 水泳 ─ 配り方
 
-`dai1ji.html` は `plans/suiei/dai1ji.json` から `node tools/build.mjs` で作る生成物。**直接直さない。**
+`dai1ji.html` は `plans/dai1ji.json`（場は `spaces/suiei-4nen-dai1ji/` ＋ `assets/spaces/pool-area/`）から `node engine/tools/build.mjs` で作る生成物。**直接直さない。**
 
 ## ファイルで配る（既定）
 `dai1ji.html` 1つを配る。ダブルクリックでブラウザが開けば動く。外部との通信はしない。

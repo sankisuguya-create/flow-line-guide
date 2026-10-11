@@ -1,5 +1,5 @@
 // できあがった資料を 実際のブラウザで開いて 確かめる。
-// 使い方: node tools/check.mjs gas/suiei/dai1ji.html <出力フォルダ>
+// 使い方: node engine/tools/check.mjs guides/suiei/dai1ji.html <出力フォルダ>
 // 各場面の はじめで「ぜんぶ」と 最初の組を 撮る。Chromebook（1366×768の表示域）と スマホ横（844×390）。
 // JSエラー・横はみ出しが あれば 失敗にする。playwright が要る（PLAYWRIGHT_BROWSERS_PATH の chromium を使う）。
 import { createRequire } from "node:module";

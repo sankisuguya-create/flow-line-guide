@@ -1,10 +1,11 @@
-// plans/<行事>/<場面>.json ＋ spaces/<場>/space.json ＋ core/ → gas/<行事>/<場面>.html（1ファイル）
-// 使い方: node tools/build.mjs plans/suiei/dai1ji.json   （引数なしなら plans/ を全部）
+// guides/<行事>/plans/<場面>.json ＋ 場（guides/<行事>/spaces/ または assets/spaces/）＋ engine/player/
+//   → guides/<行事>/<場面>.html（1ファイル。配布にも GAS にも そのまま使う）
+// 使い方: node engine/tools/build.mjs guides/suiei/plans/dai1ji.json   （引数なしなら guides/*/plans/ を全部）
 // 経路は space.json の通路を最短でたどる。所要時間＝道のり÷速さ（通路に minutes があればそれ）。
 import fs from "node:fs";
 import path from "node:path";
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
 const SCALE = 20; // 1m = 20 単位（図の座標）
 const rd = p => fs.readFileSync(path.join(ROOT, p), "utf8");
 
@@ -208,10 +209,12 @@ export function compile(plan, space) {
 const clock = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 
 // 場を読む。extends があれば 基礎の場に 上乗せする（区画・通路・注は足す、点・隊形・ラベル・別名は 上書き）
-export function loadSpace(id) {
-  const sp = JSON.parse(rd(`spaces/${id}/space.json`));
+// 探す順：その資料の guides/<行事>/spaces/<id>/ → 素材 assets/spaces/<id>/
+export function loadSpace(id, guide) {
+  const own = guide && `${guide}/spaces/${id}/space.json`;
+  const sp = JSON.parse(rd(own && fs.existsSync(path.join(ROOT, own)) ? own : `assets/spaces/${id}/space.json`));
   if (!sp.extends) return sp;
-  const b = loadSpace(sp.extends), ids = new Set((sp.areas || []).map(a => a.id));
+  const b = loadSpace(sp.extends, guide), ids = new Set((sp.areas || []).map(a => a.id));
   return { ...b, ...sp,
     title: sp.title || b.title, status: sp.status || b.status, up: sp.up || b.up, size: sp.size || b.size,
     statusNote: [b.statusNote, sp.statusNote].filter(Boolean).join(" ／ "),
@@ -224,15 +227,15 @@ export function loadSpace(id) {
 
 export function build(planPath) {
   const plan = JSON.parse(rd(planPath));
-  const space = loadSpace(plan.space);
+  const guide = path.dirname(path.dirname(planPath));          // guides/<行事>
+  const space = loadSpace(plan.space, guide);
   const { warn, data } = compile(plan, space);
-  const event = path.basename(path.dirname(planPath));
-  const out = `gas/${event}/${plan.key}.html`;
-  const html = rd("core/page.html")
+  const out = `${guide}/${plan.key}.html`;
+  const html = rd("engine/player/page.html")
     .replace("/*TITLE*/", plan.title)
-    .replace("/*CSS*/", () => rd("core/flow.css"))
+    .replace("/*CSS*/", () => rd("engine/player/flow.css"))
     .replace("/*DATA*/", () => JSON.stringify(data))
-    .replace("/*JS*/", () => rd("core/flow.js"));
+    .replace("/*JS*/", () => rd("engine/player/flow.js"));
   fs.mkdirSync(path.join(ROOT, path.dirname(out)), { recursive: true });
   fs.writeFileSync(path.join(ROOT, out), html);
   console.log(`✔ ${out}  (${(html.length / 1024).toFixed(1)} KB)  地図: ${space.status}`);
@@ -243,8 +246,8 @@ export function build(planPath) {
 
 if (process.argv[1] && process.argv[1].endsWith("build.mjs")) {
   let list = process.argv.slice(2);
-  if (!list.length) list = fs.readdirSync(path.join(ROOT, "plans")).flatMap(ev =>
-    fs.readdirSync(path.join(ROOT, "plans", ev)).filter(f => f.endsWith(".json")).map(f => `plans/${ev}/${f}`));
+  if (!list.length) list = fs.readdirSync(path.join(ROOT, "guides")).filter(ev => fs.existsSync(path.join(ROOT, "guides", ev, "plans"))).flatMap(ev =>
+    fs.readdirSync(path.join(ROOT, "guides", ev, "plans")).filter(f => f.endsWith(".json")).map(f => `guides/${ev}/plans/${f}`));
   let bad = 0;
   for (const p of list) bad += build(p).warn.filter(w => !w.startsWith("すれちがい")).length;
   process.exit(bad ? 1 : 0);

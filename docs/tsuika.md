@@ -6,12 +6,12 @@
 
 ## 1. 置き場所を決める
 
-`gas/<行事>/<場面>.html`
+`guides/<行事>/<場面>.html`
 
 `<行事>` は `undokai` `ongakukai` `shikiten` などローマ字・小文字。
 `<場面>` は `nyutai` `relay` `idou` など。
 
-例：`gas/ongakukai/idou.html`
+例：`guides/ongakukai/idou.html`
 
 **GAS上のファイル名にも `<場面>` をそのまま使う。** 行事はプロジェクトが分かれているので
 接頭辞は要らない。`<場面>` が行事の中で重ならないようにすること。
@@ -20,7 +20,7 @@
 
 | 型 | 見分け方 | 作り方 |
 |---|---|---|
-| 導線型 | 決めた通りに動くだけ | `plans/<行事>/<場面>.json` を書いて `node tools/build.mjs` で生成する（`hub.md`）。場が無ければ先に `spaces/` を作る |
+| 導線型 | 決めた通りに動くだけ | `guides/<行事>/plans/<場面>.json` を書いて `node engine/tools/build.mjs` で生成する（`hub.md`）。場が無ければ先に `assets/spaces/` を作る |
 | 模擬型 | 「誰が何番目に着くか」が結果を変える | 層1・層2だけ流用し、中身は個別に書く |
 
 判定を誤ると作り直しになる。`kikaku.md` 1節を読むこと。
@@ -34,7 +34,7 @@
 
 ## 4. もくじに載せる
 
-`gas/<行事>/Code.gs` の `PAGES` に1行足す。**これだけ。**
+`guides/<行事>/Code.gs` の `PAGES` に1行足す。**これだけ。**
 
 ```js
 { key: 'idou', file: 'idou', grade: '4年',
@@ -48,9 +48,9 @@
 
 ## 5. 新しい行事なら
 
-`gas/<行事>/` を作り、`gas/undokai/` の `Code.gs` `index.html` `README.md` を
+`guides/<行事>/` を作り、`guides/undokai/` の `Code.gs` `index.html` `README.md` を
 複製して `EVENT_TITLE` と `PAGES` を書き換える。GASプロジェクトも新しく作る。
-手順は `gas/README.md`。
+手順は `guides/README.md`。
 
 ## 6. 確認
 
