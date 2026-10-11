@@ -72,6 +72,12 @@ export function compile(plan, space) {
   // 入水の隊形：水面を rows 列に等分し、各列を 東西に等分。左半分・右半分に2組が入り、背の低い児童が両端
   const LAY = plan.layouts || {};
   function layoutSlots(name, gid) {
+    if (LAY[name].type === "split") {          // 男女半々：前半の児童を 1つ目の場所、後半を 2つ目の場所へ。4列のかたまり
+      const sp = LAY[name].spots[gid], n = plan.groups.find(x => x.id === gid).n || 32, h = Math.ceil(n / 2), d = 0.45, out = [];
+      for (let j = 0; j < n; j++) { const q = j < h ? sp[0] : sp[1], i = j < h ? j : j - h, rows = Math.ceil(h / 4);
+        out.push([+(q[0] + ((i % 4) - 1.5) * d).toFixed(2), +(q[1] + (Math.floor(i / 4) - (rows - 1) / 2) * d).toFixed(2)]); }
+      return out;
+    }
     const L = LAY[name], ar = space.areas.find(x => x.id === L.area).rect, pl = L.place[gid];
     const mates = Object.entries(L.place).filter(([id, q]) => q.half !== pl.half && String(q.rows) === String(pl.rows)).map(([id]) => id);
     const n = plan.groups.find(x => x.id === gid).n || 32, per = rows2(n);
@@ -110,7 +116,7 @@ export function compile(plan, space) {
         forms[key] ||= lineSlots(at, step.form, n); form = key; t += step.dur || 0.5; put(t, here(), form, true); continue;
       }
       if (step.layout) {                                 // 入水：1列目から ひとりずつ 水の中の位置へ
-        if (!LAY[step.layout]?.place[g.id]) { warn.push(`${g.label}: 配置「${step.layout}」に この組がない`); continue; }
+        if (!(LAY[step.layout]?.place || LAY[step.layout]?.spots || {})[g.id]) { warn.push(`${g.label}: 配置「${step.layout}」に この組がない`); continue; }
         const key = "@" + step.layout; forms[key] ||= layoutSlots(step.layout, g.id);
         const p = fill(step.point, v); P[p] = cen(forms[key]);   // 水の中の点を 隊形の中心に合わせる（あとの経路の起点）
         form = key; at = p; t += step.dur || 1.6; put(t, here(), form, true); continue;

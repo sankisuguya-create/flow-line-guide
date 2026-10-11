@@ -166,9 +166,9 @@ function draw(){
     if(now.seg>=0){ var a=sel.keys[now.seg], b=sel.keys[now.seg+1];
       s+='<path class="trail go" d="M'+r(a[1])+" "+r(a[2])+"L"+r(b[1])+" "+r(b[2])+'" marker-end="url(#am)"/>'; }
   }
-  (PL.signals||[]).forEach(function(b){ if(clock>=b.at-1&&clock<b.at+1.5){
-    var cx=SP.size[0]*S*0.62;
-    s+='<g class="sig"><rect x="'+(cx-200)+'" y="6" width="400" height="44" rx="10"/><text x="'+cx+'" y="29">'+b.text+'</text></g>'; } });
+  // 合図は 地図に重ねず、帯の下の 専用の行に出す（行の高さは いつも取っておき、地図が上下に動かないようにする）
+  var sg=""; (PL.signals||[]).forEach(function(b){ if(clock>=b.at-1&&clock<b.at+1.5) sg=b.text; });
+  $("sigbar").textContent=sg; $("sigbar").classList.toggle("on",!!sg);
   var order=G.filter(function(g){return g!==sel;}); if(sel) order.push(sel);
   order.forEach(function(g){
     var p=posAt(g,clock), cls="g"+(g.style==="watch"?" watch":"")+(sel?(g===sel?" me":" dim"):"");

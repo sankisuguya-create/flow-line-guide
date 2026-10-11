@@ -94,3 +94,6 @@
   .jamb{stroke:var(--ink);stroke-width:3;stroke-linecap:round}
   .a-stairs{fill:#fff}
   .zwall{stroke:#8E9AA3;stroke-width:2;stroke-linecap:square}
+  .sigbar{min-height:34px;margin:0 0 4px;padding:3px 12px;border-radius:10px;font-size:18px;font-weight:800;color:var(--warn);visibility:hidden;background:#fff;border:2px solid var(--warn)}
+  .sigbar.on{visibility:visible}
+  @media (max-height:540px){ .sigbar{min-height:24px;font-size:14px;padding:1px 8px} }
