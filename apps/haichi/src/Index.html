@@ -17,6 +17,7 @@
     <h1 id="hTitle">机の配置図</h1>
     <div id="hScenes" class="seg hscenes" role="group" aria-label="場所"></div>
     <span class="sp"></span>
+    <button type="button" id="hPrint" class="ghost">まとめて印刷</button>
     <button type="button" id="hNew" class="ghost">＋ 新しい配置</button>
   </header>
   <div id="cards" class="cards"></div>
@@ -44,6 +45,7 @@
     <button type="button" id="sSides" class="tb" aria-pressed="true">横から見た図</button>
     <button type="button" id="sChair" class="tb" aria-pressed="false">いす</button>
     <button type="button" id="sRuby" class="tb" aria-pressed="true">ふりがな</button>
+    <button type="button" id="sPrint" class="tb">印刷</button>
     <button type="button" id="sBig" class="primary">大きく映す</button>
   </div>
   <p id="bigMsg" class="bigmsg" hidden><ruby>机<rt>つくえ</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね</p>
@@ -98,6 +100,17 @@
     </div>
   </div>
 </section>
+
+<!-- 印刷：まとめて印刷で刷る配置を選ぶ -->
+<dialog id="pDlg" class="pdlg" aria-labelledby="pDlgT">
+  <h2 id="pDlgT">まとめて印刷</h2>
+  <p class="hint">1つの配置を A4 1枚に刷ります。紙の向きは図の形に合わせて変わります。</p>
+  <div class="row"><button type="button" id="pAll">すべて選ぶ</button><button type="button" id="pNone">すべて外す</button></div>
+  <div id="pList" class="plist"></div>
+  <div class="row end"><button type="button" id="pCancel">やめる</button><button type="button" id="pGo" class="primary">印刷する</button></div>
+</dialog>
+<!-- 印刷するページ（印刷の間だけ中身が入る） -->
+<div id="printArea" class="printarea" aria-hidden="true"></div>
 
 <div id="toast" role="status" hidden></div>
 

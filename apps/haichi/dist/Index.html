@@ -189,6 +189,41 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
   .ebody{grid-template-columns:1fr}
   .away{width:120px}
 }
+
+/* ---- 印刷 ----
+   1つの配置＝A4 1枚。図が横長なら横向き（名前つきページ land）、縦長なら縦向き（port）。
+   上に活動名と日付欄、残りを図にあてる。紙は白、色は画面の配色（暗い配色）によらない */
+.pdlg{border:1px solid var(--rule);border-radius:12px;background:var(--sheet);color:var(--ink);padding:18px 20px;width:min(520px,calc(100vw - 32px))}
+.pdlg::backdrop{background:rgba(0,0,0,.35)}
+.pdlg h2{font-size:18px;margin:0}
+.pdlg .row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.pdlg .row.end{justify-content:flex-end;margin-bottom:0}
+.plist{max-height:50vh;overflow:auto;border:1px solid var(--rule-soft);border-radius:8px;padding:4px 10px}
+.plist label{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer}
+.plist input{width:22px;height:22px}
+.printarea{display:none}
+@page land{size:A4 landscape;margin:10mm}
+@page port{size:A4 portrait;margin:10mm}
+@media print{
+  html,body{height:auto;background:#fff}
+  body>*:not(.printarea){display:none!important}
+  .printarea{display:block;color:#1D2126}
+  .pg{break-after:page;display:flex;flex-direction:column;overflow:hidden}
+  .pg:last-child{break-after:auto}
+  .pg.land{page:land;width:277mm;height:189mm}
+  .pg.port{page:port;width:190mm;height:276mm}
+  .pg .ph{display:flex;align-items:flex-end;gap:12px;border-bottom:.5mm solid #1D2126;padding-bottom:1.5mm;margin-bottom:3mm}
+  .pg .ph h1{font-size:20pt;line-height:1.2;margin:0;flex:1}
+  .pg .ph rt{color:#5A6470}
+  .pg .ph .date{font-size:12pt;white-space:pre}
+  .pg .pb{flex:1;min-height:0;display:flex;gap:4mm}
+  .pg .pb svg{flex:1;min-width:0;width:100%;height:100%}
+  .pg .away{display:block;width:38mm;font-size:10pt}
+  .pg .away h3{font-size:11pt;margin:0 0 1mm}
+  .pg .away svg{width:16mm;height:16mm}
+  .pg .away .icons{display:flex;flex-wrap:wrap;gap:1mm}
+  .pg .away figure{margin:0;text-align:center}
+}
 /* ▲ style.css ここまで ▲ */
 </style>
 </head>
@@ -200,6 +235,7 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
     <h1 id="hTitle">机の配置図</h1>
     <div id="hScenes" class="seg hscenes" role="group" aria-label="場所"></div>
     <span class="sp"></span>
+    <button type="button" id="hPrint" class="ghost">まとめて印刷</button>
     <button type="button" id="hNew" class="ghost">＋ 新しい配置</button>
   </header>
   <div id="cards" class="cards"></div>
@@ -227,6 +263,7 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
     <button type="button" id="sSides" class="tb" aria-pressed="true">横から見た図</button>
     <button type="button" id="sChair" class="tb" aria-pressed="false">いす</button>
     <button type="button" id="sRuby" class="tb" aria-pressed="true">ふりがな</button>
+    <button type="button" id="sPrint" class="tb">印刷</button>
     <button type="button" id="sBig" class="primary">大きく映す</button>
   </div>
   <p id="bigMsg" class="bigmsg" hidden><ruby>机<rt>つくえ</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね</p>
@@ -281,6 +318,17 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
     </div>
   </div>
 </section>
+
+<!-- 印刷：まとめて印刷で刷る配置を選ぶ -->
+<dialog id="pDlg" class="pdlg" aria-labelledby="pDlgT">
+  <h2 id="pDlgT">まとめて印刷</h2>
+  <p class="hint">1つの配置を A4 1枚に刷ります。紙の向きは図の形に合わせて変わります。</p>
+  <div class="row"><button type="button" id="pAll">すべて選ぶ</button><button type="button" id="pNone">すべて外す</button></div>
+  <div id="pList" class="plist"></div>
+  <div class="row end"><button type="button" id="pCancel">やめる</button><button type="button" id="pGo" class="primary">印刷する</button></div>
+</dialog>
+<!-- 印刷するページ（印刷の間だけ中身が入る） -->
+<div id="printArea" class="printarea" aria-hidden="true"></div>
 
 <div id="toast" role="status" hidden></div>
 
@@ -1916,16 +1964,17 @@ function renderShow() {
   $('sRuby').setAttribute('aria-pressed', String(S.prefs.ruby));
   renderAway();
 }
-function renderAway() {
+function renderAway() { $('away').innerHTML = awayHtml(cur); }
+function awayHtml(l) {
   var html = '';
   PLACES.forEach(function (pl) {
-    var list = cur.away.filter(function (a) { return a.place === pl.id; });
+    var list = l.away.filter(function (a) { return a.place === pl.id; });
     if (!list.length) return;
     html += '<section><h3>' + itemNameHtml(pl.name) + '</h3><div class="icons">' + list.map(function (a) {
       return '<figure>' + iconSvg(a.item, 80) + (a.label ? '<figcaption>' + itemNameHtml(ITEMS[a.item].name) + '</figcaption>' : '') + '</figure>';
     }).join('') + '</div></section>';
   });
-  $('away').innerHTML = html;
+  return html;
 }
 $('sBack').onclick = function () { if (big) setBig(false); renderHome(); };
 $('sOne').onclick = function () { S.prefs.group = false; save(); renderShow(); };
@@ -1944,6 +1993,63 @@ function setBig(on) {
   renderShow();
 }
 $('sBig').onclick = function () { setBig(true); };
+
+/* ---- 印刷：1つの配置＝A4 1枚 ----
+   見せる画面の「印刷」はいま映している形（左右反転・4人・いす・横から見た図）のまま。
+   まとめて印刷は、各配置を反転なしで、見せる画面の設定（4人・いす・横から見た図・ふりがな）で刷る */
+var DATE_BLANK = '　　月　　日（　　）';
+function printPage(l, o) {
+  useScene(scOf(l));
+  var deskMode = !!SCENE.desk;
+  var c = deskMode && S.prefs.group ? composeGroup(l, o) : composeSingle(l, o);
+  var vb = c.viewBox.split(' ').map(Number);
+  var aw = deskMode ? awayHtml(l) : '';
+  // 紙の向き：図が大きく刷れるほう。使える広さ（mm）は余白・見出し・しまう物の列を引いたもの（style.css の印刷の節）
+  var side = aw ? 42 : 0, fit = function (W, H) { return Math.min((W - side) / vb[2], H / vb[3]); };
+  var land = fit(277, 174) > fit(190, 261);
+  return '<section class="pg ' + (land ? 'land' : 'port') + '"><header class="ph"><h1>' + rubyHtml(l.name, l.yomi) + '</h1>' +
+    '<span class="date">' + DATE_BLANK + '</span></header><div class="pb">' +
+    '<svg viewBox="' + c.viewBox + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' + esc(l.name) + 'の配置図">' + c.svg + '</svg>' +
+    (aw ? '<aside class="away">' + aw + '</aside>' : '') + '</div></section>';
+}
+function printOpts(l, fl) {
+  var deskMode = !!SCENES[scOf(l)].desk;
+  return { ruby: S.prefs.ruby, chair: deskMode && S.prefs.chair, flip: !!(fl && l.flip), topOnly: S.prefs.topOnly };
+}
+function doPrint(pages) {
+  var keep = SCENE.id;
+  $('printArea').innerHTML = pages.join('');
+  useScene(keep);
+  window.print();   // 印刷ダイアログを閉じるまで止まる（Chrome）。閉じたら中身を消す
+  $('printArea').innerHTML = '';
+}
+// ブラウザの印刷（Ctrl+P）でも、見せる画面ならいま映している1枚を刷る。ほかの画面では何も刷らない
+window.addEventListener('beforeprint', function () {
+  if ($('printArea').innerHTML || $('vShow').hidden) return;
+  $('printArea').innerHTML = printPage(cur, printOpts(cur, flip)); useScene(scOf(cur)); autoPrint = true;
+});
+var autoPrint = false;
+window.addEventListener('afterprint', function () { if (autoPrint) { $('printArea').innerHTML = ''; autoPrint = false; } });
+$('sPrint').onclick = function () { doPrint([printPage(cur, printOpts(cur, flip))]); useScene(scOf(cur)); };
+$('hPrint').onclick = function () {
+  var list = orderedLayouts().filter(function (l) { return scOf(l) === scene; });
+  if (!list.length) { toast('この場所の配置はまだありません'); return; }
+  $('pList').innerHTML = list.map(function (l) {
+    return '<label><input type="checkbox" value="' + esc(l.id) + '" checked>' + esc(l.name) + '</label>';
+  }).join('');
+  $('pDlg').showModal();
+};
+function pChecks() { return Array.prototype.slice.call($('pList').querySelectorAll('input')); }
+$('pAll').onclick = function () { pChecks().forEach(function (c) { c.checked = true; }); };
+$('pNone').onclick = function () { pChecks().forEach(function (c) { c.checked = false; }); };
+$('pCancel').onclick = function () { $('pDlg').close(); };
+$('pGo').onclick = function () {
+  var ids = pChecks().filter(function (c) { return c.checked; }).map(function (c) { return c.value; });
+  if (!ids.length) { toast('印刷する配置を選んでください'); return; }
+  $('pDlg').close();
+  doPrint(ids.map(function (id) { var l = byId(id); return printPage(l, printOpts(l, false)); }));
+  useScene(scene);
+};
 $('bigExit').onclick = function () { setBig(false); };
 document.addEventListener('fullscreenchange', function () { if (!document.fullscreenElement && big) setBig(false); });
 document.addEventListener('keydown', function (e) { if (big && e.key === 'Escape') setBig(false); });
