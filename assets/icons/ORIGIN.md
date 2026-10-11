@@ -4,7 +4,7 @@
 
 | ファイル | 中身 | ライセンス |
 |---|---|---|
-| `LucideSprite.html` | Lucide 1,848種の `<symbol>`（`<use href="#名前">` で使う） | ISC（一部 MIT） |
+| `LucideSprite.html` | Lucide 1,848種の `<symbol>`（`<use href="#名前">` で使う） | ISC（一部 MIT）`licenses/Lucide-ISC.txt` |
 | `LucideTags.html` | Lucide の検索語（JSON） | 同上 |
 | `TablerPeople.html` | 人物の動き16種（走る・歩く・泳ぐ・車椅子 など）の `<symbol>` | MIT `licenses/Tabler-Icons-MIT.txt` |
 | `TablerPeopleTags.html` | その検索語 | 同上 |
