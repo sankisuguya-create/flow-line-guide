@@ -172,6 +172,53 @@ function drawFaces(objs,view){
   });
   return {svg:s, pts:pts};
 }
-return { SPEC: SPEC, C: C, tobibako: tobibako, mat: mat, thickMat: thickMat, cone: cone, board: board,
+/* ===== 行事の物（利用者の写真 2026-10-11：折りたたみパイプいす CAL-XS01M・折りたたみ長机） ===== */
+SPEC.pipechair={ name:"パイプいす", note:"仮：幅460×奥行530×高さ790、座面の高さ450（製品の表示に近い値）。+Y が前（すわる人が向く側）",
+  W:460, seatD:420, seatZ:450, backZ:[600,790], tube:22 };
+SPEC.longtable={ name:"長机", note:"仮：1800×450×高さ700（折りたたみ長机の標準）", W:1800, D:450, H:700, top:25 };
+// 太さ t の角棒を a→b に置く（パイプの脚・桟）
+function addBeam(F,a,b,t,col,edge){
+  var d=sub(b,a), L=Math.hypot(d[0],d[1],d[2]); d=[d[0]/L,d[1]/L,d[2]/L];
+  var u=Math.abs(d[2])>0.99?[1,0,0]:cross(d,[0,0,1]); var ul=Math.hypot(u[0],u[1],u[2]); u=[u[0]/ul*t/2,u[1]/ul*t/2,u[2]/ul*t/2];
+  var v=cross(d,u); v=[v[0],v[1],v[2]];
+  var c=[[1,1],[-1,1],[-1,-1],[1,-1]], P=function(o,k){ return [o[0]+u[0]*c[k][0]+v[0]*c[k][1], o[1]+u[1]*c[k][0]+v[1]*c[k][1], o[2]+u[2]*c[k][0]+v[2]*c[k][1]]; };
+  var G=[];
+  for(var k=0;k<4;k++){ var j=(k+1)%4; G.push({p:[P(a,k),P(a,j),P(b,j),P(b,k)],col:col,edge:edge||null,sharp:[0,1,2,3]}); }
+  G.push({p:[0,1,2,3].map(function(k){return P(a,k);}),col:col,edge:edge||null,sharp:[0,1,2,3]});
+  G.push({p:[0,1,2,3].map(function(k){return P(b,k);}),col:col,edge:edge||null,sharp:[0,1,2,3]});
+  var m=[(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2]; outward(G,m);
+  G.forEach(function(f){F.push(f);});
+}
+function pipeChair(){
+  var S=SPEC.pipechair, F=[], w=S.W/2, t=S.tube, met="#BFC4CA", blk="#2F3134";
+  [-1,1].forEach(function(s){
+    addBeam(F,[s*(w-10),-290,t/2],[s*(w-10),-250,S.backZ[1]-20],t,met);          // うしろの脚＝背の柱
+    addBeam(F,[s*(w-25),250,t/2],[s*(w-25),-170,S.seatZ-10],t,met);               // 前の脚（前の床から、座面の下を うしろへ）
+  });
+  addBeam(F,[-(w-10),-290,t/2],[w-10,-290,t/2],t,met);                            // 床の桟（うしろ）
+  addBeam(F,[-(w-25),250,t/2],[w-25,250,t/2],t,met);                              // 床の桟（前）
+  var seat=[]; addBox(seat,-w+10,w-10,-200,220,S.seatZ-20,S.seatZ,{top:blk,side:blk,end:blk},"#151617"); outward(seat,[0,10,S.seatZ-10]);
+  var back=[]; addBox(back,-w,w,-275,-255,S.backZ[0],S.backZ[1],{top:blk,side:blk,end:blk},"#151617"); outward(back,[0,-265,(S.backZ[0]+S.backZ[1])/2]);
+  return {faces:F.concat(seat,back), foot:{W:S.W+20,L:600}};
+}
+function longTable(){
+  var S=SPEC.longtable, F=[], w=S.W/2, d=S.D/2, g="#2F3A30", t=30;
+  [-1,1].forEach(function(sx){
+    [-1,1].forEach(function(sy){ addBeam(F,[sx*(w-90),sy*(d-50),0],[sx*(w-90),sy*(d-50),S.H-S.top],t,g); });   // 脚
+    addBeam(F,[sx*(w-90),-(d-50),180],[sx*(w-90),d-50,180],24,g);                                                 // 脚の下の桟
+    addBeam(F,[sx*(w-90),-(d-50),S.H-80],[sx*(w-260),0,S.H-S.top-10],20,g);                                       // 折りたたみの金具（斜め）
+  });
+  for(var i=0;i<5;i++){ var y=-120+i*60; addBeam(F,[-(w-280),y,S.H-140],[w-280,y,S.H-140],14,g); }                // 下の棚（棒）
+  var top=[]; addBox(top,-w,w,-d,d,S.H-S.top,S.H,{top:"#B9773F",side:"#9A6232",end:"#9A6232"},"#7A4A22"); outward(top,[0,0,S.H-S.top/2]);
+  return {faces:F.concat(top), foot:{W:S.W,L:S.D}};
+}
+// 物をいくつか横（X）に並べて1つの物にする（パイプいすの列）
+function rowOf(m,n,step){
+  if(n===1) return m;
+  var F=[];
+  for(var i=0;i<n;i++){ var dx=(i-(n-1)/2)*step; m.faces.forEach(function(f){ var q=Object.assign({},f); q.p=f.p.map(function(v){return [v[0]+dx,v[1],v[2]];}); F.push(q); }); }
+  return {faces:F, foot:{W:m.foot.W+(n-1)*step, L:m.foot.L}};
+}
+return { SPEC: SPEC, pipeChair: pipeChair, longTable: longTable, rowOf: rowOf, C: C, tobibako: tobibako, mat: mat, thickMat: thickMat, cone: cone, board: board,
          ortho: ortho, plan: plan, drawFaces: drawFaces, normal: normal };
 })();

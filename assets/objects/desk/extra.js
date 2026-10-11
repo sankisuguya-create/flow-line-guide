@@ -129,17 +129,10 @@ var EXTRA_SPACE_ITEMS = [];
   }) });
 
   /* ---- 行事 ---- */
-  add('longtable', ['class', 'gym', 'field'], { name: '{長机|ながづくえ}', states: one(1800, 450, function (w, h) {
-    return R(0, 0, w, h, '#D8C9A8', 14, 10) + L(w * 0.04, h * 0.85, w * 0.96, h * 0.85, 'rgba(0,0,0,.18)', 12);
-  }) });
-  add('pipechairs', ['gym', 'field'], { name: 'パイプいす', states: {   // 横1列に並べたいす（間隔 50cm）
-    c1: { w: 500, d: 500, draw: function () { return chairs(1); } },
-    c5: { w: 2500, d: 500, draw: function () { return chairs(5); } } } });
-  function chairs(n) {
-    var s = '';
-    for (var i = 0; i < n; i++) s += R(i * 500 + 40, 0, 420, 90, '#5B6B78', 20, 6) + R(i * 500 + 40, 90, 420, 380, '#8E9AA6', 30, 6);
-    return s;
-  }
+  add('longtable', ['class', 'gym', 'field'], { name: '{長机|ながづくえ}', states: { closed: {} },   // 立体（../gym/mesh.js）
+    mesh: function () { return GYM.longTable(); } });
+  add('pipechairs', ['gym', 'field'], { name: 'パイプいす', states: { c1: {}, c5: {} },   // 立体。5脚は横1列（間隔 50cm）
+    mesh: function (p) { return GYM.rowOf(GYM.pipeChair(), stateOf(p) === 'c5' ? 5 : 1, 500); } });
   add('tent', ['field'], { name: 'テント', states: one(5400, 3600, function (w, h) {   // 屋根の4面（上から）＋柱
     return '<path d="M 0 0 L ' + w + ' 0 L ' + w / 2 + ' ' + h / 2 + ' Z" fill="#FFFFFF" stroke="' + INK + '" stroke-width="30" stroke-linejoin="round"/>' +
       '<path d="M 0 ' + h + ' L ' + w + ' ' + h + ' L ' + w / 2 + ' ' + h / 2 + ' Z" fill="#E6EDF3" stroke="' + INK + '" stroke-width="30" stroke-linejoin="round"/>' +

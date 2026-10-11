@@ -70,7 +70,7 @@ function figure(title,desc,objs,view,o){
 function build(dan){
   var ms=$("matSize").value, hd=$("handles").checked, tk=+$("thick").value;
   var items=[{k:"tobibako",m:tobibako(dan)},{k:"board",m:board()},{k:"mat",m:mat(ms,hd),note:SPEC.mat.sizes[ms].note},
-             {k:"thick",m:thickMat(tk,hd),big:true},{k:"cone",m:cone()}], h="";
+             {k:"thick",m:thickMat(tk,hd),big:true},{k:"cone",m:cone()},{k:"pipechair",m:GYM.pipeChair()},{k:"longtable",m:GYM.longTable()}], h="";
   items.forEach(function(it){ var S=SPEC[it.k];
     h+='<h2>'+S.name+'<small>'+(it.note||S.note)+(it.k==="mat"||it.k==="thick"?(hd?"。取っ手あり":"。取っ手なし（床とのすき間に入れ込んだ状態）"):"")+'</small></h2><div class="grid">';
     VIEWS.forEach(function(V){ h+=figure(V.t,V.d,[{faces:it.m.faces,foot:it.m.foot,off:[0,0,0]}],V.make(),it.big?{W:4000,H:3600}:null); });
