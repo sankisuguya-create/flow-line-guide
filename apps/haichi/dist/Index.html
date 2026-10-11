@@ -224,6 +224,10 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
   .pg .away .icons{display:flex;flex-wrap:wrap;gap:1mm}
   .pg .away figure{margin:0;text-align:center}
 }
+
+/* 床の色の見本。色だけで伝えないよう名前も書く */
+.sw.bg{min-width:44px;min-height:34px;padding:2px 8px;font-size:13px;border:1px solid var(--rule);color:#1D2126;background:var(--sheet)}
+.sw.bg.on{outline:3px solid var(--accent);outline-offset:1px;font-weight:700}
 /* ▲ style.css ここまで ▲ */
 </style>
 </head>
@@ -263,6 +267,7 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
     <button type="button" id="sSides" class="tb" aria-pressed="true">横から見た図</button>
     <button type="button" id="sChair" class="tb" aria-pressed="false">いす</button>
     <button type="button" id="sRuby" class="tb" aria-pressed="true">ふりがな</button>
+    <button type="button" id="sOutline" class="tb" aria-pressed="false">輪郭を太く</button>
     <button type="button" id="sPrint" class="tb">印刷</button>
     <button type="button" id="sBig" class="primary">大きく映す</button>
   </div>
@@ -281,6 +286,8 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
     <label class="fld">活動の名前<input id="eName" maxlength="20"></label>
     <label class="fld">よみ<input id="eYomi" maxlength="30" placeholder="ひらがな"></label>
     <label class="chk"><input type="checkbox" id="eFlip">左右反転してよい</label>
+    <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
+    <label class="chk"><input type="checkbox" id="eOutline">輪郭を太く</label>
     <div class="gridsel">グリッド<div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div></div>
     <span class="sp"></span>
     <button type="button" id="eShow" class="primary">映す</button>
@@ -454,6 +461,18 @@ var ENOGU_COLORS = ['#2B2F36', '#2E4A7A', '#B9A3D6', '#5E6670', '#3D7EBF'];   //
 
 /* 表紙の文字。左右反転で描くときも文字は裏返さない（drawTopItem が MIRROR を立てる） */
 var MIRROR = 1;
+/* 床の色（配置ごとに選べる。null は場所の標準の色）と、物の輪郭を太くするか（画面の設定）。
+   色は児童が床と物を見分けやすい薄い色だけ。物の色（茶・緑・白・橙）と近い濃さは避けてある */
+var FLOOR_COLORS = [
+  { id: '',       name: '標準', c: null },
+  { id: 'white',  name: '白',   c: '#FFFFFF' },
+  { id: 'gray',   name: '灰',   c: '#E6E9ED' },
+  { id: 'green',  name: '緑',   c: '#DDEDD9' },
+  { id: 'blue',   name: '青',   c: '#DCE8F5' },
+  { id: 'yellow', name: '黄',   c: '#F6EDCF' }
+];
+function floorColor(id) { var f = FLOOR_COLORS.filter(function (x) { return x.id === id; })[0]; return f ? f.c : null; }
+var OUTLINE = false;
 function T(cx, cy, text, fs, fill) {
   return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + MIRROR + ' 1)"><text x="0" y="' + (fs * 0.36) + '" font-size="' + fs +
     '" font-weight="700" text-anchor="middle" fill="' + (fill || INK) + '">' + String(text).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }) + '</text></g>';
@@ -1026,13 +1045,13 @@ var DEFAULT_LAYOUTS = [
     hooks: { left: [], right: [] }, away: [] },
   { id: 'g_tobibako', scene: 'gym', name: '跳び箱の準備', yomi: 'とびばこのじゅんび', flip: true,
     top: [
-      { item: 'gbox',   state: 'dan6', x: 10000, y: 8750,  r: 0 },
-      { item: 'gmat',   state: 'hide', x: 10000, y: 6250,  r: 0, size: 'l' },
-      { item: 'gmat',   state: 'hide', x: 6250,  y: 8750,  r: 90 },
-      { item: 'gmat',   state: 'hide', x: 13750, y: 8750,  r: 90 },
-      { item: 'gboard', state: 'closed', x: 10000, y: 10000, r: 0 },
-      { item: 'arrow',  state: 'go',     x: 10000, y: 16250, r: 0, label: true },
-      { item: 'person', state: 'normal', x: 11250, y: 17500, r: 0 }
+      { item: 'gbox',   state: 'dan6', x: 21250, y: 8750,  r: 0 },
+      { item: 'gmat',   state: 'hide', x: 21250, y: 6250,  r: 0, size: 'l' },
+      { item: 'gmat',   state: 'hide', x: 17500, y: 8750,  r: 90 },
+      { item: 'gmat',   state: 'hide', x: 25000, y: 8750,  r: 90 },
+      { item: 'gboard', state: 'closed', x: 21250, y: 10000, r: 0 },
+      { item: 'arrow',  state: 'go',     x: 21250, y: 16250, r: 0, label: true },
+      { item: 'person', state: 'normal', x: 22500, y: 17500, r: 0 }
     ],
     hooks: { left: [], right: [] }, away: [] },
   { id: 'f_undoukai', scene: 'field', name: 'うんどうかい', yomi: 'うんどうかい', flip: true,
@@ -1263,7 +1282,7 @@ return { SPEC: SPEC, C: C, tobibako: tobibako, mat: mat, thickMat: thickMat, con
 })();
 /* ▲ items.js ここまで ▲ */
 /* ▼ spaces.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
-var SPACES = [{"id":"pool-area","title":"プールエリア（3F）","status":"確認済","up":"南","size":[60,38],"areas":[{"id":"deck","kind":"deck","label":"プールサイド","rect":[17.4,0.6,41.4,26.2]},{"id":"pool","kind":"water","label":"プール（7レーン）","rect":[25.6,8.1,25,11.2],"lanes":7},{"id":"shower","kind":"mark","label":"シャワー","rect":[17.4,7.8,4.2,8.6]},{"id":"bench","kind":"mark","label":"見学","rect":[17.6,24.6,3.6,2]},{"id":"girls","kind":"room","label":"女子更衣室","rect":[2,16.4,8.2,5.4]},{"id":"boys","kind":"room","label":"男子更衣室","rect":[2,21.8,8.2,5]},{"id":"hall","kind":"box","label":"通路","rect":[10.2,16.4,7.2,10.4]},{"id":"rouka","kind":"room","label":"3F 廊下","rect":[0,26.8,26.2,6],"zone":"rouka"},{"id":"kubomi","kind":"room","label":"（くぼみ）","rect":[16.4,32.8,9.8,4.8],"zone":"rouka"},{"id":"flightU","kind":"stairs","up":"left","rect":[26.2,26.8,7.2,5.4],"zone":"stairs"},{"id":"flightL","kind":"stairs","up":"right","to":"2Fへ","rect":[26.2,32.2,7.2,5.4],"zone":"stairs"},{"id":"landing","kind":"box","label":"おどり場","rect":[33.4,26.8,4.2,10.8],"zone":"stairs"}],"walls":[[[26.2,32.2],[33.4,32.2]],[[21.6,7.8],[21.6,16.4]]],"doors":[{"label":"入口","kind":"door","from":[11.2,26.8],"to":[16.2,26.8],"fill":"box"},{"label":"出入口","kind":"door","from":[17.4,17.4],"to":[17.4,24.8],"fill":"deck"},{"kind":"door","from":[10.2,17.6],"to":[10.2,20.2],"fill":"box"},{"kind":"door","from":[10.2,23],"to":[10.2,25.6],"fill":"box"},{"kind":"open","from":[26.2,27.2],"to":[26.2,31.8],"fill":"room"}]}];
+var SPACES = [{"id":"gym","title":"体育館","status":"仮","up":"北","size":[45,25],"areas":[{"id":"floor","kind":"room","zone":"main","label":"フロア","rect":[6.3,0,30,25]},{"id":"stage","kind":"box","zone":"main","label":"舞台","sub":"フロアより 約1m 高い","rect":[36.3,6.3,8.7,14.5]},{"id":"edge","kind":"mark","label":"段差","rect":[36.3,6.3,0.6,14.5]},{"id":"store","kind":"room","label":"倉庫","rect":[0,0,6.3,11.7]},{"id":"wingN","kind":"room","label":"北の袖","rect":[36.3,0,8.7,6.3]},{"id":"wingS","kind":"room","label":"南の袖","rect":[36.3,20.8,8.7,4.2]},{"id":"stairN","kind":"stairs","up":"down","rect":[39.8,4.5,1.8,1.8]},{"id":"stairS","kind":"stairs","up":"up","rect":[38.7,20.8,1.8,1.8]}],"walls":[],"doors":[{"label":"","kind":"door","from":[14.1,0],"to":[18,0],"fill":"room"},{"label":"","kind":"door","from":[29.8,0],"to":[32.6,0],"fill":"room"},{"label":"","kind":"door","from":[6.3,1.7],"to":[6.3,5],"fill":"room"},{"label":"","kind":"door","from":[6.3,7.6],"to":[6.3,9.8],"fill":"room"},{"label":"","kind":"door","from":[6.3,14.6],"to":[6.3,21.5],"fill":"room"},{"label":"","kind":"door","from":[20.9,25],"to":[25,25],"fill":"room"},{"label":"","kind":"door","from":[36.3,2.4],"to":[36.3,4.8],"fill":"room"},{"label":"","kind":"door","from":[36.3,21.3],"to":[36.3,23.9],"fill":"room"}]},{"id":"pool-area","title":"プールエリア（3F）","status":"確認済","up":"南","size":[60,38],"areas":[{"id":"deck","kind":"deck","label":"プールサイド","rect":[17.4,0.6,41.4,26.2]},{"id":"pool","kind":"water","label":"プール（7レーン）","rect":[25.6,8.1,25,11.2],"lanes":7},{"id":"shower","kind":"mark","label":"シャワー","rect":[17.4,7.8,4.2,8.6]},{"id":"bench","kind":"mark","label":"見学","rect":[17.6,24.6,3.6,2]},{"id":"girls","kind":"room","label":"女子更衣室","rect":[2,16.4,8.2,5.4]},{"id":"boys","kind":"room","label":"男子更衣室","rect":[2,21.8,8.2,5]},{"id":"hall","kind":"box","label":"通路","rect":[10.2,16.4,7.2,10.4]},{"id":"rouka","kind":"room","label":"3F 廊下","rect":[0,26.8,26.2,6],"zone":"rouka"},{"id":"kubomi","kind":"room","label":"（くぼみ）","rect":[16.4,32.8,9.8,4.8],"zone":"rouka"},{"id":"flightU","kind":"stairs","up":"left","rect":[26.2,26.8,7.2,5.4],"zone":"stairs"},{"id":"flightL","kind":"stairs","up":"right","to":"2Fへ","rect":[26.2,32.2,7.2,5.4],"zone":"stairs"},{"id":"landing","kind":"box","label":"おどり場","rect":[33.4,26.8,4.2,10.8],"zone":"stairs"}],"walls":[[[26.2,32.2],[33.4,32.2]],[[21.6,7.8],[21.6,16.4]]],"doors":[{"label":"入口","kind":"door","from":[11.2,26.8],"to":[16.2,26.8],"fill":"box"},{"label":"出入口","kind":"door","from":[17.4,17.4],"to":[17.4,24.8],"fill":"deck"},{"kind":"door","from":[10.2,17.6],"to":[10.2,20.2],"fill":"box"},{"kind":"door","from":[10.2,23],"to":[10.2,25.6],"fill":"box"},{"kind":"open","from":[26.2,27.2],"to":[26.2,31.8],"fill":"room"}]}];
 /* ▲ spaces.js ここまで ▲ */
 /* ▼ scenes.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
 /* 場（flow-line-guide の assets/spaces/<場所>/space.json）を、配置図の「場所」として足す。
@@ -1273,6 +1292,14 @@ var SPACES = [{"id":"pool-area","title":"プールエリア（3F）","status":"�
    階段＝踏み段の線（矢印なし、下の階へは黒く消える）、床の目印＝点線。 */
 var SPACE_ITEMS = ['gbox', 'gboard', 'gmat', 'gthick', 'gcone', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'];
 SPACES.forEach(function (sp) {
+  // 場の id が既存の場所（gym など）と同じなら、その場所の床をこの場で置きかえる（保存した配置・置ける物はそのまま）
+  if (SCENES[sp.id] && !SCENES[sp.id].desk) {
+    var S0 = SCENES[sp.id], W = sp.size[0] * 1000, D = sp.size[1] * 1000, g = S0.grid;
+    S0.space = sp; S0.w = W; S0.d = D; S0.k = 30;   // 文字・余白の倍率は場の広さによらず体育館（幅20m）の時と同じ
+    var c0 = { nx: Math.max(1, Math.round(W / 5000)), ny: Math.max(1, Math.round(D / 5000)) };
+    S0.grid = [{ id: 'coarse', name: g[0].name, nx: c0.nx, ny: c0.ny }, { id: 'normal', name: g[1].name, nx: c0.nx * 2, ny: c0.ny * 2 }, { id: 'fine', name: g[2].name, nx: c0.nx * 4, ny: c0.ny * 4 }];
+    return;
+  }
   var id = 'sp-' + sp.id, w = sp.size[0] * 1000, d = sp.size[1] * 1000, name = sp.title.replace(/（.*?）/g, '');
   function lv(m) { return { nx: Math.max(1, Math.round(w / m)), ny: Math.max(1, Math.round(d / m)) }; }
   var c = lv(5000), n = { nx: c.nx * 2, ny: c.ny * 2 }, f = { nx: c.nx * 4, ny: c.ny * 4 };   // 2倍ずつ（段を変えても交点がずれない）
@@ -1286,18 +1313,19 @@ SPACES.forEach(function (sp) {
 });
 
 var SPACE_FILL = { deck: '#E4ECF1', water: '#A9D8EC', room: '#EFE9DC', box: '#FFFFFF', stairs: '#FFFFFF' };
-function spaceFloorSvg(sp) {
+function spaceFloorSvg(sp, bg) {   // bg：床の色（部屋・通路・場の外）。水・舞台・階段の色は変えない
   var s = '', lab = '', defs = '', WALL = 0.16, INKW = '#3B4650';
   function rc(a, fill, extra) { return '<rect x="' + a.rect[0] + '" y="' + a.rect[1] + '" width="' + a.rect[2] + '" height="' + a.rect[3] + '" fill="' + fill + '"' + (extra || '') + '/>'; }
   function ln(x1, y1, x2, y2, st, sw, extra) { return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + st + '" stroke-width="' + sw + '"' + (extra || '') + '/>'; }
   function tx(x, y, t, fs, fill, anchor) { return '<text x="' + x + '" y="' + y + '" font-size="' + fs + '" font-weight="800" fill="' + (fill || '#5B6B78') + '" text-anchor="' + (anchor || 'middle') + '" dominant-baseline="middle">' + esc(t) + '</text>'; }
-  s += '<rect x="0" y="0" width="' + sp.size[0] + '" height="' + sp.size[1] + '" fill="#F6F4EE"/>';
+  s += '<rect x="0" y="0" width="' + sp.size[0] + '" height="' + sp.size[1] + '" fill="' + (bg || '#F6F4EE') + '"/>';
+  var fillOf = function (k) { return bg && (k === 'room' || k === 'deck') ? bg : SPACE_FILL[k] || '#fff'; };
   var walled = sp.areas.filter(function (a) { return a.kind !== 'mark'; }), done = {};
   walled.forEach(function (a) {
-    if (!a.zone) { s += rc(a, SPACE_FILL[a.kind] || '#fff', ' stroke="' + INKW + '" stroke-width="' + WALL + '"'); return; }
+    if (!a.zone) { s += rc(a, fillOf(a.kind), ' stroke="' + INKW + '" stroke-width="' + WALL + '"'); return; }
     if (done[a.zone]) return; done[a.zone] = 1;
     var zs = walled.filter(function (b) { return b.zone === a.zone; });
-    zs.forEach(function (b) { s += rc(b, SPACE_FILL[b.kind] || '#fff'); });
+    zs.forEach(function (b) { s += rc(b, fillOf(b.kind)); });
     zs.forEach(function (b) { zoneEdges(b, zs).forEach(function (e) { s += ln(e[0], e[1], e[2], e[3], INKW, WALL, ' stroke-linecap="square"'); }); });
   });
   sp.areas.forEach(function (a) {
@@ -1320,7 +1348,7 @@ function spaceFloorSvg(sp) {
   (sp.walls || []).forEach(function (wl) { s += ln(wl[0][0], wl[0][1], wl[1][0], wl[1][1], INKW, WALL, ' stroke-linecap="square"'); });
   (sp.doors || []).forEach(function (dr) {
     var a = dr.from, b = dr.to, v = a[0] === b[0], k = 0.35;
-    s += ln(a[0], a[1], b[0], b[1], SPACE_FILL[dr.fill] || '#fff', WALL * 1.6);
+    s += ln(a[0], a[1], b[0], b[1], fillOf(dr.fill), WALL * 1.6);
     if (dr.kind !== 'open') [a, b].forEach(function (p) { s += v ? ln(p[0] - k, p[1], p[0] + k, p[1], INKW, WALL) : ln(p[0], p[1] - k, p[0], p[1] + k, INKW, WALL); });
   });
   if (sp.up) lab += tx(sp.size[0] - 0.3, 0.7, '▲ ' + sp.up, 0.8, null, 'end');
@@ -1437,10 +1465,21 @@ function meshSvg(p) {
   });
   return GYM.drawFaces([{ faces: faces, off: [0, 0, 0] }], GYM.plan(0.5, false)).svg;
 }
+/* 輪郭を太く：物の形（透明でない所）を外へ広げて濃い色で塗り、物の下に敷く。
+   中の線は変えないので、物の形はそのまま・外まわりだけが太く見える。広げる幅は床の広さに合わせる（K） */
+function outlineId() { return 'ol-' + SCENE.id; }
+function outlineDefs() {
+  if (!OUTLINE) return '';
+  return '<defs><filter id="' + outlineId() + '" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">' +
+    '<feMorphology in="SourceAlpha" operator="dilate" radius="' + (5 * K) + '" result="d"/>' +
+    '<feFlood flood-color="' + INK + '"/><feComposite in2="d" operator="in" result="o"/>' +
+    '<feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+}
+function olAttr() { return OUTLINE ? ' filter="url(#' + outlineId() + ')"' : ''; }
 function drawTopItem(p, i, cls) {
   if (ITEMS[p.item].mesh) {
     var fw = itemSize(p), fb = rotBox(fw[0], fw[1], p.r || 0);
-    return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ')">' + meshSvg(p) +
+    return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ')"><g' + olAttr() + '>' + meshSvg(p) + '</g>' +
       (cls === 'sel' ? '<rect class="selbox" x="' + (-fb[0] / 2 - 10 * K) + '" y="' + (-fb[1] / 2 - 10 * K) + '" width="' + (fb[0] + 20 * K) + '" height="' + (fb[1] + 20 * K) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>' : '') + '</g>';
   }
   var st = ITEMS[p.item].states[stateOf(p)], wd = itemSize(p), w = wd[0], d = wd[1];
@@ -1448,7 +1487,7 @@ function drawTopItem(p, i, cls) {
   var body = st.draw(w, d, colorOf(p), p);
   MIRROR = 1;
   return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ') rotate(' + (p.r || 0) + ')' +
-         (p.m ? ' scale(-1 1)' : '') + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')">' + body +
+         (p.m ? ' scale(-1 1)' : '') + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')"><g' + olAttr() + '>' + body + '</g>' +
          (cls === 'sel' ? '<rect class="selbox" x="' + (-10 * K) + '" y="' + (-10 * K) + '" width="' + (w + 20 * K) + '" height="' + (d + 20 * K) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>' : '') + '</g></g>';
 }
 function iconSvg(itemId, size) {   // しまう物・編集のパレット用の小さな絵
@@ -1542,12 +1581,12 @@ function labelsSvg(labels, ruby) {
 }
 
 /* 場所の床。机以外は平らな床に、その場所の目印の線を入れる */
-function floorTopSvg() {
+function floorTopSvg(bg) {
   var w = DESK.w, d = DESK.d;
-  if (SCENE.space) return spaceFloorSvg(SCENE.space);   // 場（assets/spaces）の床。apps/haichi/src/scenes.js
+  if (SCENE.space) return spaceFloorSvg(SCENE.space, bg);   // 場（assets/spaces）の床。apps/haichi/src/scenes.js
   if (SCENE.id === 'class') {
     // 木の床＋前の壁と黒板（上）＋後ろの壁の帯（下）
-    return R(0, 0, w, d, '#EBDDBE', 0, 30 * K, '#B99F72') +
+    return R(0, 0, w, d, bg || '#EBDDBE', 0, 30 * K, '#B99F72') +
       R(0, 0, w, 60, 'rgba(0,0,0,.15)', 0, 0) +
       R(1700, 80, 3600, 160, '#3E5B4D', 20, 30) +              // 黒板
       R(1700, 240, 3600, 50, '#D8C9A8', 8, 0) +                // チョーク受け
@@ -1555,14 +1594,14 @@ function floorTopSvg() {
   }
   if (SCENE.id === 'gym') {
     // 木の床＋白いコート線（外周・中央線・センターサークル）
-    return R(0, 0, w, d, '#EFD9A8', 0, 30 * K, '#C4A671') +
+    return R(0, 0, w, d, bg || '#EFD9A8', 0, 30 * K, '#C4A671') +
       R(400, 400, w - 800, d - 800, 'none', 0, 90, '#F6F2E8') +
       L(400, d / 2, w - 400, d / 2, '#F6F2E8', 90) +
       '<circle cx="' + w / 2 + '" cy="' + d / 2 + '" r="1800" fill="none" stroke="#F6F2E8" stroke-width="90"/>';
   }
   if (SCENE.id === 'field') {
     // 土のグラウンド＋白い外周線
-    return R(0, 0, w, d, '#DCC9A2', 0, 30 * K, '#B49A6E') +
+    return R(0, 0, w, d, bg || '#DCC9A2', 0, 30 * K, '#B49A6E') +
       R(500, 500, w - 1000, d - 1000, 'none', 0, 150, '#F5F2E8');
   }
   return deskTopSvg();
@@ -1573,7 +1612,7 @@ function topView(lay, o) {
   var sides = o.sides || ['L', 'R', 'T'].concat(o.chair ? [] : ['B']);
   var bottom = DESK.d + (o.chair ? chairExtent() : 0);
   var lab = o.noLabels ? { labels: [], margin: { L: 0, R: 0, T: 0, B: 0 } } : layoutLabels(lay.top, sides, o.ruby, bottom);
-  var s = floorTopSvg() + (o.chair ? chairTopSvg() : '');
+  var s = floorTopSvg(SCENE.desk ? null : floorColor(lay.bg)) + (o.chair ? chairTopSvg() : '') + outlineDefs();
   var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
   lay.top.forEach(function (p, i) {
     s += drawTopItem(p, i, o.sel === i ? 'sel' : '');
@@ -1797,7 +1836,7 @@ var $ = function (id) { return document.getElementById(id); };
 /* ---- 保存：この端末のブラウザだけ。読めない環境では標準の配置で動く ---- */
 function clone(x) { return JSON.parse(JSON.stringify(x)); }
 function freshState() {
-  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk' } };
+  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk', outline: false } };
 }
 function load() {
   try {
@@ -1821,6 +1860,7 @@ function sanitize(s) {
     };
     return {
       id: String(l.id), name: String(l.name || '無題'), yomi: String(l.yomi || ''), flip: l.flip !== false, scene: sc,
+      bg: sc !== 'desk' && floorColor(l.bg) ? l.bg : undefined,
       top: l.top.filter(function (p) { return ok(p.item); }).map(function (p) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
@@ -1845,6 +1885,7 @@ var S = load();
 function scOf(l) { return SCENES[(l && l.scene) || ''] ? l.scene : 'desk'; }   // 配置の場所
 var scene = SCENES[S.prefs.scene] ? S.prefs.scene : 'desk';   // メニューで選んでいる場所
 useScene(scene);
+OUTLINE = !!S.prefs.outline;   // 物の輪郭を太く（端末に保存）
 var cur = null;          // 表示・編集中の配置
 var flip = false;
 var big = false;         // 大きく映す（全画面・真上からの図だけ・見出し）。その場かぎり        // 左右反転はその場かぎり（保存しない）
@@ -1962,6 +2003,7 @@ function renderShow() {
   $('sSides').setAttribute('aria-pressed', String(!S.prefs.topOnly));
   $('sSides').disabled = S.prefs.group;
   $('sRuby').setAttribute('aria-pressed', String(S.prefs.ruby));
+  $('sOutline').setAttribute('aria-pressed', String(OUTLINE));
   renderAway();
 }
 function renderAway() { $('away').innerHTML = awayHtml(cur); }
@@ -1983,6 +2025,7 @@ $('sFlip').onclick = function () { flip = !flip; renderShow(); };
 $('sSides').onclick = function () { S.prefs.topOnly = !S.prefs.topOnly; save(); renderShow(); };
 $('sChair').onclick = function () { S.prefs.chair = !S.prefs.chair; save(); renderShow(); };
 $('sRuby').onclick = function () { S.prefs.ruby = !S.prefs.ruby; save(); renderShow(); };
+$('sOutline').onclick = function () { OUTLINE = S.prefs.outline = !OUTLINE; save(); renderShow(); };
 /* 大きく映す：操作ボタンと「しまう物」を隠し、上に「机の上をこの形にしてね」、残りを真上からの図に使う */
 function setBig(on) {
   big = on;
@@ -2066,6 +2109,7 @@ function openEdit(id) {
   cur = byId(id); if (!cur) return renderHome();
   useScene(scOf(cur));
   sel = -1;
+  $('eOutline').checked = OUTLINE;
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
   go('vEdit'); renderEdit(); renderPalette();
 }
@@ -2097,6 +2141,12 @@ function renderEdit() {
     }).join('');
   }
   renderChips();
+  $('eBgBox').hidden = !!SCENE.desk;   // 床の色は場所だけ（机の天板は木の色のまま）
+  $('eBg').innerHTML = FLOOR_COLORS.map(function (f) {
+    var on = (cur.bg || '') === f.id;
+    return '<button type="button" class="sw bg' + (on ? ' on' : '') + '" data-bg="' + f.id + '" aria-pressed="' + on + '" title="' + f.name + '"' +
+      (f.c ? ' style="background:' + f.c + '"' : '') + '>' + f.name + '</button>';
+  }).join('');
   $('eGrid').innerHTML = GRID_LEVELS.map(function (g) {
     return '<button type="button" data-grid="' + g.id + '" class="' + (g.id === gridLevel(S.prefs.grid).id ? 'on' : '') + '">' + g.name + '</button>';
   }).join('');
@@ -2170,6 +2220,11 @@ $('pItems').addEventListener('click', function (e) {
 $('eName').oninput = function () { cur.name = this.value.trim() || '無題'; save(); };
 $('eYomi').oninput = function () { cur.yomi = this.value.trim(); save(); };
 $('eFlip').onchange = function () { cur.flip = this.checked; save(); };
+$('eBg').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-bg]'); if (!b) return;
+  var id = b.getAttribute('data-bg'); if (id) cur.bg = id; else delete cur.bg; save(); renderEdit();
+});
+$('eOutline').onchange = function () { OUTLINE = S.prefs.outline = this.checked; save(); renderEdit(); };
 $('eBack').onclick = renderHome;
 $('eShow').onclick = function () { openShow(cur.id); };
 $('eCopy').onclick = function () {

@@ -5,6 +5,14 @@
    階段＝踏み段の線（矢印なし、下の階へは黒く消える）、床の目印＝点線。 */
 var SPACE_ITEMS = ['gbox', 'gboard', 'gmat', 'gthick', 'gcone', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'];
 SPACES.forEach(function (sp) {
+  // 場の id が既存の場所（gym など）と同じなら、その場所の床をこの場で置きかえる（保存した配置・置ける物はそのまま）
+  if (SCENES[sp.id] && !SCENES[sp.id].desk) {
+    var S0 = SCENES[sp.id], W = sp.size[0] * 1000, D = sp.size[1] * 1000, g = S0.grid;
+    S0.space = sp; S0.w = W; S0.d = D; S0.k = 30;   // 文字・余白の倍率は場の広さによらず体育館（幅20m）の時と同じ
+    var c0 = { nx: Math.max(1, Math.round(W / 5000)), ny: Math.max(1, Math.round(D / 5000)) };
+    S0.grid = [{ id: 'coarse', name: g[0].name, nx: c0.nx, ny: c0.ny }, { id: 'normal', name: g[1].name, nx: c0.nx * 2, ny: c0.ny * 2 }, { id: 'fine', name: g[2].name, nx: c0.nx * 4, ny: c0.ny * 4 }];
+    return;
+  }
   var id = 'sp-' + sp.id, w = sp.size[0] * 1000, d = sp.size[1] * 1000, name = sp.title.replace(/（.*?）/g, '');
   function lv(m) { return { nx: Math.max(1, Math.round(w / m)), ny: Math.max(1, Math.round(d / m)) }; }
   var c = lv(5000), n = { nx: c.nx * 2, ny: c.ny * 2 }, f = { nx: c.nx * 4, ny: c.ny * 4 };   // 2倍ずつ（段を変えても交点がずれない）
@@ -18,18 +26,19 @@ SPACES.forEach(function (sp) {
 });
 
 var SPACE_FILL = { deck: '#E4ECF1', water: '#A9D8EC', room: '#EFE9DC', box: '#FFFFFF', stairs: '#FFFFFF' };
-function spaceFloorSvg(sp) {
+function spaceFloorSvg(sp, bg) {   // bg：床の色（部屋・通路・場の外）。水・舞台・階段の色は変えない
   var s = '', lab = '', defs = '', WALL = 0.16, INKW = '#3B4650';
   function rc(a, fill, extra) { return '<rect x="' + a.rect[0] + '" y="' + a.rect[1] + '" width="' + a.rect[2] + '" height="' + a.rect[3] + '" fill="' + fill + '"' + (extra || '') + '/>'; }
   function ln(x1, y1, x2, y2, st, sw, extra) { return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + st + '" stroke-width="' + sw + '"' + (extra || '') + '/>'; }
   function tx(x, y, t, fs, fill, anchor) { return '<text x="' + x + '" y="' + y + '" font-size="' + fs + '" font-weight="800" fill="' + (fill || '#5B6B78') + '" text-anchor="' + (anchor || 'middle') + '" dominant-baseline="middle">' + esc(t) + '</text>'; }
-  s += '<rect x="0" y="0" width="' + sp.size[0] + '" height="' + sp.size[1] + '" fill="#F6F4EE"/>';
+  s += '<rect x="0" y="0" width="' + sp.size[0] + '" height="' + sp.size[1] + '" fill="' + (bg || '#F6F4EE') + '"/>';
+  var fillOf = function (k) { return bg && (k === 'room' || k === 'deck') ? bg : SPACE_FILL[k] || '#fff'; };
   var walled = sp.areas.filter(function (a) { return a.kind !== 'mark'; }), done = {};
   walled.forEach(function (a) {
-    if (!a.zone) { s += rc(a, SPACE_FILL[a.kind] || '#fff', ' stroke="' + INKW + '" stroke-width="' + WALL + '"'); return; }
+    if (!a.zone) { s += rc(a, fillOf(a.kind), ' stroke="' + INKW + '" stroke-width="' + WALL + '"'); return; }
     if (done[a.zone]) return; done[a.zone] = 1;
     var zs = walled.filter(function (b) { return b.zone === a.zone; });
-    zs.forEach(function (b) { s += rc(b, SPACE_FILL[b.kind] || '#fff'); });
+    zs.forEach(function (b) { s += rc(b, fillOf(b.kind)); });
     zs.forEach(function (b) { zoneEdges(b, zs).forEach(function (e) { s += ln(e[0], e[1], e[2], e[3], INKW, WALL, ' stroke-linecap="square"'); }); });
   });
   sp.areas.forEach(function (a) {
@@ -52,7 +61,7 @@ function spaceFloorSvg(sp) {
   (sp.walls || []).forEach(function (wl) { s += ln(wl[0][0], wl[0][1], wl[1][0], wl[1][1], INKW, WALL, ' stroke-linecap="square"'); });
   (sp.doors || []).forEach(function (dr) {
     var a = dr.from, b = dr.to, v = a[0] === b[0], k = 0.35;
-    s += ln(a[0], a[1], b[0], b[1], SPACE_FILL[dr.fill] || '#fff', WALL * 1.6);
+    s += ln(a[0], a[1], b[0], b[1], fillOf(dr.fill), WALL * 1.6);
     if (dr.kind !== 'open') [a, b].forEach(function (p) { s += v ? ln(p[0] - k, p[1], p[0] + k, p[1], INKW, WALL) : ln(p[0], p[1] - k, p[0], p[1] + k, INKW, WALL); });
   });
   if (sp.up) lab += tx(sp.size[0] - 0.3, 0.7, '▲ ' + sp.up, 0.8, null, 'end');

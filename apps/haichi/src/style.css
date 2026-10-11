@@ -166,3 +166,7 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
   .pg .away .icons{display:flex;flex-wrap:wrap;gap:1mm}
   .pg .away figure{margin:0;text-align:center}
 }
+
+/* 床の色の見本。色だけで伝えないよう名前も書く */
+.sw.bg{min-width:44px;min-height:34px;padding:2px 8px;font-size:13px;border:1px solid var(--rule);color:#1D2126;background:var(--sheet)}
+.sw.bg.on{outline:3px solid var(--accent);outline-offset:1px;font-weight:700}

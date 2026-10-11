@@ -5,7 +5,7 @@ var $ = function (id) { return document.getElementById(id); };
 /* ---- 保存：この端末のブラウザだけ。読めない環境では標準の配置で動く ---- */
 function clone(x) { return JSON.parse(JSON.stringify(x)); }
 function freshState() {
-  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk' } };
+  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk', outline: false } };
 }
 function load() {
   try {
@@ -29,6 +29,7 @@ function sanitize(s) {
     };
     return {
       id: String(l.id), name: String(l.name || '無題'), yomi: String(l.yomi || ''), flip: l.flip !== false, scene: sc,
+      bg: sc !== 'desk' && floorColor(l.bg) ? l.bg : undefined,
       top: l.top.filter(function (p) { return ok(p.item); }).map(function (p) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
@@ -53,6 +54,7 @@ var S = load();
 function scOf(l) { return SCENES[(l && l.scene) || ''] ? l.scene : 'desk'; }   // 配置の場所
 var scene = SCENES[S.prefs.scene] ? S.prefs.scene : 'desk';   // メニューで選んでいる場所
 useScene(scene);
+OUTLINE = !!S.prefs.outline;   // 物の輪郭を太く（端末に保存）
 var cur = null;          // 表示・編集中の配置
 var flip = false;
 var big = false;         // 大きく映す（全画面・真上からの図だけ・見出し）。その場かぎり        // 左右反転はその場かぎり（保存しない）
@@ -170,6 +172,7 @@ function renderShow() {
   $('sSides').setAttribute('aria-pressed', String(!S.prefs.topOnly));
   $('sSides').disabled = S.prefs.group;
   $('sRuby').setAttribute('aria-pressed', String(S.prefs.ruby));
+  $('sOutline').setAttribute('aria-pressed', String(OUTLINE));
   renderAway();
 }
 function renderAway() { $('away').innerHTML = awayHtml(cur); }
@@ -191,6 +194,7 @@ $('sFlip').onclick = function () { flip = !flip; renderShow(); };
 $('sSides').onclick = function () { S.prefs.topOnly = !S.prefs.topOnly; save(); renderShow(); };
 $('sChair').onclick = function () { S.prefs.chair = !S.prefs.chair; save(); renderShow(); };
 $('sRuby').onclick = function () { S.prefs.ruby = !S.prefs.ruby; save(); renderShow(); };
+$('sOutline').onclick = function () { OUTLINE = S.prefs.outline = !OUTLINE; save(); renderShow(); };
 /* 大きく映す：操作ボタンと「しまう物」を隠し、上に「机の上をこの形にしてね」、残りを真上からの図に使う */
 function setBig(on) {
   big = on;
@@ -274,6 +278,7 @@ function openEdit(id) {
   cur = byId(id); if (!cur) return renderHome();
   useScene(scOf(cur));
   sel = -1;
+  $('eOutline').checked = OUTLINE;
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
   go('vEdit'); renderEdit(); renderPalette();
 }
@@ -305,6 +310,12 @@ function renderEdit() {
     }).join('');
   }
   renderChips();
+  $('eBgBox').hidden = !!SCENE.desk;   // 床の色は場所だけ（机の天板は木の色のまま）
+  $('eBg').innerHTML = FLOOR_COLORS.map(function (f) {
+    var on = (cur.bg || '') === f.id;
+    return '<button type="button" class="sw bg' + (on ? ' on' : '') + '" data-bg="' + f.id + '" aria-pressed="' + on + '" title="' + f.name + '"' +
+      (f.c ? ' style="background:' + f.c + '"' : '') + '>' + f.name + '</button>';
+  }).join('');
   $('eGrid').innerHTML = GRID_LEVELS.map(function (g) {
     return '<button type="button" data-grid="' + g.id + '" class="' + (g.id === gridLevel(S.prefs.grid).id ? 'on' : '') + '">' + g.name + '</button>';
   }).join('');
@@ -378,6 +389,11 @@ $('pItems').addEventListener('click', function (e) {
 $('eName').oninput = function () { cur.name = this.value.trim() || '無題'; save(); };
 $('eYomi').oninput = function () { cur.yomi = this.value.trim(); save(); };
 $('eFlip').onchange = function () { cur.flip = this.checked; save(); };
+$('eBg').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-bg]'); if (!b) return;
+  var id = b.getAttribute('data-bg'); if (id) cur.bg = id; else delete cur.bg; save(); renderEdit();
+});
+$('eOutline').onchange = function () { OUTLINE = S.prefs.outline = this.checked; save(); renderEdit(); };
 $('eBack').onclick = renderHome;
 $('eShow').onclick = function () { openShow(cur.id); };
 $('eCopy').onclick = function () {

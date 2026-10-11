@@ -92,10 +92,21 @@ function meshSvg(p) {
   });
   return GYM.drawFaces([{ faces: faces, off: [0, 0, 0] }], GYM.plan(0.5, false)).svg;
 }
+/* 輪郭を太く：物の形（透明でない所）を外へ広げて濃い色で塗り、物の下に敷く。
+   中の線は変えないので、物の形はそのまま・外まわりだけが太く見える。広げる幅は床の広さに合わせる（K） */
+function outlineId() { return 'ol-' + SCENE.id; }
+function outlineDefs() {
+  if (!OUTLINE) return '';
+  return '<defs><filter id="' + outlineId() + '" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">' +
+    '<feMorphology in="SourceAlpha" operator="dilate" radius="' + (5 * K) + '" result="d"/>' +
+    '<feFlood flood-color="' + INK + '"/><feComposite in2="d" operator="in" result="o"/>' +
+    '<feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+}
+function olAttr() { return OUTLINE ? ' filter="url(#' + outlineId() + ')"' : ''; }
 function drawTopItem(p, i, cls) {
   if (ITEMS[p.item].mesh) {
     var fw = itemSize(p), fb = rotBox(fw[0], fw[1], p.r || 0);
-    return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ')">' + meshSvg(p) +
+    return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ')"><g' + olAttr() + '>' + meshSvg(p) + '</g>' +
       (cls === 'sel' ? '<rect class="selbox" x="' + (-fb[0] / 2 - 10 * K) + '" y="' + (-fb[1] / 2 - 10 * K) + '" width="' + (fb[0] + 20 * K) + '" height="' + (fb[1] + 20 * K) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>' : '') + '</g>';
   }
   var st = ITEMS[p.item].states[stateOf(p)], wd = itemSize(p), w = wd[0], d = wd[1];
@@ -103,7 +114,7 @@ function drawTopItem(p, i, cls) {
   var body = st.draw(w, d, colorOf(p), p);
   MIRROR = 1;
   return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ') rotate(' + (p.r || 0) + ')' +
-         (p.m ? ' scale(-1 1)' : '') + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')">' + body +
+         (p.m ? ' scale(-1 1)' : '') + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')"><g' + olAttr() + '>' + body + '</g>' +
          (cls === 'sel' ? '<rect class="selbox" x="' + (-10 * K) + '" y="' + (-10 * K) + '" width="' + (w + 20 * K) + '" height="' + (d + 20 * K) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>' : '') + '</g></g>';
 }
 function iconSvg(itemId, size) {   // しまう物・編集のパレット用の小さな絵
@@ -197,12 +208,12 @@ function labelsSvg(labels, ruby) {
 }
 
 /* 場所の床。机以外は平らな床に、その場所の目印の線を入れる */
-function floorTopSvg() {
+function floorTopSvg(bg) {
   var w = DESK.w, d = DESK.d;
-  if (SCENE.space) return spaceFloorSvg(SCENE.space);   // 場（assets/spaces）の床。apps/haichi/src/scenes.js
+  if (SCENE.space) return spaceFloorSvg(SCENE.space, bg);   // 場（assets/spaces）の床。apps/haichi/src/scenes.js
   if (SCENE.id === 'class') {
     // 木の床＋前の壁と黒板（上）＋後ろの壁の帯（下）
-    return R(0, 0, w, d, '#EBDDBE', 0, 30 * K, '#B99F72') +
+    return R(0, 0, w, d, bg || '#EBDDBE', 0, 30 * K, '#B99F72') +
       R(0, 0, w, 60, 'rgba(0,0,0,.15)', 0, 0) +
       R(1700, 80, 3600, 160, '#3E5B4D', 20, 30) +              // 黒板
       R(1700, 240, 3600, 50, '#D8C9A8', 8, 0) +                // チョーク受け
@@ -210,14 +221,14 @@ function floorTopSvg() {
   }
   if (SCENE.id === 'gym') {
     // 木の床＋白いコート線（外周・中央線・センターサークル）
-    return R(0, 0, w, d, '#EFD9A8', 0, 30 * K, '#C4A671') +
+    return R(0, 0, w, d, bg || '#EFD9A8', 0, 30 * K, '#C4A671') +
       R(400, 400, w - 800, d - 800, 'none', 0, 90, '#F6F2E8') +
       L(400, d / 2, w - 400, d / 2, '#F6F2E8', 90) +
       '<circle cx="' + w / 2 + '" cy="' + d / 2 + '" r="1800" fill="none" stroke="#F6F2E8" stroke-width="90"/>';
   }
   if (SCENE.id === 'field') {
     // 土のグラウンド＋白い外周線
-    return R(0, 0, w, d, '#DCC9A2', 0, 30 * K, '#B49A6E') +
+    return R(0, 0, w, d, bg || '#DCC9A2', 0, 30 * K, '#B49A6E') +
       R(500, 500, w - 1000, d - 1000, 'none', 0, 150, '#F5F2E8');
   }
   return deskTopSvg();
@@ -228,7 +239,7 @@ function topView(lay, o) {
   var sides = o.sides || ['L', 'R', 'T'].concat(o.chair ? [] : ['B']);
   var bottom = DESK.d + (o.chair ? chairExtent() : 0);
   var lab = o.noLabels ? { labels: [], margin: { L: 0, R: 0, T: 0, B: 0 } } : layoutLabels(lay.top, sides, o.ruby, bottom);
-  var s = floorTopSvg() + (o.chair ? chairTopSvg() : '');
+  var s = floorTopSvg(SCENE.desk ? null : floorColor(lay.bg)) + (o.chair ? chairTopSvg() : '') + outlineDefs();
   var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
   lay.top.forEach(function (p, i) {
     s += drawTopItem(p, i, o.sel === i ? 'sel' : '');

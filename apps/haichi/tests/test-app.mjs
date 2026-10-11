@@ -149,10 +149,21 @@ assert.ok(g.itemSize({item:'gbox',state:'dan3'})[0]<640,'段を減らすと底�
 const SPS=vm.runInContext('SPACES',ctx);
 assert.ok(SPS.length>=1);
 for(const sp of SPS){
-  const id='sp-'+sp.id; assert.ok(g.SCENE_ORDER.includes(id));
+  const id=SCENES[sp.id]?sp.id:'sp-'+sp.id; assert.ok(g.SCENE_ORDER.includes(id));   // 既存の場所と同じ id の場は、その場所の床になる
   g.useScene(id); assert.equal(SCENES[id].w,sp.size[0]*1000);
   const f=vm.runInContext('floorTopSvg()',ctx);
   assert.ok(f.includes('scale(1000)')&&f.includes('<line')&&!/NaN|undefined/.test(f),id);
 }
+g.useScene('desk');
+// 床の色・輪郭を太く
+g.useScene('gym');
+const lay={top:[{item:'gbox',x:5000,y:5000,r:0},{item:'person',state:'normal',x:8000,y:8000,r:0}]};
+assert.ok(g.topView(Object.assign({bg:'green'},lay),{noLabels:true}).svg.includes('#DDEDD9'));
+assert.ok(!g.topView(lay,{noLabels:true}).svg.includes('filter="url('));
+vm.runInContext('OUTLINE=true',ctx);
+const ol=g.topView(lay,{noLabels:true}).svg;
+assert.equal((ol.match(/filter="url\(#ol-gym\)"/g)||[]).length,2); assert.ok(ol.includes('<filter id="ol-gym"'));
+vm.runInContext('OUTLINE=false',ctx);
+g.useScene('sp-pool-area'); assert.ok(g.topView(Object.assign({bg:'blue'},lay),{noLabels:true}).svg.includes('#DCE8F5'));
 g.useScene('desk');
 console.log('ok');

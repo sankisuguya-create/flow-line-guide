@@ -118,6 +118,18 @@ var ENOGU_COLORS = ['#2B2F36', '#2E4A7A', '#B9A3D6', '#5E6670', '#3D7EBF'];   //
 
 /* 表紙の文字。左右反転で描くときも文字は裏返さない（drawTopItem が MIRROR を立てる） */
 var MIRROR = 1;
+/* 床の色（配置ごとに選べる。null は場所の標準の色）と、物の輪郭を太くするか（画面の設定）。
+   色は児童が床と物を見分けやすい薄い色だけ。物の色（茶・緑・白・橙）と近い濃さは避けてある */
+var FLOOR_COLORS = [
+  { id: '',       name: '標準', c: null },
+  { id: 'white',  name: '白',   c: '#FFFFFF' },
+  { id: 'gray',   name: '灰',   c: '#E6E9ED' },
+  { id: 'green',  name: '緑',   c: '#DDEDD9' },
+  { id: 'blue',   name: '青',   c: '#DCE8F5' },
+  { id: 'yellow', name: '黄',   c: '#F6EDCF' }
+];
+function floorColor(id) { var f = FLOOR_COLORS.filter(function (x) { return x.id === id; })[0]; return f ? f.c : null; }
+var OUTLINE = false;
 function T(cx, cy, text, fs, fill) {
   return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + MIRROR + ' 1)"><text x="0" y="' + (fs * 0.36) + '" font-size="' + fs +
     '" font-weight="700" text-anchor="middle" fill="' + (fill || INK) + '">' + String(text).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }) + '</text></g>';
@@ -690,13 +702,13 @@ var DEFAULT_LAYOUTS = [
     hooks: { left: [], right: [] }, away: [] },
   { id: 'g_tobibako', scene: 'gym', name: '跳び箱の準備', yomi: 'とびばこのじゅんび', flip: true,
     top: [
-      { item: 'gbox',   state: 'dan6', x: 10000, y: 8750,  r: 0 },
-      { item: 'gmat',   state: 'hide', x: 10000, y: 6250,  r: 0, size: 'l' },
-      { item: 'gmat',   state: 'hide', x: 6250,  y: 8750,  r: 90 },
-      { item: 'gmat',   state: 'hide', x: 13750, y: 8750,  r: 90 },
-      { item: 'gboard', state: 'closed', x: 10000, y: 10000, r: 0 },
-      { item: 'arrow',  state: 'go',     x: 10000, y: 16250, r: 0, label: true },
-      { item: 'person', state: 'normal', x: 11250, y: 17500, r: 0 }
+      { item: 'gbox',   state: 'dan6', x: 21250, y: 8750,  r: 0 },
+      { item: 'gmat',   state: 'hide', x: 21250, y: 6250,  r: 0, size: 'l' },
+      { item: 'gmat',   state: 'hide', x: 17500, y: 8750,  r: 90 },
+      { item: 'gmat',   state: 'hide', x: 25000, y: 8750,  r: 90 },
+      { item: 'gboard', state: 'closed', x: 21250, y: 10000, r: 0 },
+      { item: 'arrow',  state: 'go',     x: 21250, y: 16250, r: 0, label: true },
+      { item: 'person', state: 'normal', x: 22500, y: 17500, r: 0 }
     ],
     hooks: { left: [], right: [] }, away: [] },
   { id: 'f_undoukai', scene: 'field', name: 'うんどうかい', yomi: 'うんどうかい', flip: true,
