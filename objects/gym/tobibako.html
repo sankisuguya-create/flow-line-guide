@@ -50,17 +50,17 @@ function boxMesh(dan){
   var z0=use[0][0], faces=[];
   use.forEach(function(lv){
     var a=lv[0]-z0, b=lv[1]-z0, d0=dims(lv[0]), d1=dims(lv[1]);
-    if(lv[2]===1){ var pz=b-SPEC.pad; addFrustum(faces,a,pz,d0,dims(lv[1]-SPEC.pad),WOOD,lv[2],true);
-      addFrustum(faces,pz,b,dims(lv[1]-SPEC.pad),d1,PAD,null,false,true); }
+    if(lv[2]===1){ var pz=b-SPEC.pad; addFrustum(faces,a,pz,d0,dims(lv[1]-SPEC.pad),WOOD,lv[2],true,false,"top");
+      addFrustum(faces,pz,b,dims(lv[1]-SPEC.pad),d1,PAD,null,false,true,"bottom"); }
     else addFrustum(faces,a,b,d0,d1,WOOD,lv[2],true);
   });
   return {faces:faces, foot:dims(z0), H:z-z0};
 }
-function addFrustum(F,za,zb,d0,d1,col,num,slit,cap){
+function addFrustum(F,za,zb,d0,d1,col,num,slit,cap,sharp){   // sharp：丸めない辺（白いクッションと1段目の境目）
   var a=[[-d0.W/2,-d0.L/2,za],[d0.W/2,-d0.L/2,za],[d0.W/2,d0.L/2,za],[-d0.W/2,d0.L/2,za]];
   var b=[[-d1.W/2,-d1.L/2,zb],[d1.W/2,-d1.L/2,zb],[d1.W/2,d1.L/2,zb],[-d1.W/2,d1.L/2,zb]];
   for(var i=0;i<4;i++){ var j=(i+1)%4;
-    F.push({p:[a[i],a[j],b[j],b[i]],col:col,num:(i===2?num:null),slit:slit,side:i,h:zb-za}); }   // i=2：+Y 側（助走側の面）に番号
+    F.push({p:[a[i],a[j],b[j],b[i]],col:col,num:(i===2?num:null),slit:slit,side:i,h:zb-za,sharp:sharp==='top'?[2,3]:sharp==='bottom'?[0,1]:[]}); }   // i=2：+Y 側（助走側の面）に番号
   F.push({p:[b[0],b[1],b[2],b[3]],col:cap?PAD:col,top:true});
 }
 
@@ -78,9 +78,9 @@ function dot(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
 function sub(a,b){ return [a[0]-b[0],a[1]-b[1],a[2]-b[2]]; }
 function cross(a,b){ return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]; }
 // 角を少しだけ丸めた 多角形のパス（角から 辺の長さの18%まで・最大 r で 曲げる）
-function rpath(q,r){ var n=q.length, d="";
+function rpath(q,r,sharp){ var n=q.length, d=""; sharp=sharp||[];
   for(var i=0;i<n;i++){ var p=q[i], a=q[(i-1+n)%n], b=q[(i+1)%n];
-    var la=Math.hypot(a[0]-p[0],a[1]-p[1]), lb=Math.hypot(b[0]-p[0],b[1]-p[1]), k=Math.min(r,la*0.18,lb*0.18);
+    var la=Math.hypot(a[0]-p[0],a[1]-p[1]), lb=Math.hypot(b[0]-p[0],b[1]-p[1]), k=sharp.indexOf(i)>=0?0:Math.min(r,la*0.18,lb*0.18);
     var s1=[p[0]+(a[0]-p[0])*k/(la||1), p[1]+(a[1]-p[1])*k/(la||1)], s2=[p[0]+(b[0]-p[0])*k/(lb||1), p[1]+(b[1]-p[1])*k/(lb||1)];
     d+=(i?"L":"M")+s1[0].toFixed(1)+" "+s1[1].toFixed(1)+"Q"+p[0].toFixed(1)+" "+p[1].toFixed(1)+" "+s2[0].toFixed(1)+" "+s2[1].toFixed(1); }
   return d+"Z"; }
@@ -105,7 +105,7 @@ function draw(mesh,view,o){
   var m=Math.max(x1-x0,y1-y0)*0.12, vb=[x0-m,y0-m,x1-x0+2*m,y1-y0+2*m];
   var s=o.under||"";
   vis.forEach(function(x){
-    var f=x.f, col=shade(f.col,x.lit), d=rpath(x.q,30);   // 30mm 相当まで 角を丸める
+    var f=x.f, col=shade(f.col,x.lit), d=rpath(x.q,30,f.sharp);   // 30mm 相当まで 角を丸める
     s+='<path d="'+d+'" fill="'+col+'" stroke="#5A3A1E" stroke-width="'+(vb[2]/260).toFixed(2)+'" stroke-linejoin="round"/>';
     if(f.slit&&!f.top){                                     // 段の下の すき間（写真の黒い筋）
       var a=x.q[0],b=x.q[1],c=x.q[2],e=x.q[3], t=14/f.h;   // すき間は どの段も同じ 14mm（段の高さに比例させると 1段目だけ太くなる）
