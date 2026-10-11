@@ -5,7 +5,7 @@ var $ = function (id) { return document.getElementById(id); };
 /* ---- 保存：この端末のブラウザだけ。読めない環境では標準の配置で動く ---- */
 function clone(x) { return JSON.parse(JSON.stringify(x)); }
 function freshState() {
-  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk', outline: false } };
+  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk', outline: false, spaceText: true } };
 }
 function load() {
   try {
@@ -55,6 +55,7 @@ function scOf(l) { return SCENES[(l && l.scene) || ''] ? l.scene : 'desk'; }   /
 var scene = SCENES[S.prefs.scene] ? S.prefs.scene : 'desk';   // メニューで選んでいる場所
 useScene(scene);
 OUTLINE = !!S.prefs.outline;   // 物の輪郭を太く（端末に保存）
+SPACE_TEXT = S.prefs.spaceText !== false;   // 場の床の文字（端末に保存）
 var cur = null;          // 表示・編集中の配置
 var flip = false;
 var big = false;         // 大きく映す（全画面・真上からの図だけ・見出し）。その場かぎり        // 左右反転はその場かぎり（保存しない）
@@ -173,6 +174,7 @@ function renderShow() {
   $('sSides').disabled = S.prefs.group;
   $('sRuby').setAttribute('aria-pressed', String(S.prefs.ruby));
   $('sOutline').setAttribute('aria-pressed', String(OUTLINE));
+  $('sText').hidden = !SCENE.space; $('sText').setAttribute('aria-pressed', String(SPACE_TEXT));
   renderAway();
 }
 function renderAway() { $('away').innerHTML = awayHtml(cur); }
@@ -194,6 +196,7 @@ $('sFlip').onclick = function () { flip = !flip; renderShow(); };
 $('sSides').onclick = function () { S.prefs.topOnly = !S.prefs.topOnly; save(); renderShow(); };
 $('sChair').onclick = function () { S.prefs.chair = !S.prefs.chair; save(); renderShow(); };
 $('sRuby').onclick = function () { S.prefs.ruby = !S.prefs.ruby; save(); renderShow(); };
+$('sText').onclick = function () { SPACE_TEXT = S.prefs.spaceText = !SPACE_TEXT; save(); renderShow(); };
 $('sOutline').onclick = function () { OUTLINE = S.prefs.outline = !OUTLINE; save(); renderShow(); };
 /* 大きく映す：操作ボタンと「しまう物」を隠し、上に「机の上をこの形にしてね」、残りを真上からの図に使う */
 function setBig(on) {
@@ -279,6 +282,7 @@ function openEdit(id) {
   useScene(scOf(cur));
   sel = -1;
   $('eOutline').checked = OUTLINE;
+  $('eTextBox').hidden = !SCENE.space; $('eText').checked = SPACE_TEXT;
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
   go('vEdit'); renderEdit(); renderPalette();
 }
@@ -393,6 +397,7 @@ $('eBg').addEventListener('click', function (e) {
   var b = e.target.closest('[data-bg]'); if (!b) return;
   var id = b.getAttribute('data-bg'); if (id) cur.bg = id; else delete cur.bg; save(); renderEdit();
 });
+$('eText').onchange = function () { SPACE_TEXT = S.prefs.spaceText = this.checked; save(); renderEdit(); };
 $('eOutline').onchange = function () { OUTLINE = S.prefs.outline = this.checked; save(); renderEdit(); };
 $('eBack').onclick = renderHome;
 $('eShow').onclick = function () { openShow(cur.id); };

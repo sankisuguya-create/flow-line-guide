@@ -165,5 +165,15 @@ const ol=g.topView(lay,{noLabels:true}).svg;
 assert.equal((ol.match(/filter="url\(#ol-gym\)"/g)||[]).length,2); assert.ok(ol.includes('<filter id="ol-gym"'));
 vm.runInContext('OUTLINE=false',ctx);
 g.useScene('sp-pool-area'); assert.ok(g.topView(Object.assign({bg:'blue'},lay),{noLabels:true}).svg.includes('#DCE8F5'));
+// 場の文字のオン・オフ（方位は残す）
+g.useScene('gym');
+assert.ok(vm.runInContext('floorTopSvg()',ctx).includes('北の袖'));
+vm.runInContext('SPACE_TEXT=false',ctx);
+const nt=vm.runInContext('floorTopSvg()',ctx); assert.ok(!nt.includes('北の袖')&&!nt.includes('仮の地図')&&nt.includes('▲ 北'));
+vm.runInContext('SPACE_TEXT=true',ctx);
+// 足した物：どの状態も絵が壊れていない
+for(const id of ['hurdle','highjump','hoop','longrope','scoreboard','ballbasket','bibs','matcart','startline','goalline','tape','nummark','flag','classgroup','teacher','kengaku','island','ushape','monitor','worktable','board','locker','longtable','pipechairs','tent','broadcast','podium','hinadan'])
+  for(const st of Object.keys(ITEMS[id].states)){ const s=vm.runInContext(`drawTopItem({item:'${id}',state:'${st}',x:0,y:0,r:0,color:1},0,'')`,ctx); assert.ok(!/NaN|undefined/.test(s),id+':'+st); }
+assert.ok(vm.runInContext(`drawTopItem({item:'classgroup',state:'r2',x:0,y:0,r:0,color:2},0,'')`,ctx).includes('3組'));
 g.useScene('desk');
 console.log('ok');

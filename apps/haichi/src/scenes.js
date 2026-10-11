@@ -3,7 +3,7 @@
    space.json は m、配置図は mm なので 1000 倍。床の描き方は導線プレイヤー（engine/player/flow.js）と
    同じ決まり（docs/hub.md「描き方」）：線＝壁だけ、同じ zone は外まわりだけ、扉＝切れ目＋枠、開口＝切れ目、
    階段＝踏み段の線（矢印なし、下の階へは黒く消える）、床の目印＝点線。 */
-var SPACE_ITEMS = ['gbox', 'gboard', 'gmat', 'gthick', 'gcone', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'];
+var SPACE_ITEMS = ['gbox', 'gboard', 'gmat', 'gthick', 'gcone', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'].concat(EXTRA_SPACE_ITEMS);   // 足した物（desk/extra.js）のうち体育館に置ける物も
 SPACES.forEach(function (sp) {
   // 場の id が既存の場所（gym など）と同じなら、その場所の床をこの場で置きかえる（保存した配置・置ける物はそのまま）
   if (SCENES[sp.id] && !SCENES[sp.id].desk) {
@@ -64,8 +64,9 @@ function spaceFloorSvg(sp, bg) {   // bg：床の色（部屋・通路・場の�
     s += ln(a[0], a[1], b[0], b[1], fillOf(dr.fill), WALL * 1.6);
     if (dr.kind !== 'open') [a, b].forEach(function (p) { s += v ? ln(p[0] - k, p[1], p[0] + k, p[1], INKW, WALL) : ln(p[0], p[1] - k, p[0], p[1] + k, INKW, WALL); });
   });
+  if (!SPACE_TEXT) lab = '';
   if (sp.up) lab += tx(sp.size[0] - 0.3, 0.7, '▲ ' + sp.up, 0.8, null, 'end');
-  if (sp.status !== '確認済') lab += tx(0.3, sp.size[1] - 0.6, '※ 仮の地図', 0.7, '#B0392B', 'start');
+  if (SPACE_TEXT && sp.status !== '確認済') lab += tx(0.3, sp.size[1] - 0.6, '※ 仮の地図', 0.7, '#B0392B', 'start');
   return '<g transform="scale(1000)">' + (defs ? '<defs>' + defs + '</defs>' : '') + s + lab + '</g>';
 }
 // 矩形 b の4辺から、同じ zone の別の矩形と接している区間を引いた残り＝外まわりの壁（engine/player/flow.js と同じ）

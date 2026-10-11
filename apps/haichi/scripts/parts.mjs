@@ -9,6 +9,7 @@ export const FILES = {
   "tokens.css": "apps/haichi/src/tokens.css",
   "style.css": "apps/haichi/src/style.css",
   "data.js": "assets/objects/desk/data.js",
+  "extra.js": "assets/objects/desk/extra.js",
   "mesh.js": "assets/objects/gym/mesh.js",
   "items.js": "assets/objects/gym/items.js",
   "scenes.js": "apps/haichi/src/scenes.js",
@@ -34,4 +35,4 @@ export function read(name) {
   return fs.readFileSync(path.join(ROOT, FILES[name]), "utf8");
 }
 // テストが vm で読む順（app.js は画面が要るので除く）
-export const LOGIC = ["data.js", "mesh.js", "items.js", "spaces.js", "scenes.js", "draw.js"];
+export const LOGIC = ["data.js", "extra.js", "mesh.js", "items.js", "spaces.js", "scenes.js", "draw.js"];

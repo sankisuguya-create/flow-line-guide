@@ -45,6 +45,7 @@
     <button type="button" id="sSides" class="tb" aria-pressed="true">横から見た図</button>
     <button type="button" id="sChair" class="tb" aria-pressed="false">いす</button>
     <button type="button" id="sRuby" class="tb" aria-pressed="true">ふりがな</button>
+    <button type="button" id="sText" class="tb" aria-pressed="true" hidden>場所の名前</button>
     <button type="button" id="sOutline" class="tb" aria-pressed="false">輪郭を太く</button>
     <button type="button" id="sPrint" class="tb">印刷</button>
     <button type="button" id="sBig" class="primary">大きく映す</button>
@@ -66,6 +67,7 @@
     <label class="chk"><input type="checkbox" id="eFlip">左右反転してよい</label>
     <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
     <label class="chk"><input type="checkbox" id="eOutline">輪郭を太く</label>
+    <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">場所の名前</label>
     <div class="gridsel">グリッド<div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div></div>
     <span class="sp"></span>
     <button type="button" id="eShow" class="primary">映す</button>
@@ -119,6 +121,7 @@
 
 <script>
 /* @include data.js */
+/* @include extra.js */
 /* @include mesh.js */
 /* @include items.js */
 /* @include spaces.js */

@@ -130,6 +130,7 @@ var FLOOR_COLORS = [
 ];
 function floorColor(id) { var f = FLOOR_COLORS.filter(function (x) { return x.id === id; })[0]; return f ? f.c : null; }
 var OUTLINE = false;
+var SPACE_TEXT = true;   // 場の床の文字（「北の袖」など区画の名前・階段の行き先・仮の地図）を出すか。方位はいつも出す
 function T(cx, cy, text, fs, fill) {
   return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + MIRROR + ' 1)"><text x="0" y="' + (fs * 0.36) + '" font-size="' + fs +
     '" font-weight="700" text-anchor="middle" fill="' + (fill || INK) + '">' + String(text).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }) + '</text></g>';
