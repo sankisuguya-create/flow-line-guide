@@ -202,3 +202,6 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 .ebar .fld input{width:7.5em}
 .ebar #eYomi{width:6.5em}
 .ebar #eUndo,.ebar #eRedo{min-width:44px;font-size:20px;padding:4px 10px}
+
+/* 名前の吹き出し・引き出し線は 押せない（下の物を選べるように） */
+#editSvg .labels{pointer-events:none}

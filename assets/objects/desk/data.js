@@ -188,12 +188,12 @@ function roll360(w, h, right) {
 /* 矢印（動きの説明用）：軸はインクの縁＋色の太線、矢じりは角丸の多角形。
    「ながれる」は SMIL で破線が進行方向に流れる。 */
 var ARROW = '#F2994A';
-function arrowShaft(d, sw) {
+function arrowShaft(d, sw, col) {   // col：矢印の色（省くと ARROW）
   return '<path d="' + d + '" fill="none" stroke="' + INK + '" stroke-width="' + (sw + 80) + '" stroke-linecap="round" stroke-linejoin="round"/>' +
-         '<path d="' + d + '" fill="none" stroke="' + ARROW + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>';
+         '<path d="' + d + '" fill="none" stroke="' + (col || ARROW) + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>';
 }
-function arrowHead(pts) {
-  return '<path d="' + roundPoly(pts, 40) + '" fill="' + ARROW + '" stroke="' + INK + '" stroke-width="60" stroke-linejoin="round"/>';
+function arrowHead(pts, col) {
+  return '<path d="' + roundPoly(pts, 40) + '" fill="' + (col || ARROW) + '" stroke="' + INK + '" stroke-width="60" stroke-linejoin="round"/>';
 }
 function tireRing(r) {   // 中が透けるドーナツ（描く場所の床色にかかわらず正しく見える）
   var ri = r * 0.55;
@@ -552,20 +552,20 @@ var ITEMS = {
      編集画面の「矢印をのばす」で 先と元に となりの交点を足して のばす・曲げる（draw.js の pathArrowSvg） */
   arrow: { name: '{矢印|やじるし}', kind: 'top', scenes: ['class', 'gym', 'field'],
     colors: ['#F2994A', '#E5484D', '#2F80ED', '#46B97A', '#F2C94C', '#FFFFFF'], states: {
-    go: { w: 800, d: 3000, draw: function (w, h) {
-      return arrowHead([[w * 0.32, h], [w * 0.32, h * 0.44], [0, h * 0.44], [w / 2, 0], [w, h * 0.44], [w * 0.68, h * 0.44], [w * 0.68, h]]);
+    go: { w: 800, d: 3000, draw: function (w, h, col) {
+      return arrowHead([[w * 0.32, h], [w * 0.32, h * 0.44], [0, h * 0.44], [w / 2, 0], [w, h * 0.44], [w * 0.68, h * 0.44], [w * 0.68, h]], col);
     } },
-    zag: { w: 1800, d: 2600, draw: function (w, h) {   // つづら折れ（ジグザグに進む）
-      return arrowShaft('M ' + (w * 0.5) + ' ' + h + ' L ' + (w * 0.85) + ' ' + (h * 0.66) + ' L ' + (w * 0.15) + ' ' + (h * 0.38) + ' L ' + (w * 0.5) + ' ' + (h * 0.17), w * 0.2) +
-             arrowHead([[w * 0.2, h * 0.26], [w * 0.5, 0], [w * 0.8, h * 0.26]]);
+    zag: { w: 1800, d: 2600, draw: function (w, h, col) {   // つづら折れ（ジグザグに進む）
+      return arrowShaft('M ' + (w * 0.5) + ' ' + h + ' L ' + (w * 0.85) + ' ' + (h * 0.66) + ' L ' + (w * 0.15) + ' ' + (h * 0.38) + ' L ' + (w * 0.5) + ' ' + (h * 0.17), w * 0.2, col) +
+             arrowHead([[w * 0.2, h * 0.26], [w * 0.5, 0], [w * 0.8, h * 0.26]], col);
     } },
-    flow: { w: 900, d: 3200, draw: function (w, h) {   // 太い矢印の中を白い破線が進行方向に流れる
-      return '<path d="' + roundPoly([[w * 0.18, h], [w * 0.18, h * 0.4], [0, h * 0.4], [w / 2, 0], [w, h * 0.4], [w * 0.82, h * 0.4], [w * 0.82, h]], 50) + '" fill="' + ARROW + '" stroke="' + INK + '" stroke-width="50" stroke-linejoin="round"/>' +
+    flow: { w: 900, d: 3200, draw: function (w, h, col) {   // 太い矢印の中を白い破線が進行方向に流れる
+      return '<path d="' + roundPoly([[w * 0.18, h], [w * 0.18, h * 0.4], [0, h * 0.4], [w / 2, 0], [w, h * 0.4], [w * 0.82, h * 0.4], [w * 0.82, h]], 50) + '" fill="' + (col || ARROW) + '" stroke="' + INK + '" stroke-width="50" stroke-linejoin="round"/>' +
              '<line x1="' + (w / 2) + '" y1="' + (h * 0.93) + '" x2="' + (w / 2) + '" y2="' + (h * 0.16) + '" stroke="#FFF" stroke-width="' + (w * 0.14) + '" stroke-dasharray="' + (w * 0.22) + ' ' + (w * 0.16) + '" stroke-linecap="round">' +
              '<animate attributeName="stroke-dashoffset" from="' + (w * 0.38) + '" to="0" dur="0.9s" repeatCount="indefinite"/></line>';
     } },
-    path: { w: 800, d: 3000, draw: function (w, h) {   // 交点がまだ無いとき（アイコン）は まっすぐの形
-      return arrowHead([[w * 0.32, h], [w * 0.32, h * 0.44], [0, h * 0.44], [w / 2, 0], [w, h * 0.44], [w * 0.68, h * 0.44], [w * 0.68, h]]);
+    path: { w: 800, d: 3000, draw: function (w, h, col) {   // 交点がまだ無いとき（アイコン）は まっすぐの形
+      return arrowHead([[w * 0.32, h], [w * 0.32, h * 0.44], [0, h * 0.44], [w / 2, 0], [w, h * 0.44], [w * 0.68, h * 0.44], [w * 0.68, h]], col);
     } } } },
 
   kyushoku: { name: '{給食袋|きゅうしょくぶくろ}', kind: 'hang', side: [200, 260], t: 40, color: '#F2B8B5', style: 'string' },

@@ -104,6 +104,7 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
     }
     return s;
   } } } });
+  ITEMS.kids.controls = ['grid'];   // 編集画面に「横・縦の人数」を出す（app.js）
   ITEMS.kids.size = function (p) { var n = kidsN(p); return [n.nx * KID.dx, n.ny * KID.dy]; };
   add('teacher', ALL, { name: '{先生|せんせい}', states: one(450, 550, function (w, h) {   // 人の形＋「先」の名札
     return ELL(w / 2, h * 0.94, w * 0.42, h * 0.05, 'rgba(0,0,0,.16)') + C(w / 2, h * 0.18, w * 0.24, '#5B6B78', 8) +
@@ -175,3 +176,20 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
   /* 床に描く物：ほかの物より いつも下に描く（draw.js の drawOrder） */
   ['startline', 'goalline', 'tape', 'nummark', 'gline', 'fmark'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].floor = true; });
 })();
+
+/* ---- 矢印の「じゆう」：交点を結ぶ折れ線 ---- */
+function isPath(p) { return p.item === 'arrow' && stateOf(p) === 'path' && Array.isArray(p.pts) && p.pts.length >= 2; }
+function pathBox(p) {   // p.x,p.y からのずれで、線の太さ・矢じりの分を足した範囲
+  var m = 500 * scaleOf(p), xs = p.pts.map(function (q) { return q[0]; }), ys = p.pts.map(function (q) { return q[1]; });
+  return { x0: Math.min.apply(null, xs) - m, x1: Math.max.apply(null, xs) + m, y0: Math.min.apply(null, ys) - m, y1: Math.max.apply(null, ys) + m };
+}
+function pathArrowSvg(p) {
+  var s = scaleOf(p), P = p.pts, n = P.length, T = P[n - 1], B = P[n - 2];
+  var dx = T[0] - B[0], dy = T[1] - B[1], L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+  var hl = Math.min(750 * s, L * 0.9), hw = 850 * s, bx = T[0] - ux * hl, by = T[1] - uy * hl;
+  var d = 'M ' + P.slice(0, n - 1).map(function (q) { return q[0] + ' ' + q[1]; }).join(' L ') + ' L ' + bx + ' ' + by;
+  var col = colorOf(p);
+  return arrowShaft(d, 300 * s, col) + arrowHead([[bx - uy * hw / 2, by + ux * hw / 2], [T[0], T[1]], [bx + uy * hw / 2, by - ux * hw / 2]], col);
+}
+ITEMS.arrow.custom = function (p) { return isPath(p) ? { box: pathBox(p), draw: function () { return pathArrowSvg(p); } } : null; };
+ITEMS.arrow.controls = ['path'];   // 編集画面に「矢印をのばす」を出す（app.js）
