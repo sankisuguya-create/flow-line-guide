@@ -47,6 +47,7 @@ function sanitize(s) {
 }
 function isHang(h) { return h && ITEMS[h.item] && ITEMS[h.item].kind === 'hang'; }
 function save() {
+  record();
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('この端末には保存できません（書き出しで残してください）'); }
 }
 
@@ -282,6 +283,8 @@ function openEdit(id) {
   cur = byId(id); if (!cur) return renderHome();
   useScene(scOf(cur));
   sel = -1; EZ.k = 1; EZ.cx = null;
+  hist = { undo: [], redo: [], last: JSON.stringify(cur) };
+  histButtons();
   $('eOutline').checked = OUTLINE; $('eGridShow').checked = S.prefs.gridShow !== false;
   $('eTextBox').hidden = !SCENE.space; $('eText').checked = SPACE_TEXT;
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
@@ -454,6 +457,56 @@ function svgPoint(svg, e) {
   var pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
   return pt.matrixTransform(svg.getScreenCTM().inverse());
 }
+/* ---- 取り消し・やり直し（Ctrl+Z／Ctrl+Y・Ctrl+Shift+Z）----
+   編集画面で保存するたびに、変える前の配置を積む。配置を開き直すと空になる（配置ごと・この画面の間だけ）。 */
+var hist = { undo: [], redo: [], last: null }, HIST_MAX = 100;
+function record() {
+  if (!cur || $('vEdit').hidden || hist.last == null) return;
+  var s = JSON.stringify(cur);
+  if (s === hist.last) return;
+  hist.undo.push(hist.last); if (hist.undo.length > HIST_MAX) hist.undo.shift();
+  hist.redo = []; hist.last = s; histButtons();
+}
+function restore(s) {   // cur は S.layouts の中の同じ物なので、中身だけを入れかえる
+  var o = JSON.parse(s);
+  Object.keys(cur).forEach(function (k) { delete cur[k]; }); Object.keys(o).forEach(function (k) { cur[k] = o[k]; });
+  hist.last = s;
+  if (sel >= cur.top.length) sel = -1;
+  $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+  renderEdit(); renderPalette(); histButtons();
+}
+function undo() { if (!hist.undo.length) return; hist.redo.push(hist.last); restore(hist.undo.pop()); }
+function redo() { if (!hist.redo.length) return; hist.undo.push(hist.last); restore(hist.redo.pop()); }
+function histButtons() { $('eUndo').disabled = !hist.undo.length; $('eRedo').disabled = !hist.redo.length; }
+$('eUndo').onclick = undo; $('eRedo').onclick = redo;
+
+/* ---- 写す・切り取る・貼る（Ctrl+C／Ctrl+X／Ctrl+V）、複製（Ctrl+D）、けす（Delete）----
+   選んだ物を1つ写しておき、貼ると グリッド1目ずつ右下にずらして置く。別の配置にも貼れる（その場所に置ける物だけ）。 */
+var clip = null, pasteN = 0;
+function canPlace(id) { return SCENE.desk ? !(ITEMS[id].scenes || []).length : SCENE.items.indexOf(id) >= 0; }
+function pasteItem(src) {
+  if (!canPlace(src.item)) { toast('この場所には置けない物です'); return; }
+  var g = gridLevel(S.prefs.grid), q = clone(src);
+  pasteN++; q.x += pasteN * DESK.w / g.nx; q.y += pasteN * DESK.d / g.ny; clampP(q);
+  cur.top.push(q); sel = cur.top.length - 1; save(); renderEdit();
+}
+document.addEventListener('keydown', function (e) {
+  if ($('vEdit').hidden || e.target.closest('input,textarea') || e.altKey) return;
+  var k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+  if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+  if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
+  if (mod && k === 'v') { if (clip) { e.preventDefault(); pasteItem(clip); } return; }
+  if (sel < 0) return;
+  if (mod && (k === 'c' || k === 'x')) {
+    e.preventDefault(); clip = clone(cur.top[sel]); pasteN = 0;
+    if (k === 'x') { cur.top.splice(sel, 1); sel = -1; save(); renderEdit(); toast('切り取りました'); } else toast('写しました（Ctrl+V で貼る）');
+    return;
+  }
+  if (mod && k === 'd') { e.preventDefault(); pasteN = 0; pasteItem(cur.top[sel]); return; }
+  if (k === 'delete' || k === 'backspace') { e.preventDefault(); cur.top.splice(sel, 1); sel = -1; save(); renderEdit(); }
+});
+
 /* ---- 編集画面の拡大・縮小 ----
    ホイール（マウス・タッチパッド）：指している所を中心に拡大・縮小。2本指：つまんで拡大・縮小、そのまま動かすと移動。
    空いた所を引きずる：拡大しているとき、見る範囲を動かす（引きずらずに離せば、これまでどおり「選んだ物をそこへ移す」）。
