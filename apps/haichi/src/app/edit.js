@@ -110,7 +110,12 @@ function renderPalette() {
   var kind = tab === 'hang' ? 'hang' : 'top';
   var ids = deskMode ? Object.keys(ITEMS).filter(function (id) { return (tab === 'away' || ITEMS[id].kind === kind) && !(ITEMS[id].scenes || []).length; })
                      : SCENE.items.slice();
-  var tile = function (id) { return '<button type="button" data-add="' + id + '">' + iconSvg(id, 54) + '<span>' + plainName(ITEMS[id].name) + '</span></button>'; };
+  /* パレットのチップ：横長の物（ライン・平均台など）は 絵を上・名前を下。それ以外は 絵を左に できるだけ大きく、名前を右に */
+  var tile = function (id) {
+    var it = ITEMS[id], wd = it.kind === 'hang' ? [1, 1] : itemSize({ item: id, state: Object.keys(it.states)[0] });
+    var wide = wd[0] / wd[1] >= 2.2;
+    return '<button type="button" class="' + (wide ? 'wide' : 'side') + '" data-add="' + id + '">' + iconSvg(id, wide ? 54 : 60) + '<span>' + plainName(it.name) + '</span></button>';
+  };
   if (deskMode) { $('pItems').innerHTML = ids.map(tile).join(''); return; }
   // 場所：用具・設備／矢印・目印／人 に分けて並べる
   $('pItems').innerHTML = PALETTE_GROUPS.map(function (g) {

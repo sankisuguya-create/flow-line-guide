@@ -283,6 +283,17 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 .mref{font-size:13px;font-weight:700;color:#A4520C}
 .mhead{font-size:12px;font-weight:800;color:var(--ink-soft);margin-top:4px}
 #mAlign .dpanel{left:0;right:auto}
+
+/* パレットのチップ：横長以外は 絵を左に大きく */
+.tiles button.side{flex-direction:row;justify-content:flex-start;gap:6px;padding:2px 6px 2px 2px;min-height:64px;text-align:left}
+.tiles button.side svg{flex:0 0 auto;width:60px;height:60px}
+.tiles button.side span{flex:1;min-width:0}
+/* 選んだ物：点線の枠ではなく 薄い半透明の青を重ねる（基準の物は 薄い橙） */
+#editSvg .selbox{fill:rgba(44,92,158,.22)!important;stroke:none!important}
+#editSvg .it.ref .selbox{fill:rgba(224,122,31,.26)!important;stroke:none!important}
+/* 絵を左に置くので 2列（名前が1行〜2行で読める幅） */
+.tiles{grid-template-columns:repeat(2,1fr)}
+.tiles button.side span{font-size:13px}
 /* ▲ style.css ここまで ▲ */
 </style>
 </head>
@@ -2973,7 +2984,12 @@ function renderPalette() {
   var kind = tab === 'hang' ? 'hang' : 'top';
   var ids = deskMode ? Object.keys(ITEMS).filter(function (id) { return (tab === 'away' || ITEMS[id].kind === kind) && !(ITEMS[id].scenes || []).length; })
                      : SCENE.items.slice();
-  var tile = function (id) { return '<button type="button" data-add="' + id + '">' + iconSvg(id, 54) + '<span>' + plainName(ITEMS[id].name) + '</span></button>'; };
+  /* パレットのチップ：横長の物（ライン・平均台など）は 絵を上・名前を下。それ以外は 絵を左に できるだけ大きく、名前を右に */
+  var tile = function (id) {
+    var it = ITEMS[id], wd = it.kind === 'hang' ? [1, 1] : itemSize({ item: id, state: Object.keys(it.states)[0] });
+    var wide = wd[0] / wd[1] >= 2.2;
+    return '<button type="button" class="' + (wide ? 'wide' : 'side') + '" data-add="' + id + '">' + iconSvg(id, wide ? 54 : 60) + '<span>' + plainName(it.name) + '</span></button>';
+  };
   if (deskMode) { $('pItems').innerHTML = ids.map(tile).join(''); return; }
   // 場所：用具・設備／矢印・目印／人 に分けて並べる
   $('pItems').innerHTML = PALETTE_GROUPS.map(function (g) {

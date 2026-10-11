@@ -225,3 +225,14 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 .mref{font-size:13px;font-weight:700;color:#A4520C}
 .mhead{font-size:12px;font-weight:800;color:var(--ink-soft);margin-top:4px}
 #mAlign .dpanel{left:0;right:auto}
+
+/* パレットのチップ：横長以外は 絵を左に大きく */
+.tiles button.side{flex-direction:row;justify-content:flex-start;gap:6px;padding:2px 6px 2px 2px;min-height:64px;text-align:left}
+.tiles button.side svg{flex:0 0 auto;width:60px;height:60px}
+.tiles button.side span{flex:1;min-width:0}
+/* 選んだ物：点線の枠ではなく 薄い半透明の青を重ねる（基準の物は 薄い橙） */
+#editSvg .selbox{fill:rgba(44,92,158,.22)!important;stroke:none!important}
+#editSvg .it.ref .selbox{fill:rgba(224,122,31,.26)!important;stroke:none!important}
+/* 絵を左に置くので 2列（名前が1行〜2行で読める幅） */
+.tiles{grid-template-columns:repeat(2,1fr)}
+.tiles button.side span{font-size:13px}
