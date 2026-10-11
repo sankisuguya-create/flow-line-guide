@@ -114,7 +114,7 @@ function posAt(g,t){
   if(t<=K[0][0]) return {x:K[0][1],y:K[0][2],seg:-1,i:0,u:0};
   for(i=0;i<K.length-1;i++){
     if(t<K[i+1][0]){
-      var a=K[i],b=K[i+1],u=(t-a[0])/(b[0]-a[0]), mv=(a[1]!==b[1]||a[2]!==b[2]||b[4]===1);
+      var a=K[i],b=K[i+1],u=(t-a[0])/(b[0]-a[0]), mv=(a[1]!==b[1]||a[2]!==b[2]||b[4]>0);
       return {x:a[1]+(b[1]-a[1])*u, y:a[2]+(b[2]-a[2])*u, seg:mv?i:-1, i:i, u:u};
     }
   }
@@ -131,8 +131,8 @@ function slotsOf(g,key){
 function kidsAt(g,t){
   var p=posAt(g,t), K=g.keys, a=K[p.i], b=K[p.i+1];
   if(p.seg<0||!b) return slotsOf(g,{1:p.x,2:p.y,3:(p.seg<0?a[3]:null)});
-  if(b[4]===1){ var A=slotsOf(g,a), B=slotsOf(g,b), out=[];
-    for(var j=0;j<g.n;j++){ var row=Math.floor(j/g.per), u=Math.max(0,Math.min(1,(p.u-row*0.45)/0.55)); u=u*u*(3-2*u);
+  if(b[4]>0){ var A=slotsOf(g,a), B=slotsOf(g,b), out=[];   // 4=2 は逆順（あとから入った列が先に動く）
+    for(var j=0;j<g.n;j++){ var row=Math.floor(j/g.per); if(b[4]===2) row=1-row; var u=Math.max(0,Math.min(1,(p.u-row*0.45)/0.55)); u=u*u*(3-2*u);
       out.push([A[j][0]+(B[j][0]-A[j][0])*u, A[j][1]+(B[j][1]-A[j][1])*u]); }
     return out; }
   return slotsOf(g,{1:p.x,2:p.y,3:null});

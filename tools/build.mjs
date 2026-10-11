@@ -54,7 +54,7 @@ export function compile(plan, space) {
     if (f.path) {                                // 線に沿って並ぶ（角で直角に曲がる）。始点＝中央側＝背の高い児童
       const seg = []; let tot = 0;
       for (let i = 1; i < f.path.length; i++) { const [a, b] = [f.path[i - 1], f.path[i]], L = Math.hypot(b[0] - a[0], b[1] - a[1]); seg.push({ a, b, L, s: tot }); tot += L; }
-      for (let j = 0; j < n; j++) { const row = Math.floor(j / per), k = j % per, d = Math.min(tot, (per - 1 - k) * f.gap);
+      for (let j = 0; j < n; j++) { const row = Math.floor(j / per), k = j % per, d = Math.min(tot, (f.head ? k : per - 1 - k) * f.gap);
         const sg = seg.find(q => d <= q.s + q.L + 1e-9) || seg[seg.length - 1], u = (d - sg.s) / sg.L;
         const dx = (sg.b[0] - sg.a[0]) / sg.L, dy = (sg.b[1] - sg.a[1]) / sg.L;
         const nx = f.side === "right" ? -dy : dy, ny = f.side === "right" ? dx : -dx;   // プール側の向き
@@ -89,7 +89,7 @@ export function compile(plan, space) {
     const v = { ...g.vars, k }, n = g.n || 32, per = rows2(n);
     const forms = {}, keys = []; let at = null, t = null, form = null;
     // key = [時刻, x, y, 隊形名|null, 隊形を ひとりずつ動かして変えるか(1)]
-    const put = (tt, xy, fm, morph) => keys.push([+tt.toFixed(3), +xy[0].toFixed(2), +xy[1].toFixed(2), fm || null, morph ? 1 : 0]);
+    const put = (tt, xy, fm, morph) => keys.push([+tt.toFixed(3), +xy[0].toFixed(2), +xy[1].toFixed(2), fm || null, morph === 2 ? 2 : morph ? 1 : 0]);
     const arrive = p => { const F = FORMS[p]; if (!F) return null; const name = Object.keys(F.forms)[0], key = p + "|" + name;
       forms[key] ||= lineSlots(p, name, n); return key; };
     const here = () => form ? cen(forms[form]) : P[at];
@@ -115,7 +115,12 @@ export function compile(plan, space) {
         const p = fill(step.point, v); P[p] = cen(forms[key]);   // 水の中の点を 隊形の中心に合わせる（あとの経路の起点）
         form = key; at = p; t += step.dur || 1.6; put(t, here(), form, true); continue;
       }
-      form = null; put(t, P[at], null);
+      if (step.return) {                                 // 水から上がる：入水した位置（整列の隊形）へ ひとりずつ戻る。ふち側の列から
+        const p = fill(step.return, v), key = arrive(p);
+        if (!key) { warn.push(`${g.label}: ${p} に 隊形がない`); continue; }
+        form = key; at = p; t += step.dur || 1.2; put(t, here(), form, 2); continue;
+      }
+      if (form) { t += 0.3; form = null; put(t, P[at], null, true); }   // 隊形から かたまりに戻ってから 動く
       for (const raw of step.to) {
         const tg = typeof raw === "string" ? { p: raw } : raw, p = fill(tg.p, v);
         if (!P[p]) { warn.push(`${g.label}: 場所 ${p} がない`); continue; }
@@ -123,7 +128,11 @@ export function compile(plan, space) {
         if (!r) { warn.push(`${g.label}: ${at} → ${p} へ行ける通路がない（一方通行を確認）`); continue; }
         for (let i = 1; i < r.length; i++) { t += cost(r[i - 1], r[i], edgeOf(r[i - 1], r[i])); put(t, P[r[i]]); }
         at = p;
-        if (tg.wait) { t += tg.wait; put(t, P[p]); }
+        if (tg.wait) {
+          const fk = FORMS[p] ? arrive(p) : null;           // 途中で並ぶ所（シャワー前の行列など）
+          if (fk) { form = fk; t += 0.3; put(t, here(), form, true); t += tg.wait; put(t, here(), form); t += 0.3; form = null; put(t, P[p], null, true); }
+          else { t += tg.wait; put(t, P[p]); }
+        }
       }
       form = arrive(at); if (form) { t += 0.3; put(t, here(), form, true); }
     }

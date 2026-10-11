@@ -105,6 +105,10 @@
         "stagger": 2.5,
         "to": [
           {
+            "p": "showerOut",
+            "wait": 0.5
+          },
+          {
             "p": "shower",
             "wait": 1.5
           },
@@ -119,9 +123,8 @@
       },
       {
         "at": "9:25",
-        "to": [
-          "line.{c}"
-        ]
+        "return": "line.{c}",
+        "dur": 1.2
       },
       {
         "at": "9:31",
@@ -131,14 +134,17 @@
       },
       {
         "at": "10:10",
-        "to": [
-          "edge.{c}"
-        ]
+        "return": "line.{c}",
+        "dur": 1.2
       },
       {
         "at": "10:11",
         "stagger": 1.5,
         "to": [
+          {
+            "p": "showerOut",
+            "wait": 0.5
+          },
           {
             "p": "shower",
             "wait": 1
