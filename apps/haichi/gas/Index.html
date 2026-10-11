@@ -277,6 +277,12 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 /* パレット：用具・設備／矢印・目印／人 に分けて見出し */
 .pgroup{grid-column:1/-1;margin:8px 0 2px;font-size:13px;font-weight:800;color:var(--ink-soft);border-bottom:1px solid var(--rule-soft);padding-bottom:2px}
 .pgroup:first-child{margin-top:0}
+
+/* まとめて選んだとき：基準の物は橙の実線の枠 */
+#editSvg .it.ref .selbox{stroke:#E07A1F;stroke-dasharray:none!important}
+.mref{font-size:13px;font-weight:700;color:#A4520C}
+.mhead{font-size:12px;font-weight:800;color:var(--ink-soft);margin-top:4px}
+#mAlign .dpanel{left:0;right:auto}
 /* ▲ style.css ここまで ▲ */
 </style>
 </head>
@@ -372,14 +378,33 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
   </header>
   <div class="ebody">
     <div class="ecanvas">
+      <!-- まとめて選んだとき：①何個・基準 ②揃える▾・大きさ ③複製・削除・解除 -->
       <div id="multiBar" class="selbar" hidden>
         <strong id="mCount"></strong>
-        <span class="seg" role="group" aria-label="横をそろえる"><button type="button" data-al="left" title="左揃え">⇤ 左揃え</button><button type="button" data-al="hcenter" title="左右中央揃え">↔ 中央</button><button type="button" data-al="right" title="右揃え">右揃え ⇥</button></span>
-        <span class="seg" role="group" aria-label="縦をそろえる"><button type="button" data-al="top" title="上揃え">⤒ 上揃え</button><button type="button" data-al="vcenter" title="上下中央揃え">↕ 中央</button><button type="button" data-al="bottom" title="下揃え">下揃え ⤓</button></span>
-        <span class="seg" role="group" aria-label="等間隔に並べる"><button type="button" data-al="hdist">横に等間隔</button><button type="button" data-al="vdist">縦に等間隔</button></span>
-        <button type="button" id="mDup">複製</button>
-        <button type="button" id="mDel" class="danger">削除</button>
-        <button type="button" id="mNone">選択を解除</button>
+        <span class="bgroup">
+          <span id="mRef" class="mref"></span>
+          <button type="button" id="mRefNext" title="揃えるときの基準（橙の枠）を 選んだ物の中で切り替える">基準を変える</button>
+        </span>
+        <span class="bgroup">
+          <details class="dispmenu" id="mAlign">
+            <summary>揃える</summary>
+            <div class="dpanel">
+              <div class="mhead">基準の物に合わせる</div>
+              <div class="seg"><button type="button" data-ref="x" title="基準と同じ x（縦一列）に並べる">縦一列（x を合わせる）</button><button type="button" data-ref="y" title="基準と同じ y（横一列）に並べる">横一列（y を合わせる）</button></div>
+              <div class="mhead">等間隔に並べる</div>
+              <div class="seg"><button type="button" data-al="hdist">横に等間隔</button><button type="button" data-al="vdist">縦に等間隔</button></div>
+              <div class="mhead">端を揃える</div>
+              <div class="seg"><button type="button" data-al="left">左</button><button type="button" data-al="hcenter">左右中央</button><button type="button" data-al="right">右</button></div>
+              <div class="seg"><button type="button" data-al="top">上</button><button type="button" data-al="vcenter">上下中央</button><button type="button" data-al="bottom">下</button></div>
+            </div>
+          </details>
+          <span class="seg" role="group" aria-label="大きさ（まとめて）"><button type="button" id="mSmall" aria-label="まとめて縮小">－</button><button type="button" id="mReal" title="実寸（100%）に戻す">100%</button><button type="button" id="mBig" aria-label="まとめて拡大">＋</button></span>
+        </span>
+        <span class="bgroup">
+          <button type="button" id="mDup">複製</button>
+          <button type="button" id="mDel" class="danger">削除</button>
+          <button type="button" id="mNone">選択を解除</button>
+        </span>
       </div>
       <!-- 選んだ物の操作：①種類（状態・判型・色・文字）②形（大きさ・回転・人数・矢印）③そのほか -->
       <div id="selBar" class="selbar" hidden>
@@ -1970,13 +1995,13 @@ function selBox(b) {
 function drawTopItem(p, i, cls) {
   var head = '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="' + itemTransform(p) + '">';
   var c = customOf(p);
-  if (c) return head + '<g' + olAttr() + '>' + c.draw() + '</g>' + (cls === 'sel' ? selBox(c.box) : '') + '</g>';
+  if (c) return head + '<g' + olAttr() + '>' + c.draw() + '</g>' + (/\bsel\b/.test(cls) ? selBox(c.box) : '') + '</g>';
   var st = ITEMS[p.item].states[stateOf(p)], wd = baseSize(p), w = wd[0], d = wd[1], k = K / scaleOf(p);   // k：選ぶ枠の線は拡大しても同じ太さ
   MIRROR = p.m ? -1 : 1;
   var body = st.draw(w, d, colorOf(p), p);
   MIRROR = 1;
   return head + '<g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')"><g' + olAttr() + '>' + body + '</g>' +
-         (cls === 'sel' ? '<rect class="selbox" x="' + (-10 * k) + '" y="' + (-10 * k) + '" width="' + (w + 20 * k) + '" height="' + (d + 20 * k) + '" rx="' + 10 * k + '" style="stroke-width:' + 6 * k + ';stroke-dasharray:' + 18 * k + ' ' + 10 * k + '"/>' : '') + '</g></g>';
+         (/\bsel\b/.test(cls) ? '<rect class="selbox" x="' + (-10 * k) + '" y="' + (-10 * k) + '" width="' + (w + 20 * k) + '" height="' + (d + 20 * k) + '" rx="' + 10 * k + '" style="stroke-width:' + 6 * k + ';stroke-dasharray:' + 18 * k + ' ' + 10 * k + '"/>' : '') + '</g></g>';
 }
 function iconSvg(itemId, size) {   // しまう物・編集のパレット用の小さな絵
   var it = ITEMS[itemId], w, d, body;
@@ -2126,7 +2151,7 @@ function topView(lay, o) {
   var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
   drawOrder(lay.top).forEach(function (i) {
     var p = lay.top[i];
-    s += drawTopItem(p, i, (Array.isArray(o.sel) ? o.sel.indexOf(i) >= 0 : o.sel === i) ? 'sel' : '');   // o.sel：番号 か 番号の並び（まとめて選んだとき）
+    s += drawTopItem(p, i, ((Array.isArray(o.sel) ? o.sel.indexOf(i) >= 0 : o.sel === i) ? 'sel' : '') + (o.ref === i ? ' ref' : ''));   // ref：揃えるときの基準の物   // o.sel：番号 か 番号の並び（まとめて選んだとき）
     var bb = itemBounds(p);
     ib.x0 = Math.min(ib.x0, bb.x0); ib.x1 = Math.max(ib.x1, bb.x1);
     ib.y0 = Math.min(ib.y0, bb.y0); ib.y1 = Math.max(ib.y1, bb.y1);
@@ -2850,7 +2875,7 @@ function openEdit(id) {
   go('vEdit'); renderEdit(); renderPalette();
 }
 function renderEdit() {
-  var t = topView(cur, { ruby: false, sel: msel.length > 1 ? msel : sel, grid: S.prefs.gridShow === false ? null : gridLevel(S.prefs.grid) });   // 線を消しても交点への吸着は続く
+  var t = topView(cur, { ruby: false, sel: msel.length > 1 ? msel : sel, ref: msel.length > 1 ? sel : -1, grid: S.prefs.gridShow === false ? null : gridLevel(S.prefs.grid) });   // 線を消しても交点への吸着は続く
   var b = t.box, pad = 60 * K;
   var svg = $('editSvg');
   // 余白は広めに固定して、吹き出しが増えても床が跳ねないようにする（場所の広さに合わせて K 倍）
@@ -2862,7 +2887,12 @@ function renderEdit() {
   applyZoom();
   var multi = msel.length > 1;
   $('multiBar').hidden = !multi;
-  if (multi) $('mCount').textContent = msel.length + '個';
+  if (multi) {
+    $('mCount').textContent = msel.length + '個';
+    $('mRef').textContent = '基準：' + plainName(ITEMS[cur.top[sel].item].name);   // 揃えるときに動かさない物（最後に選んだ物・橙の枠）
+    var ss = msel.map(function (i) { return scaleOf(cur.top[i]); });
+    $('mReal').textContent = ss.every(function (v) { return v === ss[0]; }) ? Math.round(ss[0] * 100) + '%' : '混在';
+  }
   var p = multi ? null : cur.top[sel];
   $('selBar').hidden = !p;
   if (p) {
@@ -2979,7 +3009,7 @@ $('eBg').addEventListener('click', function (e) {
 });
 $('eText').onchange = function () { SPACE_TEXT = S.prefs.spaceText = this.checked; save(); renderEdit(); };
 document.addEventListener('pointerdown', function (e) {   // ▾ の板は 外を押すと閉じる
-  ['eDisp', 'eGridMenu', 'eMore'].forEach(function (id) { var d = $(id); if (d.open && !e.target.closest('#' + id)) d.open = false; });
+  ['eDisp', 'eGridMenu', 'eMore', 'mAlign'].forEach(function (id) { var d = $(id); if (d.open && !e.target.closest('#' + id)) d.open = false; });
 });
 $('eGridShow').onchange = function () { S.prefs.gridShow = this.checked; save(); renderEdit(); };
 $('eOutline').onchange = function () { OUTLINE = S.prefs.outline = this.checked; save(); renderEdit(); };
@@ -3120,8 +3150,34 @@ function alignSel(how) {
   });
   save(); renderEdit();
 }
+/* 基準に揃える：基準の物の 中心の x（縦一列）か y（横一列）に ほかの物の中心を合わせる。等間隔：基準は動かさず、
+   両はしの物の間に 中心を等しい間隔で並べる（並びの順は いまの位置の順） */
+function alignToRef(axis) {
+  var set = selected(), ref = cur.top[sel]; if (set.length < 2 || !ref) return;
+  var rb = itemBounds(ref), c = axis === 'x' ? (rb.x0 + rb.x1) / 2 : (rb.y0 + rb.y1) / 2;
+  set.forEach(function (i) {
+    var p = cur.top[i], b = itemBounds(p);
+    if (axis === 'x') p.x += c - (b.x0 + b.x1) / 2; else p.y += c - (b.y0 + b.y1) / 2;
+  });
+  save(); renderEdit();
+}
+function scaleSel(f) {   // まとめて拡大・縮小（f：倍率。0 なら実寸に戻す）。物ごとの中心は動かさない
+  selected().forEach(function (i) {
+    var p = cur.top[i], s = f ? scaleOf(p) * f : 1;
+    s = Math.round(Math.min(SCALE_MAX, Math.max(SCALE_MIN, s)) * 100) / 100;
+    if (s === 1) delete p.s; else p.s = s;
+  });
+  save(); renderEdit();
+}
 $('multiBar').addEventListener('click', function (e) {
-  var b = e.target.closest('[data-al]'); if (b) { alignSel(b.getAttribute('data-al')); return; }
+  if (e.target.closest('#mRefNext')) {   // 基準を 選んだ物の中で次へ
+    var k = msel.indexOf(sel); sel = msel[(k + 1) % msel.length]; renderEdit(); return;
+  }
+  var ax = e.target.closest('[data-ref]'); if (ax) { alignToRef(ax.getAttribute('data-ref')); $('mAlign').open = false; return; }
+  if (e.target.closest('#mSmall')) { scaleSel(1 / 1.25); return; }
+  if (e.target.closest('#mBig')) { scaleSel(1.25); return; }
+  if (e.target.closest('#mReal')) { scaleSel(0); return; }
+  var b = e.target.closest('[data-al]'); if (b) { alignSel(b.getAttribute('data-al')); $('mAlign').open = false; return; }
   if (e.target.closest('#mDup')) { pasteN = 0; pasteItem(selected().map(function (i) { return clone(cur.top[i]); })); }
   if (e.target.closest('#mDel')) { removeItems(selected()); save(); renderEdit(); }
   if (e.target.closest('#mNone')) { selectOnly(-1); renderEdit(); }
@@ -3310,7 +3366,10 @@ function bandSelect(a, b, add) {   // 囲みに少しでもかかった物を選
   var hit = [];
   cur.top.forEach(function (p, i) { var bb = itemBounds(p); if (bb.x1 >= x0 && bb.x0 <= x1 && bb.y1 >= y0 && bb.y0 <= y1) hit.push(i); });
   if (add) selected().forEach(function (i) { if (hit.indexOf(i) < 0) hit.push(i); });
-  msel = hit.length > 1 ? hit : []; sel = hit.length ? hit[hit.length - 1] : -1;
+  msel = hit.length > 1 ? hit : [];
+  // 基準（揃えるときに動かさない物）は 引きずり始めた所にいちばん近い物
+  var dist = function (i) { var b = itemBounds(cur.top[i]); return Math.hypot((b.x0 + b.x1) / 2 - a.x, (b.y0 + b.y1) / 2 - a.y); };
+  sel = hit.length ? hit.reduce(function (m, i) { return dist(i) < dist(m) ? i : m; }, hit[0]) : -1;
   renderEdit();
 }
 function emptyTap(q) {

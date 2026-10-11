@@ -219,3 +219,9 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 /* パレット：用具・設備／矢印・目印／人 に分けて見出し */
 .pgroup{grid-column:1/-1;margin:8px 0 2px;font-size:13px;font-weight:800;color:var(--ink-soft);border-bottom:1px solid var(--rule-soft);padding-bottom:2px}
 .pgroup:first-child{margin-top:0}
+
+/* まとめて選んだとき：基準の物は橙の実線の枠 */
+#editSvg .it.ref .selbox{stroke:#E07A1F;stroke-dasharray:none!important}
+.mref{font-size:13px;font-weight:700;color:#A4520C}
+.mhead{font-size:12px;font-weight:800;color:var(--ink-soft);margin-top:4px}
+#mAlign .dpanel{left:0;right:auto}

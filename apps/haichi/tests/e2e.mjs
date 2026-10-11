@@ -72,13 +72,23 @@ await step('まとめて選ぶ：Shift＋押す・囲む・そろえる・まと
   await p.locator(`#editSvg .it[data-i="${boxes[0]}"]`).click();
   for (const i of boxes.slice(1)) await p.locator(`#editSvg .it[data-i="${i}"]`).click({modifiers: ['Shift']});
   assert.equal(await p.textContent('#mCount'), '3個');
-  await p.click('[data-al="hdist"]');
+  await p.click('#mAlign summary'); await p.click('[data-al="hdist"]');
   let t = await top(); const xs = boxes.map(i => t[i].x).sort((a, b) => a - b);
   assert.ok(Math.abs((xs[1] - xs[0]) - (xs[2] - xs[1])) < 1e-6, '横に等間隔');
   const y0 = boxes.map(i => t[i].y);
   await p.keyboard.press('ArrowDown');
   t = await top(); assert.ok(boxes.every((i, k) => t[i].y > y0[k]), 'まとめて動く');
   await p.keyboard.press('Control+z');
+  // 基準に揃える：基準（最後に選んだ物）の y に 横一列で合わせる
+  const ref = await p.evaluate(() => sel);
+  await p.click('#mAlign summary'); await p.click('[data-ref="y"]');
+  t = await top(); assert.ok(boxes.every(i => Math.abs(t[i].y - t[ref].y) < 1e-6), '基準の y に揃う');
+  await p.click('#mRefNext'); assert.notEqual(await p.evaluate(() => sel), ref, '基準を変えられる');
+  // まとめて拡大・縮小
+  await p.click('#mBig'); t = await top(); assert.ok(boxes.every(i => t[i].s === 1.25), 'まとめて125%');
+  assert.equal(await p.textContent('#mReal'), '125%');
+  await p.click('#mReal'); t = await top(); assert.ok(boxes.every(i => !t[i].s), '実寸に戻す');
+  await p.keyboard.press('Control+z'); await p.keyboard.press('Control+z'); await p.keyboard.press('Control+z');
   // 囲む：図の左上から右下まで引きずると すべて選ぶ
   await p.keyboard.press('Escape');
   const box = await p.locator('#editSvg').boundingBox();

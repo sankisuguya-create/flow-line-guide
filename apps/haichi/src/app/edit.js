@@ -12,7 +12,7 @@ function openEdit(id) {
   go('vEdit'); renderEdit(); renderPalette();
 }
 function renderEdit() {
-  var t = topView(cur, { ruby: false, sel: msel.length > 1 ? msel : sel, grid: S.prefs.gridShow === false ? null : gridLevel(S.prefs.grid) });   // 線を消しても交点への吸着は続く
+  var t = topView(cur, { ruby: false, sel: msel.length > 1 ? msel : sel, ref: msel.length > 1 ? sel : -1, grid: S.prefs.gridShow === false ? null : gridLevel(S.prefs.grid) });   // 線を消しても交点への吸着は続く
   var b = t.box, pad = 60 * K;
   var svg = $('editSvg');
   // 余白は広めに固定して、吹き出しが増えても床が跳ねないようにする（場所の広さに合わせて K 倍）
@@ -24,7 +24,12 @@ function renderEdit() {
   applyZoom();
   var multi = msel.length > 1;
   $('multiBar').hidden = !multi;
-  if (multi) $('mCount').textContent = msel.length + '個';
+  if (multi) {
+    $('mCount').textContent = msel.length + '個';
+    $('mRef').textContent = '基準：' + plainName(ITEMS[cur.top[sel].item].name);   // 揃えるときに動かさない物（最後に選んだ物・橙の枠）
+    var ss = msel.map(function (i) { return scaleOf(cur.top[i]); });
+    $('mReal').textContent = ss.every(function (v) { return v === ss[0]; }) ? Math.round(ss[0] * 100) + '%' : '混在';
+  }
   var p = multi ? null : cur.top[sel];
   $('selBar').hidden = !p;
   if (p) {
@@ -141,7 +146,7 @@ $('eBg').addEventListener('click', function (e) {
 });
 $('eText').onchange = function () { SPACE_TEXT = S.prefs.spaceText = this.checked; save(); renderEdit(); };
 document.addEventListener('pointerdown', function (e) {   // ▾ の板は 外を押すと閉じる
-  ['eDisp', 'eGridMenu', 'eMore'].forEach(function (id) { var d = $(id); if (d.open && !e.target.closest('#' + id)) d.open = false; });
+  ['eDisp', 'eGridMenu', 'eMore', 'mAlign'].forEach(function (id) { var d = $(id); if (d.open && !e.target.closest('#' + id)) d.open = false; });
 });
 $('eGridShow').onchange = function () { S.prefs.gridShow = this.checked; save(); renderEdit(); };
 $('eOutline').onchange = function () { OUTLINE = S.prefs.outline = this.checked; save(); renderEdit(); };
@@ -282,8 +287,34 @@ function alignSel(how) {
   });
   save(); renderEdit();
 }
+/* 基準に揃える：基準の物の 中心の x（縦一列）か y（横一列）に ほかの物の中心を合わせる。等間隔：基準は動かさず、
+   両はしの物の間に 中心を等しい間隔で並べる（並びの順は いまの位置の順） */
+function alignToRef(axis) {
+  var set = selected(), ref = cur.top[sel]; if (set.length < 2 || !ref) return;
+  var rb = itemBounds(ref), c = axis === 'x' ? (rb.x0 + rb.x1) / 2 : (rb.y0 + rb.y1) / 2;
+  set.forEach(function (i) {
+    var p = cur.top[i], b = itemBounds(p);
+    if (axis === 'x') p.x += c - (b.x0 + b.x1) / 2; else p.y += c - (b.y0 + b.y1) / 2;
+  });
+  save(); renderEdit();
+}
+function scaleSel(f) {   // まとめて拡大・縮小（f：倍率。0 なら実寸に戻す）。物ごとの中心は動かさない
+  selected().forEach(function (i) {
+    var p = cur.top[i], s = f ? scaleOf(p) * f : 1;
+    s = Math.round(Math.min(SCALE_MAX, Math.max(SCALE_MIN, s)) * 100) / 100;
+    if (s === 1) delete p.s; else p.s = s;
+  });
+  save(); renderEdit();
+}
 $('multiBar').addEventListener('click', function (e) {
-  var b = e.target.closest('[data-al]'); if (b) { alignSel(b.getAttribute('data-al')); return; }
+  if (e.target.closest('#mRefNext')) {   // 基準を 選んだ物の中で次へ
+    var k = msel.indexOf(sel); sel = msel[(k + 1) % msel.length]; renderEdit(); return;
+  }
+  var ax = e.target.closest('[data-ref]'); if (ax) { alignToRef(ax.getAttribute('data-ref')); $('mAlign').open = false; return; }
+  if (e.target.closest('#mSmall')) { scaleSel(1 / 1.25); return; }
+  if (e.target.closest('#mBig')) { scaleSel(1.25); return; }
+  if (e.target.closest('#mReal')) { scaleSel(0); return; }
+  var b = e.target.closest('[data-al]'); if (b) { alignSel(b.getAttribute('data-al')); $('mAlign').open = false; return; }
   if (e.target.closest('#mDup')) { pasteN = 0; pasteItem(selected().map(function (i) { return clone(cur.top[i]); })); }
   if (e.target.closest('#mDel')) { removeItems(selected()); save(); renderEdit(); }
   if (e.target.closest('#mNone')) { selectOnly(-1); renderEdit(); }

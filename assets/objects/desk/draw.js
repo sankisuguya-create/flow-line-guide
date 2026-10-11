@@ -151,13 +151,13 @@ function selBox(b) {
 function drawTopItem(p, i, cls) {
   var head = '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="' + itemTransform(p) + '">';
   var c = customOf(p);
-  if (c) return head + '<g' + olAttr() + '>' + c.draw() + '</g>' + (cls === 'sel' ? selBox(c.box) : '') + '</g>';
+  if (c) return head + '<g' + olAttr() + '>' + c.draw() + '</g>' + (/\bsel\b/.test(cls) ? selBox(c.box) : '') + '</g>';
   var st = ITEMS[p.item].states[stateOf(p)], wd = baseSize(p), w = wd[0], d = wd[1], k = K / scaleOf(p);   // k：選ぶ枠の線は拡大しても同じ太さ
   MIRROR = p.m ? -1 : 1;
   var body = st.draw(w, d, colorOf(p), p);
   MIRROR = 1;
   return head + '<g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')"><g' + olAttr() + '>' + body + '</g>' +
-         (cls === 'sel' ? '<rect class="selbox" x="' + (-10 * k) + '" y="' + (-10 * k) + '" width="' + (w + 20 * k) + '" height="' + (d + 20 * k) + '" rx="' + 10 * k + '" style="stroke-width:' + 6 * k + ';stroke-dasharray:' + 18 * k + ' ' + 10 * k + '"/>' : '') + '</g></g>';
+         (/\bsel\b/.test(cls) ? '<rect class="selbox" x="' + (-10 * k) + '" y="' + (-10 * k) + '" width="' + (w + 20 * k) + '" height="' + (d + 20 * k) + '" rx="' + 10 * k + '" style="stroke-width:' + 6 * k + ';stroke-dasharray:' + 18 * k + ' ' + 10 * k + '"/>' : '') + '</g></g>';
 }
 function iconSvg(itemId, size) {   // しまう物・編集のパレット用の小さな絵
   var it = ITEMS[itemId], w, d, body;
@@ -307,7 +307,7 @@ function topView(lay, o) {
   var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
   drawOrder(lay.top).forEach(function (i) {
     var p = lay.top[i];
-    s += drawTopItem(p, i, (Array.isArray(o.sel) ? o.sel.indexOf(i) >= 0 : o.sel === i) ? 'sel' : '');   // o.sel：番号 か 番号の並び（まとめて選んだとき）
+    s += drawTopItem(p, i, ((Array.isArray(o.sel) ? o.sel.indexOf(i) >= 0 : o.sel === i) ? 'sel' : '') + (o.ref === i ? ' ref' : ''));   // ref：揃えるときの基準の物   // o.sel：番号 か 番号の並び（まとめて選んだとき）
     var bb = itemBounds(p);
     ib.x0 = Math.min(ib.x0, bb.x0); ib.x1 = Math.max(ib.x1, bb.x1);
     ib.y0 = Math.min(ib.y0, bb.y0); ib.y1 = Math.max(ib.y1, bb.y1);

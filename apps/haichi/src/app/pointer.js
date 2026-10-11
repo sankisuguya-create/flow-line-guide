@@ -100,7 +100,10 @@ function bandSelect(a, b, add) {   // 囲みに少しでもかかった物を選
   var hit = [];
   cur.top.forEach(function (p, i) { var bb = itemBounds(p); if (bb.x1 >= x0 && bb.x0 <= x1 && bb.y1 >= y0 && bb.y0 <= y1) hit.push(i); });
   if (add) selected().forEach(function (i) { if (hit.indexOf(i) < 0) hit.push(i); });
-  msel = hit.length > 1 ? hit : []; sel = hit.length ? hit[hit.length - 1] : -1;
+  msel = hit.length > 1 ? hit : [];
+  // 基準（揃えるときに動かさない物）は 引きずり始めた所にいちばん近い物
+  var dist = function (i) { var b = itemBounds(cur.top[i]); return Math.hypot((b.x0 + b.x1) / 2 - a.x, (b.y0 + b.y1) / 2 - a.y); };
+  sel = hit.length ? hit.reduce(function (m, i) { return dist(i) < dist(m) ? i : m; }, hit[0]) : -1;
   renderEdit();
 }
 function emptyTap(q) {
