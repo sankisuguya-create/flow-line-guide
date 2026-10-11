@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- このファイルは engine/tools/build.mjs が作る。直接直さず guides/<行事>/plans・spaces、assets/、engine/player/ を直す -->
+<title>/*TITLE*/</title>
+<style>
+/*CSS*/
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side">
+    <h1 id="h1"></h1>
+    <div class="grp">
+      <span class="lab">だれを 見る？</span>
+      <span class="seg row" id="who"></span>
+    </div>
+    <div class="grp" id="viewGrp">
+      <span class="lab">どこを 見る？</span>
+      <span class="seg row" id="views"></span>
+    </div>
+    <div class="grp">
+      <span class="lab">じかん</span>
+      <input type="range" id="scrub" min="0" max="1000" value="0" step="1" aria-label="じかん">
+    </div>
+    <div class="grp">
+      <span class="lab">はやさ</span>
+      <span class="seg row" id="speeds">
+        <button data-r="0.5">×0.5</button><button data-r="1" aria-pressed="true">×1</button><button data-r="2">×2</button>
+      </span>
+    </div>
+    <div class="grp">
+      <span class="lab">とぶ</span>
+      <div class="seg chap" id="chap"></div>
+    </div>
+  </aside>
+  <div class="float">
+    <button id="toggle" aria-label="そうさパネル">&#9776;</button>
+    <button id="play" aria-label="さいせい／ていし"></button>
+    <button id="ff" aria-label="はやおくり">&#9654;&#9654;</button>
+    <button id="rew" aria-label="まきもどし">&#9664;&#9664;</button>
+  </div>
+  <main class="stagearea">
+    <div class="cap" id="cap" aria-live="polite"></div>
+    <div class="sigbar" id="sigbar" aria-live="assertive"></div>
+    <svg class="field" id="svg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="うごきの 図"></svg>
+  </main>
+</div>
+<script>
+var DATA = /*DATA*/;
+</script>
+<script>
+/*JS*/
+</script>
+</body>
+</html>

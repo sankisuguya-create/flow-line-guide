@@ -5,40 +5,43 @@
 
 紙の隊形図では伝わらない「時間の流れ」と「自分ひとりの動き」を扱うことが目的。
 
+素材（エリア・用具・操作UI）の集約先も兼ね、計画書から資料を生成できる（[docs/hub.md](docs/hub.md)）。
+**校舎・プールの間取りを置くため、このリポジトリは非公開で運用する。**
+
 ---
 
 ## 構成
 
 ```
 flow-line-guide/
-├─ README.md                        これ
-├─ docs/
-│   ├─ kikaku.md                    共通規格の設計メモ（型の見分け方・作るときの落とし穴）
-│   └─ tsuika.md                    資料を1本足す手順
-└─ gas/                             資料の本体と配信用ファイル
-    ├─ README.md                    配信の方針
-    └─ undokai/
-        ├─ Code.gs                  PAGES に資料を1箇所で定義
-        ├─ index.html               もくじ（PAGESから自動生成）
-        ├─ nyutai.html
-        ├─ relay.html
-        └─ README.md                このプロジェクトの公開手順
+├─ assets/                 素材（授業・行事に依らない）
+│   ├─ spaces/<場所>/      エリア（実寸mの区画・点・通路・動線の決まり）。pool-area＝プールエリア基礎
+│   └─ objects/<分類>/     用具（実寸mmの立体）。gym＝跳び箱・ロイター板・マット、desk＝机まわり（複製）
+├─ engine/                 作る仕組み
+│   ├─ player/             再生画面（flow.js・flow.css・page.html）
+│   └─ tools/              build.mjs（生成・検査）／check.mjs（撮影）／align.html（間取り合わせ）
+├─ guides/<行事・単元>/     資料。階層はここで止める
+│   ├─ plans/              中身（計画書から起こしたデータ）
+│   ├─ spaces/             その資料だけの上乗せ（extends）
+│   ├─ <場面>.html         配る1ファイル＝GASに貼るファイル（生成物は直接直さない）
+│   └─ Code.gs・index.html・README.md   GAS配信一式
+└─ docs/                   設計メモ（hub.md・kikaku.md・tsuika.md）
 ```
 
-行事が増えたら `gas/ongakukai/` のように階層を1つ足す。
+行事・単元が増えたら `guides/ongakukai/` のように階層を1つ足す。
 **階層は行事までで止める。** 学年でさらに分けると、全学年共通の資料の置き場が歯抜けになる。
 
-各 `gas/*/<場面>.html` は**単一ファイルで完結**する。外部CSS・外部JS・外部画像を一切使わない。
+各 `guides/*/<場面>.html` は**単一ファイルで完結**する。外部CSS・外部JS・外部画像を一切使わない。
 ダブルクリックでブラウザが開けば動く。オフラインでも動く。
 
 `guides` 版はGAS版とCSS 2行しか違わず、GAS版も手元のブラウザで開けるため廃止した。
-今後は `gas/` だけを正本とし、二重管理による反映漏れを防ぐ。
+配布用と GAS 用は同じ1ファイル（`guides/<行事>/<場面>.html`）。二つに分けず、反映漏れを防ぐ。
 
 ## 命名
 
-`gas/<行事>/<場面>.html`
+`guides/<行事>/<場面>.html`
 
-例：`gas/undokai/nyutai.html` / `gas/ongakukai/idou.html`
+例：`guides/undokai/nyutai.html` / `guides/ongakukai/idou.html`
 
 ローマ字・小文字で命名する。行事ごとにプロジェクトが分かれるので、行事の接頭辞は付けない。
 
@@ -46,11 +49,11 @@ flow-line-guide/
 
 ### 手元で開く
 
-`gas/<行事>/<場面>.html` をブラウザで開くだけ。
+`guides/<行事>/<場面>.html` をブラウザで開くだけ。
 
 ### 児童・職員に配る
 
-`gas/<行事>/README.md` の手順で Google Apps Script のウェブアプリとして公開する。
+`guides/<行事>/README.md` の手順で Google Apps Script のウェブアプリとして公開する。
 URLをClassroomに貼れば児童はクリックするだけで開ける。
 Classroomの資料としてHTMLファイルを添付する方法は、児童側でダウンロードが必要になり使えない。
 
@@ -66,7 +69,19 @@ Classroomの資料としてHTMLファイルを添付する方法は、児童側�
 
 ## 収録している資料
 
-### 運動会 3年 入場・前つめ・退場（`gas/undokai/nyutai.html`）
+### プールエリア 基礎（`guides/pool-area/kihon.html`、生成）
+
+プール周りの区画と動線の決まりだけを持つ基礎データ `assets/spaces/pool-area/` の見本。プール指導の資料はこの基礎に上乗せして作る。
+
+### 水泳 4年 1回目の動き（`guides/suiei/dai1ji.html`、生成）
+
+`guides/suiei/plans/dai1ji.json` から生成。4クラスと見学者がプール周りを同時に動く。「だれを見る」で自分の組だけを追える。地図は**仮**（配置図・写真で `align.html` を使って確認済にする）。
+
+### 体育館の用具の図（`assets/objects/gym/sampler.html`）
+
+跳び箱・ロイター板・白マットを同じ縮尺で、地図用（縦・横）・正面・横・斜め上に描く。並べた例つき。
+
+### 運動会 3年 入場・前つめ・退場（`guides/undokai/nyutai.html`）
 
 場面は3つ。
 
@@ -77,7 +92,7 @@ Classroomの資料としてHTMLファイルを添付する方法は、児童側�
 
 6枚1組（2列×3行）の隊列が形を保ったまま移動する。長方形1つが4人。
 
-### 運動会 3年 半周リレーの動き方（`gas/undokai/relay.html`）
+### 運動会 3年 半周リレーの動き方（`guides/undokai/relay.html`）
 
 1人の児童の動きを最初から最後まで追える。
 未走列 → 次走待ち場所 → レーン → 走る → 走り終えた列。
