@@ -16,7 +16,9 @@
 flow-line-guide/
 ├─ assets/                 素材（授業・行事に依らない）
 │   ├─ spaces/<場所>/      エリア（実寸mの区画・点・通路・動線の決まり）。pool-area＝プールエリア基礎
-│   └─ objects/<分類>/     用具（実寸mmの立体）。gym＝跳び箱・ロイター板・マット、desk＝机まわり（複製）
+│   ├─ objects/<分類>/     用具。gym＝体育館の用具の立体、desk＝教室・体育館・運動場の物の上面図（homeroom-tools の複製）
+│   ├─ icons/              アイコン（Lucide・Tabler 人物。homeroom-tools の複製、ライセンス同梱）
+│   └─ ui/                 共通の見た目（base.css。homeroom-tools の複製）
 ├─ engine/                 作る仕組み
 │   ├─ player/             再生画面（flow.js・flow.css・page.html）
 │   └─ tools/              build.mjs（生成・検査）／check.mjs（撮影）／align.html（間取り合わせ）
