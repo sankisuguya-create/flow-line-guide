@@ -33,7 +33,7 @@ function sanitize(s) {
       top: l.top.filter(function (p) { return ok(p.item); }).map(function (p) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
-                 text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined };
+                 text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined, s: scaleOf(p) !== 1 ? scaleOf(p) : undefined };
       }),
       hooks: sc === 'desk' ? {
         left: ((l.hooks || {}).left || []).filter(isHang).map(function (h) { return { item: h.item, label: !!h.label }; }),
@@ -208,6 +208,7 @@ function setBig(on) {
   renderShow();
 }
 $('sBig').onclick = function () { setBig(true); };
+$('sEdit').onclick = function () { openEdit(cur.id); };   // 映している配置をそのまま直す（標準の配置も、新しく作った配置も）
 
 /* ---- 印刷：1つの配置＝A4 1枚 ----
    見せる画面の「印刷」はいま映している形（左右反転・4人・いす・横から見た図）のまま。
@@ -281,13 +282,13 @@ function openEdit(id) {
   cur = byId(id); if (!cur) return renderHome();
   useScene(scOf(cur));
   sel = -1;
-  $('eOutline').checked = OUTLINE;
+  $('eOutline').checked = OUTLINE; $('eGridShow').checked = S.prefs.gridShow !== false;
   $('eTextBox').hidden = !SCENE.space; $('eText').checked = SPACE_TEXT;
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
   go('vEdit'); renderEdit(); renderPalette();
 }
 function renderEdit() {
-  var t = topView(cur, { ruby: S.prefs.ruby, sel: sel, grid: gridLevel(S.prefs.grid) });
+  var t = topView(cur, { ruby: S.prefs.ruby, sel: sel, grid: S.prefs.gridShow === false ? null : gridLevel(S.prefs.grid) });   // 線を消しても交点への吸着は続く
   var b = t.box, pad = 60 * K;
   var svg = $('editSvg');
   // 余白は広めに固定して、吹き出しが増えても床が跳ねないようにする（場所の広さに合わせて K 倍）
@@ -304,6 +305,7 @@ function renderEdit() {
       return '<button type="button" data-st="' + k + '" class="' + (k === stateOf(p) ? 'on' : '') + '">' + (STATE_NAMES[k] || k) + '</button>';
     }).join('');
     $('selLabel').setAttribute('aria-pressed', String(!!p.label));
+    $('selReal').textContent = Math.round(scaleOf(p) * 100) + '%'; $('selReal').title = '実寸（100%）に戻す';
     $('selTextBox').hidden = !it.text;
     if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
     $('selSize').hidden = !it.sizes;
@@ -398,6 +400,7 @@ $('eBg').addEventListener('click', function (e) {
   var id = b.getAttribute('data-bg'); if (id) cur.bg = id; else delete cur.bg; save(); renderEdit();
 });
 $('eText').onchange = function () { SPACE_TEXT = S.prefs.spaceText = this.checked; save(); renderEdit(); };
+$('eGridShow').onchange = function () { S.prefs.gridShow = this.checked; save(); renderEdit(); };
 $('eOutline').onchange = function () { OUTLINE = S.prefs.outline = this.checked; save(); renderEdit(); };
 $('eBack').onclick = renderHome;
 $('eShow').onclick = function () { openShow(cur.id); };
@@ -427,6 +430,10 @@ $('selText').addEventListener('input', function () {
   var p = cur.top[sel]; if (!p) return;
   p.text = this.value; save(); renderEdit();
 });
+function setScale(p, s) { s = Math.round(Math.min(SCALE_MAX, Math.max(SCALE_MIN, s)) * 100) / 100; if (s === 1) delete p.s; else p.s = s; clampP(p); save(); renderEdit(); }
+$('selSmall').onclick = function () { var p = cur.top[sel]; setScale(p, scaleOf(p) / 1.25); };
+$('selBig').onclick = function () { var p = cur.top[sel]; setScale(p, scaleOf(p) * 1.25); };
+$('selReal').onclick = function () { setScale(cur.top[sel], 1); };
 $('selRot').onclick = function () { var p = cur.top[sel]; p.r = ((p.r || 0) + 90) % 360; clampP(p); save(); renderEdit(); };
 $('selLabel').onclick = function () { var p = cur.top[sel]; p.label = !p.label; save(); renderEdit(); };
 $('selFront').onclick = function () { toFront(); save(); renderEdit(); };
@@ -468,7 +475,7 @@ $('editSvg').addEventListener('pointermove', function (e) {
   var nx = p.x, ny = p.y;
   p.x = pt.x - drag.dx; p.y = pt.y - drag.dy; clampP(p);
   if (p.x !== nx || p.y !== ny) drag.moved = true;
-  drag.el.setAttribute('transform', 'translate(' + p.x + ' ' + p.y + ')' + (ITEMS[p.item].mesh ? '' : ' rotate(' + (p.r || 0) + ')'));   // 立体の物は立体のほうを回してある
+  drag.el.setAttribute('transform', itemTransform(p));
 });
 function endDrag() {
   if (!drag) return;
