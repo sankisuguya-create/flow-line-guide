@@ -1414,10 +1414,10 @@ SPEC.pipechair={ name:"パイプいす", note:"幅487×奥行470×高さ746mm（
   hole:{W:120,H:35,top:35} };   // 背もたれの持ち手の穴（幅・高さ・上の端からの距離。写真の比率から）
 SPEC.longtable={ name:"長机", note:"仮：1800×450×高さ700（折りたたみ長机の標準）", W:1800, D:450, H:700, top:25 };
 // 太さ t の角棒を a→b に置く（パイプの脚・桟）
-function addBeam(F,a,b,t,col,edge){
+function addBeam(F,a,b,t,col,edge,tu){   // tu：横（床に平行で棒に直角）の厚み。省くと t
   var d=sub(b,a), L=Math.hypot(d[0],d[1],d[2]); d=[d[0]/L,d[1]/L,d[2]/L];
-  var u=Math.abs(d[2])>0.99?[1,0,0]:cross(d,[0,0,1]); var ul=Math.hypot(u[0],u[1],u[2]); u=[u[0]/ul*t/2,u[1]/ul*t/2,u[2]/ul*t/2];
-  var v=cross(d,u); v=[v[0],v[1],v[2]];
+  var u=Math.abs(d[2])>0.99?[1,0,0]:cross(d,[0,0,1]); var ul=Math.hypot(u[0],u[1],u[2]); var hu=(tu||t)/2; u=[u[0]/ul*hu,u[1]/ul*hu,u[2]/ul*hu];
+  var v=cross(d,u), vl=Math.hypot(v[0],v[1],v[2]); v=[v[0]/vl*t/2,v[1]/vl*t/2,v[2]/vl*t/2];
   var c=[[1,1],[-1,1],[-1,-1],[1,-1]], P=function(o,k){ return [o[0]+u[0]*c[k][0]+v[0]*c[k][1], o[1]+u[1]*c[k][0]+v[1]*c[k][1], o[2]+u[2]*c[k][0]+v[2]*c[k][1]]; };
   var G=[];
   for(var k=0;k<4;k++){ var j=(k+1)%4; G.push({p:[P(a,k),P(a,j),P(b,j),P(b,k)],col:col,edge:edge||null,sharp:[0,1,2,3]}); }
@@ -1442,14 +1442,14 @@ function addPrismX(F,poly,x0,x1,col,edge){
    座面は①に うしろの端でつながり、前へ張り出す。背もたれは①の上の端に、①と同じ傾きで付く。 */
 function pipeChair(){
   var S=SPEC.pipechair, F=[], w=S.W/2, t=S.tube, met="#BFC4CA", blk="#2F3134";
-  var yTop=-S.D/2+20, yF=S.frontFoot, yR=-S.D/2+35;   // 足ゴムの はしが 奥行 D に収まる位置
+  var yTop=-S.D/2+20, yF=S.frontFoot, yR=-S.D/2+20;   // 足ゴムの はしが 奥行 D に収まる位置
   var yA=function(z){ return yF+(yTop-yF)*z/S.H; };                              // ①の上の点の Y（高さ z で）
-  var xb=w-t/2, xa=w-t*1.5;                                                        // ②（うしろの脚）は外がわ、①は内がわ（写真）
+  var tx=12, xb=w-tx/2, xa=w-tx*1.5;                                               // 脚は横に薄い（前後 t・横 tx）。②（うしろの脚）は外がわ、①は内がわ（写真）
   [-1,1].forEach(function(s){
-    addBeam(F,[s*xa,yF,t/2],[s*xa,yA(S.H-40),S.H-40],t,met);                             // ① 長いパイプ
-    addBeam(F,[s*xb,yA(S.lockZ),S.lockZ],[s*xb,yR,t/2],t,met);                     // ② 短いパイプ
-    addBox(F,s*(xa+xb)/2-t,s*(xa+xb)/2+t,yA(S.lockZ)-16,yA(S.lockZ)+16,S.lockZ-20,S.lockZ+20,{top:blk,side:blk,end:blk},blk);   // 支点の留め具（①と②をはさむ小さな黒）
-    [[s*xa,yF],[s*xb,yR]].forEach(function(q){ addBox(F,q[0]-11,q[0]+11,q[1]-35,q[1]+35,0,t+4,{top:blk,side:blk,end:blk},blk); });   // 足ゴム
+    addBeam(F,[s*xa,yF,t/2],[s*xa,yA(S.H-40),S.H-40],t,met,null,tx);                             // ① 長いパイプ
+    addBeam(F,[s*xb,yA(S.lockZ),S.lockZ],[s*xb,yR,t/2],t,met,null,tx);                     // ② 短いパイプ
+    addBox(F,s*(xa+xb)/2-tx,s*(xa+xb)/2+tx,yA(S.lockZ)-16,yA(S.lockZ)+16,S.lockZ-20,S.lockZ+20,{top:blk,side:blk,end:blk},blk);   // 支点の留め具（①と②をはさむ小さな黒）
+    [[s*xa,yF],[s*xb,yR]].forEach(function(q){ addBox(F,q[0]-tx/2,q[0]+tx/2,q[1]-20,q[1]+20,0,14,{top:blk,side:blk,end:blk},blk); });   // 足ゴム
   });
   addBeam(F,[-xa,yF,t/2],[xa,yF,t/2],t,met);                                       // ③ 前の床の桟
   addBeam(F,[-xb,yR,t/2],[xb,yR,t/2],t,met);                                       // ③ うしろの床の桟
