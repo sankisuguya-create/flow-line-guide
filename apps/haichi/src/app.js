@@ -281,7 +281,7 @@ document.addEventListener('keydown', function (e) {   // ← → で活動を切
 function openEdit(id) {
   cur = byId(id); if (!cur) return renderHome();
   useScene(scOf(cur));
-  sel = -1;
+  sel = -1; EZ.k = 1; EZ.cx = null;
   $('eOutline').checked = OUTLINE; $('eGridShow').checked = S.prefs.gridShow !== false;
   $('eTextBox').hidden = !SCENE.space; $('eText').checked = SPACE_TEXT;
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
@@ -293,7 +293,8 @@ function renderEdit() {
   var svg = $('editSvg');
   // 余白は広めに固定して、吹き出しが増えても床が跳ねないようにする（場所の広さに合わせて K 倍）
   var x0 = Math.min(b.x0, -300 * K) - pad, y0 = Math.min(b.y0, -130 * K) - pad, x1 = Math.max(b.x1, DESK.w + 300 * K) + pad, y1 = Math.max(b.y1, DESK.d + 130 * K) + pad;
-  svg.setAttribute('viewBox', x0 + ' ' + y0 + ' ' + (x1 - x0) + ' ' + (y1 - y0));
+  EZ.base = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  applyZoom();
   svg.innerHTML = t.svg;
   var p = cur.top[sel];
   $('selBar').hidden = !p;
@@ -453,15 +454,66 @@ function svgPoint(svg, e) {
   var pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
   return pt.matrixTransform(svg.getScreenCTM().inverse());
 }
+/* ---- 編集画面の拡大・縮小 ----
+   ホイール（マウス・タッチパッド）：指している所を中心に拡大・縮小。2本指：つまんで拡大・縮小、そのまま動かすと移動。
+   空いた所を引きずる：拡大しているとき、見る範囲を動かす（引きずらずに離せば、これまでどおり「選んだ物をそこへ移す」）。
+   EZ.k：倍率（1＝全体）、EZ.cx/cy：見ている中心（図の座標）。描き直しても保つ。別の配置を開くと全体に戻す */
+var EZ = { k: 1, cx: null, cy: null, base: null }, EZ_MAX = 12;
+function applyZoom() {
+  var b = EZ.base, svg = $('editSvg'); if (!b) return;
+  if (EZ.k <= 1) { EZ.k = 1; EZ.cx = null; }
+  var w = b.w / EZ.k, h = b.h / EZ.k;
+  var cx = EZ.cx == null ? b.x + b.w / 2 : Math.min(b.x + b.w - w / 2, Math.max(b.x + w / 2, EZ.cx));
+  var cy = EZ.cy == null ? b.y + b.h / 2 : Math.min(b.y + b.h - h / 2, Math.max(b.y + h / 2, EZ.cy));
+  if (EZ.k > 1) { EZ.cx = cx; EZ.cy = cy; }
+  svg.setAttribute('viewBox', (cx - w / 2) + ' ' + (cy - h / 2) + ' ' + w + ' ' + h);
+  $('zReset').textContent = Math.round(EZ.k * 100) + '%';
+  $('zReset').disabled = EZ.k === 1;
+}
+function zoomAt(q, f) {   // 図の点 q を画面上で動かさずに 倍率を f 倍
+  var b = EZ.base, k = Math.min(EZ_MAX, Math.max(1, EZ.k * f)); if (!b) return;
+  var cx = EZ.cx == null ? b.x + b.w / 2 : EZ.cx, cy = EZ.cy == null ? b.y + b.h / 2 : EZ.cy;
+  EZ.cx = q.x - (q.x - cx) * EZ.k / k; EZ.cy = q.y - (q.y - cy) * EZ.k / k; EZ.k = k;
+  applyZoom();
+}
+function viewCenter() { var v = $('editSvg').viewBox.baseVal; return { x: v.x + v.width / 2, y: v.y + v.height / 2 }; }
+$('editSvg').addEventListener('wheel', function (e) {
+  e.preventDefault();
+  zoomAt(svgPoint(this, e), Math.pow(1.2, -Math.sign(e.deltaY) * Math.min(3, Math.abs(e.deltaY) / 60 || 1)));
+}, { passive: false });
+$('zIn').onclick = function () { zoomAt(viewCenter(), 1.5); };
+$('zOut').onclick = function () { zoomAt(viewCenter(), 1 / 1.5); };
+$('zReset').onclick = function () { EZ.k = 1; applyZoom(); };
+var touches = {}, pinch = null, pan = null;
+function touchList() { return Object.keys(touches).map(function (k) { return touches[k]; }); }
 $('editSvg').addEventListener('pointerdown', function (e) {
+  touches[e.pointerId] = { x: e.clientX, y: e.clientY };
+  var tl = touchList();
+  if (tl.length === 2) {   // 2本目の指：物の移動・範囲の移動をやめて、つまむ操作へ
+    if (drag) { drag = null; renderEdit(); }
+    pan = null;
+    pinch = { d: Math.hypot(tl[0].x - tl[1].x, tl[0].y - tl[1].y), m: { x: (tl[0].x + tl[1].x) / 2, y: (tl[0].y + tl[1].y) / 2 } };
+    return;
+  }
+}, true);
+function pinchMove() {
+  var tl = touchList(); if (tl.length < 2 || !pinch) return;
+  var d = Math.hypot(tl[0].x - tl[1].x, tl[0].y - tl[1].y), m = { x: (tl[0].x + tl[1].x) / 2, y: (tl[0].y + tl[1].y) / 2 };
+  var svg = $('editSvg'), inv = svg.getScreenCTM().inverse(), P = function (s) { var pt = svg.createSVGPoint(); pt.x = s.x; pt.y = s.y; return pt.matrixTransform(inv); };
+  var a = P(pinch.m), b2 = P(m);   // 2本指の真ん中が動いた分だけ見る範囲を動かす
+  if (EZ.k > 1) { EZ.cx -= b2.x - a.x; EZ.cy -= b2.y - a.y; }
+  zoomAt(P(m), d / pinch.d);
+  pinch = { d: d, m: m };
+}
+function touchEnd(e) { delete touches[e.pointerId]; if (touchList().length < 2) pinch = null; }
+$('editSvg').addEventListener('pointerdown', function (e) {
+  if (pinch) return;
   var g = e.target.closest('.it');
   if (!g) {
-    // 物を選んでいるときに机の上の空いた所を押すと、そこへ移す（指で引きずらなくてよい）
-    var q = svgPoint(this, e);
-    var gm = gridMargin();
-    if (sel >= 0 && q.x >= -gm.x && q.x <= DESK.w + gm.x && q.y >= -gm.y && q.y <= DESK.d + gm.y) {
-      var sp = cur.top[sel]; sp.x = q.x; sp.y = q.y; clampP(sp); save(); renderEdit();
-    } else if (sel >= 0) { sel = -1; renderEdit(); }
+    // 空いた所：引きずれば見る範囲を動かし（拡大しているとき）、引きずらずに離せば下の「タップ」の動き
+    var inv = this.getScreenCTM().inverse();
+    pan = { sx: e.clientX, sy: e.clientY, inv: inv, cx: EZ.cx, cy: EZ.cy, moved: false, q: svgPoint(this, e) };
+    this.setPointerCapture(e.pointerId);
     return;
   }
   var i = +g.getAttribute('data-i'), p = cur.top[i], pt = svgPoint(this, e);
@@ -469,7 +521,24 @@ $('editSvg').addEventListener('pointerdown', function (e) {
   drag = { el: g, p: p, dx: pt.x - p.x, dy: pt.y - p.y, moved: false };
   this.setPointerCapture(e.pointerId);
 });
+function emptyTap(q) {
+  // 物を選んでいるときに机の上の空いた所を押すと、そこへ移す（指で引きずらなくてよい）
+  var gm = gridMargin();
+  if (sel >= 0 && q.x >= -gm.x && q.x <= DESK.w + gm.x && q.y >= -gm.y && q.y <= DESK.d + gm.y) {
+    var sp = cur.top[sel]; sp.x = q.x; sp.y = q.y; clampP(sp); save(); renderEdit();
+  } else if (sel >= 0) { sel = -1; renderEdit(); }
+}
 $('editSvg').addEventListener('pointermove', function (e) {
+  if (touches[e.pointerId]) touches[e.pointerId] = { x: e.clientX, y: e.clientY };
+  if (pinch) { pinchMove(); return; }
+  if (pan) {
+    if (Math.hypot(e.clientX - pan.sx, e.clientY - pan.sy) > 6) pan.moved = true;
+    if (pan.moved && EZ.k > 1) {
+      var m = pan.inv, dx = (e.clientX - pan.sx) * m.a + (e.clientY - pan.sy) * m.c, dy = (e.clientX - pan.sx) * m.b + (e.clientY - pan.sy) * m.d;
+      EZ.cx = pan.cx - dx; EZ.cy = pan.cy - dy; applyZoom();
+    }
+    return;
+  }
   if (!drag) return;
   var pt = svgPoint(this, e), p = drag.p;
   var nx = p.x, ny = p.y;
@@ -482,7 +551,11 @@ function endDrag() {
   var moved = drag.moved; drag = null;
   if (moved) { save(); renderEdit(); }
 }
-$('editSvg').addEventListener('pointerup', endDrag);
+$('editSvg').addEventListener('pointerup', function (e) {
+  touchEnd(e);
+  if (pan) { var p0 = pan; pan = null; if (!p0.moved) emptyTap(p0.q); return; }
+  endDrag();
+});
 document.addEventListener('keydown', function (e) {   // 矢印キーでグリッド1目ずつ動かす
   if ($('vEdit').hidden || sel < 0 || e.target.closest('input')) return;
   var d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
@@ -491,6 +564,6 @@ document.addEventListener('keydown', function (e) {   // 矢印キーでグリ�
   var g = gridLevel(S.prefs.grid), p = cur.top[sel];
   p.x += d[0] * DESK.w / g.nx; p.y += d[1] * DESK.d / g.ny; clampP(p); save(); renderEdit();
 });
-$('editSvg').addEventListener('pointercancel', endDrag);
+$('editSvg').addEventListener('pointercancel', function (e) { touchEnd(e); pan = null; endDrag(); });
 
 renderHome();

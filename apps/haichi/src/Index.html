@@ -89,7 +89,10 @@
         <button type="button" id="selFront">いちばん上へ</button>
         <button type="button" id="selDel" class="danger">けす</button>
       </div>
-      <svg id="editSvg" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="ewrap">
+        <svg id="editSvg" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="zoombar" role="group" aria-label="拡大・縮小"><button type="button" id="zOut" aria-label="縮小">－</button><button type="button" id="zReset" title="全体を見る" disabled>100%</button><button type="button" id="zIn" aria-label="拡大">＋</button></div>
+      </div>
       <div class="lists" id="eLists">
         <div><h3>左のフック</h3><div id="lHookL" class="chips"></div></div>
         <div><h3>右のフック</h3><div id="lHookR" class="chips"></div></div>
