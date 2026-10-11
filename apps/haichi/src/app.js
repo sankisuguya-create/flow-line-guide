@@ -5,14 +5,27 @@ var $ = function (id) { return document.getElementById(id); };
 /* ---- 保存：この端末のブラウザだけ。読めない環境では標準の配置で動く ---- */
 function clone(x) { return JSON.parse(JSON.stringify(x)); }
 function freshState() {
-  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk', outline: false, spaceText: true } };
+  return { ver: SAVE_VER, layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk', outline: false, spaceText: true } };
+}
+/* 保存の版。ver が古ければ ここで読み替える（版を上げたら手順を1つ足す）
+   2：体育館の標準配置「跳び箱の準備」（古い床に合わせたもの）を捨て、新しい標準配置を足す */
+var SAVE_VER = 2;
+function migrate(s) {
+  var v = s.ver || 1;
+  if (v < 2) {
+    s.layouts = s.layouts.filter(function (l) { return l.id !== 'g_tobibako'; });
+    s.recent = (s.recent || []).filter(function (id) { return id !== 'g_tobibako'; });
+    DEFAULT_LAYOUTS.forEach(function (l) { if (/^g_(tobibako3|shukai)$/.test(l.id) && !s.layouts.some(function (x) { return x.id === l.id; })) s.layouts.push(clone(l)); });
+  }
+  s.ver = SAVE_VER;
+  return s;
 }
 function load() {
   try {
     var raw = localStorage.getItem(KEY);
     if (raw) {
       var s = JSON.parse(raw);
-      if (s && Array.isArray(s.layouts)) return sanitize(s);
+      if (s && Array.isArray(s.layouts)) return sanitize(migrate(s));
     }
   } catch (e) { /* 読めなければ標準へ */ }
   return freshState();
@@ -45,7 +58,7 @@ function sanitize(s) {
         .map(function (a) { return { item: a.item, place: a.place, label: !!a.label }; }) : []
     };
   });
-  return { layouts: layouts, recent: Array.isArray(s.recent) ? s.recent.map(String) : [], prefs: Object.assign(base.prefs, s.prefs || {}) };
+  return { ver: SAVE_VER, layouts: layouts, recent: Array.isArray(s.recent) ? s.recent.map(String) : [], prefs: Object.assign(base.prefs, s.prefs || {}) };
 }
 function isHang(h) { return h && ITEMS[h.item] && ITEMS[h.item].kind === 'hang'; }
 function save() {
@@ -299,10 +312,10 @@ function renderEdit() {
   // 余白は広めに固定して、吹き出しが増えても床が跳ねないようにする（場所の広さに合わせて K 倍）
   var x0 = Math.min(b.x0, -300 * K) - pad, y0 = Math.min(b.y0, -130 * K) - pad, x1 = Math.max(b.x1, DESK.w + 300 * K) + pad, y1 = Math.max(b.y1, DESK.d + 130 * K) + pad;
   EZ.base = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
-  applyZoom();
   var ps = cur.top[sel];
   if (!ps || ps.item !== 'arrow' || !isPath(ps)) arrowEdit = false;
   svg.innerHTML = t.svg + (arrowEdit ? arrowMarks(ps) : '');
+  applyZoom();
   var p = cur.top[sel];
   $('selBar').hidden = !p;
   if (p) {
@@ -411,6 +424,7 @@ $('eBg').addEventListener('click', function (e) {
   var id = b.getAttribute('data-bg'); if (id) cur.bg = id; else delete cur.bg; save(); renderEdit();
 });
 $('eText').onchange = function () { SPACE_TEXT = S.prefs.spaceText = this.checked; save(); renderEdit(); };
+document.addEventListener('pointerdown', function (e) { var d = $('eDisp'); if (d.open && !e.target.closest('#eDisp')) d.open = false; });   // 外を押すと閉じる
 $('eGridShow').onchange = function () { S.prefs.gridShow = this.checked; save(); renderEdit(); };
 $('eOutline').onchange = function () { OUTLINE = S.prefs.outline = this.checked; save(); renderEdit(); };
 $('eBack').onclick = renderHome;
@@ -592,6 +606,12 @@ function applyZoom() {
   if (EZ.k > 1) { EZ.cx = cx; EZ.cy = cy; }
   svg.setAttribute('viewBox', (cx - w / 2) + ' ' + (cy - h / 2) + ' ' + w + ' ' + h);
   $('zReset').textContent = Math.round(EZ.k * 100) + '%';
+  GRID_ZOOM = EZ.k;   // グリッドの線と丸を 画面上で同じ太さに保つ（描き直さずに太さだけ変える）
+  var gg = svg.querySelector('.grid');
+  if (gg) {
+    var sw = +gg.getAttribute('data-sw') / EZ.k;
+    Array.prototype.forEach.call(gg.children, function (el) { el.style.strokeWidth = sw; if (el.hasAttribute('data-r')) el.setAttribute('r', +el.getAttribute('data-r') / EZ.k); });
+  }
   $('zReset').disabled = EZ.k === 1;
 }
 function zoomAt(q, f) {   // 図の点 q を画面上で動かさずに 倍率を f 倍

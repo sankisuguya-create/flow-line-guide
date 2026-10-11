@@ -65,13 +65,20 @@
     <button type="button" id="eBack">← もどる</button>
     <label class="fld">活動の名前<input id="eName" maxlength="20"></label>
     <label class="fld">よみ<input id="eYomi" maxlength="30" placeholder="ひらがな"></label>
-    <label class="chk"><input type="checkbox" id="eFlip">左右反転してよい</label>
-    <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
-    <label class="chk"><input type="checkbox" id="eOutline">輪郭を太く</label>
-    <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">場所の名前</label>
-    <div class="gridsel">グリッド<div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div><label class="chk"><input type="checkbox" id="eGridShow" checked>線を出す</label></div>
+    <label class="chk" title="見せる画面で左右反転してよい"><input type="checkbox" id="eFlip">反転してよい</label>
+    <div class="gridsel">グリッド<div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div></div>
+    <!-- 見え方の設定は「表示」にまとめる（毎回は触らないので、上の帯を1段に保つ） -->
+    <details class="dispmenu" id="eDisp">
+      <summary>表示</summary>
+      <div class="dpanel">
+        <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
+        <label class="chk"><input type="checkbox" id="eGridShow" checked>グリッドの線を出す</label>
+        <label class="chk"><input type="checkbox" id="eOutline">輪郭を太く</label>
+        <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">場所の名前</label>
+      </div>
+    </details>
     <span class="sp"></span>
-    <span class="seg" role="group" aria-label="取り消し"><button type="button" id="eUndo" title="取り消す（Ctrl+Z）" disabled>↶ 取り消す</button><button type="button" id="eRedo" title="やり直す（Ctrl+Y）" disabled>↷ やり直す</button></span>
+    <span class="seg" role="group" aria-label="取り消し"><button type="button" id="eUndo" title="取り消す（Ctrl+Z）" aria-label="取り消す" disabled>↶</button><button type="button" id="eRedo" title="やり直す（Ctrl+Y）" aria-label="やり直す" disabled>↷</button></span>
     <button type="button" id="eShow" class="primary">映す</button>
     <button type="button" id="eCopy">複製</button>
     <button type="button" id="eDel" class="danger">削除</button>
@@ -88,7 +95,7 @@
           縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人へらす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人ふやす">＋</button></span><span id="kSum"></span></span>
         <button type="button" id="selPath" aria-pressed="false" hidden>矢印をのばす</button>
         <button type="button" id="selRot">回す ↻</button>
-        <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：漢字①"></label>
+        <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：ここで待つ"></label>
         <button type="button" id="selLabel" aria-pressed="false">名前を出す</button>
         <button type="button" id="selFront">いちばん上へ</button>
         <button type="button" id="selDel" class="danger">けす</button>

@@ -111,7 +111,16 @@ function rotBox(w, d, r) {
 }
 /* 立体の物（../gym/items.js）。床の上で p.r だけ回し（鏡は左右反転）、地図用の見方で描く。
    SVG の rotate で回すと高さの向きまで回ってしまうので、立体のほうを回す */
+/* 立体の絵は 物・状態・判型・向き・鏡 が同じなら同じ。作った絵を覚えておき、同じ物は計算しなおさない
+   （パイプいすを何十脚も並べたときの重さ対策。拡大・縮小は外側の transform でかけるので鍵に入れない） */
+var MESH_CACHE = {}, MESH_CACHE_N = 0;
 function meshSvg(p) {
+  var key = [p.item, stateOf(p), sizeOf(p), p.r || 0, p.m ? 1 : 0].join('|');
+  if (MESH_CACHE[key]) return MESH_CACHE[key];
+  if (++MESH_CACHE_N > 400) { MESH_CACHE = {}; MESH_CACHE_N = 1; }
+  return (MESH_CACHE[key] = meshSvgRaw(p));
+}
+function meshSvgRaw(p) {
   var m = ITEMS[p.item].mesh(p), a = (p.r || 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), mx = p.m ? -1 : 1;
   var faces = m.faces.map(function (f) {
     var q = Object.assign({}, f);
@@ -271,6 +280,18 @@ function floorTopSvg(bg) {
   return deskTopSvg();
 }
 
+/* 描く順：① 床に描く物（ライン・テープなど ITEMS の floor）→ ② 立体（奥＝上から順。手前の物が上に重なる）→ ③ そのほか。
+   ①③の中は置いた順（「いちばん上へ」で後ろへ回す）。data-i は置いた順の番号のまま */
+function drawOrder(top) {
+  var idx = top.map(function (_, i) { return i; });
+  var layer = function (p) { var it = ITEMS[p.item]; return it.floor ? 0 : it.mesh ? 1 : 2; };
+  return idx.sort(function (a, b) {
+    var pa = top[a], pb = top[b], la = layer(pa), lb = layer(pb);
+    if (la !== lb) return la - lb;
+    if (la === 1 && pa.y !== pb.y) return pa.y - pb.y;
+    return a - b;
+  });
+}
 /* 上から見た机1台（場所では床一面）。返す box は描いた範囲（ラベル込み） */
 function topView(lay, o) {
   var sides = o.sides || ['L', 'R', 'T'].concat(o.chair ? [] : ['B']);
@@ -278,7 +299,8 @@ function topView(lay, o) {
   var lab = o.noLabels ? { labels: [], margin: { L: 0, R: 0, T: 0, B: 0 } } : layoutLabels(lay.top, sides, o.ruby, bottom);
   var s = floorTopSvg(SCENE.desk ? null : floorColor(lay.bg)) + (o.chair ? chairTopSvg() : '') + outlineDefs();
   var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
-  lay.top.forEach(function (p, i) {
+  drawOrder(lay.top).forEach(function (i) {
+    var p = lay.top[i];
     s += drawTopItem(p, i, o.sel === i ? 'sel' : '');
     var wd = itemSize(p), bb = rotBox(wd[0], wd[1], p.r || 0);
     ib.x0 = Math.min(ib.x0, p.x - bb[0] / 2); ib.x1 = Math.max(ib.x1, p.x + bb[0] / 2);
@@ -485,10 +507,10 @@ function snap(x, y, level) {
   return { x: i * sx, y: j * sy };
 }
 function gridSvg(level) {
-  var m = gridMargin(), ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny, sw = 2 * K;
-  var s = '<g class="grid">';
+  var m = gridMargin(), ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny, z = GRID_ZOOM, sw = 2 * K / z;
+  var s = '<g class="grid" data-sw="' + 2 * K + '">';   // 線の太さ・丸の大きさは 編集画面の拡大率（GRID_ZOOM）で割る：拡大しても画面上は同じ太さ
   for (var i = -ki; i <= level.nx + ki; i++) s += '<line x1="' + i * DESK.w / level.nx + '" y1="' + (-m.y) + '" x2="' + i * DESK.w / level.nx + '" y2="' + (DESK.d + m.y) + '" style="stroke-width:' + sw + '"/>';
   for (var j = -kj; j <= level.ny + kj; j++) s += '<line x1="' + (-m.x) + '" y1="' + j * DESK.d / level.ny + '" x2="' + (DESK.w + m.x) + '" y2="' + j * DESK.d / level.ny + '" style="stroke-width:' + sw + '"/>';
-  gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 24 ? 2.5 : level.nx > 12 ? 4 : 6) * K + '" style="stroke-width:' + sw + '"/>'; });
+  gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 24 ? 2.5 : level.nx > 12 ? 4 : 6) * K / z + '" data-r="' + (level.nx > 24 ? 2.5 : level.nx > 12 ? 4 : 6) * K + '" style="stroke-width:' + sw + '"/>'; });
   return s + '</g>';
 }

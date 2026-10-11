@@ -246,6 +246,20 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 .kgrid{display:inline-flex;align-items:center;gap:6px;font-weight:700}
 .kgrid .seg{display:inline-flex;align-items:center}
 .kgrid b{min-width:2em;text-align:center;font-variant-numeric:tabular-nums}
+
+/* 表示の設定（編集画面の上の帯から開く小さな板） */
+.dispmenu{position:relative}
+.dispmenu summary{list-style:none;cursor:pointer;min-height:40px;display:flex;align-items:center;padding:6px 14px;border:1px solid var(--rule);border-radius:8px;background:var(--sheet);font-weight:700}
+.dispmenu summary::-webkit-details-marker{display:none}
+.dispmenu summary::after{content:"▾";margin-left:6px;color:var(--ink-soft)}
+.dispmenu[open] summary{background:var(--a-bg);border-color:var(--a-line);color:var(--a-ink)}
+.dpanel{position:absolute;z-index:5;top:calc(100% + 6px);right:0;display:flex;flex-direction:column;gap:10px;padding:12px 14px;background:var(--sheet);border:1px solid var(--rule);border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.12);white-space:nowrap}
+
+/* 1366px で上の帯を1段に収める：名前・よみの欄を詰め、間を狭く */
+.ebar{gap:6px 8px}
+.ebar .fld input{width:7.5em}
+.ebar #eYomi{width:6.5em}
+.ebar #eUndo,.ebar #eRedo{min-width:44px;font-size:20px;padding:4px 10px}
 /* ▲ style.css ここまで ▲ */
 </style>
 </head>
@@ -305,13 +319,20 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
     <button type="button" id="eBack">← もどる</button>
     <label class="fld">活動の名前<input id="eName" maxlength="20"></label>
     <label class="fld">よみ<input id="eYomi" maxlength="30" placeholder="ひらがな"></label>
-    <label class="chk"><input type="checkbox" id="eFlip">左右反転してよい</label>
-    <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
-    <label class="chk"><input type="checkbox" id="eOutline">輪郭を太く</label>
-    <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">場所の名前</label>
-    <div class="gridsel">グリッド<div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div><label class="chk"><input type="checkbox" id="eGridShow" checked>線を出す</label></div>
+    <label class="chk" title="見せる画面で左右反転してよい"><input type="checkbox" id="eFlip">反転してよい</label>
+    <div class="gridsel">グリッド<div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div></div>
+    <!-- 見え方の設定は「表示」にまとめる（毎回は触らないので、上の帯を1段に保つ） -->
+    <details class="dispmenu" id="eDisp">
+      <summary>表示</summary>
+      <div class="dpanel">
+        <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
+        <label class="chk"><input type="checkbox" id="eGridShow" checked>グリッドの線を出す</label>
+        <label class="chk"><input type="checkbox" id="eOutline">輪郭を太く</label>
+        <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">場所の名前</label>
+      </div>
+    </details>
     <span class="sp"></span>
-    <span class="seg" role="group" aria-label="取り消し"><button type="button" id="eUndo" title="取り消す（Ctrl+Z）" disabled>↶ 取り消す</button><button type="button" id="eRedo" title="やり直す（Ctrl+Y）" disabled>↷ やり直す</button></span>
+    <span class="seg" role="group" aria-label="取り消し"><button type="button" id="eUndo" title="取り消す（Ctrl+Z）" aria-label="取り消す" disabled>↶</button><button type="button" id="eRedo" title="やり直す（Ctrl+Y）" aria-label="やり直す" disabled>↷</button></span>
     <button type="button" id="eShow" class="primary">映す</button>
     <button type="button" id="eCopy">複製</button>
     <button type="button" id="eDel" class="danger">削除</button>
@@ -328,7 +349,7 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
           縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人へらす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人ふやす">＋</button></span><span id="kSum"></span></span>
         <button type="button" id="selPath" aria-pressed="false" hidden>矢印をのばす</button>
         <button type="button" id="selRot">回す ↻</button>
-        <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：漢字①"></label>
+        <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：ここで待つ"></label>
         <button type="button" id="selLabel" aria-pressed="false">名前を出す</button>
         <button type="button" id="selFront">いちばん上へ</button>
         <button type="button" id="selDel" class="danger">けす</button>
@@ -502,6 +523,7 @@ var FLOOR_COLORS = [
 ];
 function floorColor(id) { var f = FLOOR_COLORS.filter(function (x) { return x.id === id; })[0]; return f ? f.c : null; }
 var OUTLINE = false;
+var GRID_ZOOM = 1;   // 編集画面の拡大率（app.js が入れる）。グリッドの線を細く保つのに使う
 var SPACE_TEXT = true;   // 場の床の文字（「北の袖」など区画の名前・階段の行き先・仮の地図）を出すか。方位はいつも出す
 function T(cx, cy, text, fs, fill) {
   return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + MIRROR + ' 1)"><text x="0" y="' + (fs * 0.36) + '" font-size="' + fs +
@@ -1075,15 +1097,33 @@ var DEFAULT_LAYOUTS = [
       return t;
     })(),
     hooks: { left: [], right: [] }, away: [] },
-  { id: 'g_tobibako', scene: 'gym', name: '跳び箱の準備', yomi: 'とびばこのじゅんび', flip: true,
+  /* 体育館（場「体育館」の床。フロアは x 6.3〜36.3m・y 0〜25m、東が舞台）。座標は「こまかい」の交点（1.25m） */
+  { id: 'g_tobibako3', scene: 'gym', name: '跳び箱（3コース）', yomi: 'とびばこ', flip: true,
+    top: (function () {
+      var t = [];
+      [15000, 21250, 27500].forEach(function (x, k) {   // 南から北へ助走：待つ列→スタートライン→ロイター板→跳び箱→マット
+        t.push({ item: 'gmat', state: 'hide', x: x, y: 6250, r: 0, size: 'l' });
+        t.push({ item: 'gbox', state: ['dan4', 'dan5', 'dan6'][k], x: x, y: 8750, r: 0, label: k === 0 });
+        t.push({ item: 'gboard', state: 'closed', x: x, y: 10000, r: 0 });
+        t.push({ item: 'arrow', state: 'go', x: x, y: 15000, r: 0 });
+        t.push({ item: 'startline', state: 'closed', x: x, y: 18750, r: 0 });
+        t.push({ item: 'kids', state: 'closed', x: x, y: 22500, r: 0, nx: 2, ny: 4 });
+      });
+      t.push({ item: 'teacher', state: 'closed', x: 10000, y: 10000, r: 0 });
+      return t;
+    })(),
+    hooks: { left: [], right: [] }, away: [] },
+  { id: 'g_shukai', scene: 'gym', name: '体育館の集会', yomi: 'たいいくかんのしゅうかい', flip: false,
     top: [
-      { item: 'gbox',   state: 'dan6', x: 21250, y: 8750,  r: 0 },
-      { item: 'gmat',   state: 'hide', x: 21250, y: 6250,  r: 0, size: 'l' },
-      { item: 'gmat',   state: 'hide', x: 17500, y: 8750,  r: 90 },
-      { item: 'gmat',   state: 'hide', x: 25000, y: 8750,  r: 90 },
-      { item: 'gboard', state: 'closed', x: 21250, y: 10000, r: 0 },
-      { item: 'arrow',  state: 'go',     x: 21250, y: 16250, r: 0, label: true },
-      { item: 'person', state: 'normal', x: 22500, y: 17500, r: 0 }
+      { item: 'podium',     state: 'closed', x: 38750, y: 12500, r: 270 },   // 舞台の上、フロアを向く
+      { item: 'classgroup', state: 'r2', x: 22500, y: 6250,  r: 90, color: 0 },
+      { item: 'classgroup', state: 'r2', x: 22500, y: 10000, r: 90, color: 1 },
+      { item: 'classgroup', state: 'r2', x: 22500, y: 13750, r: 90, color: 2 },
+      { item: 'classgroup', state: 'r2', x: 22500, y: 17500, r: 90, color: 3 },
+      { item: 'teacher',    state: 'closed', x: 31250, y: 12500, r: 0 },
+      { item: 'broadcast',  state: 'closed', x: 32500, y: 2500, r: 0 },
+      { item: 'pipechairs', state: 'c5', x: 11250, y: 5000, r: 270 },    // 来賓席：舞台（東）を向く
+      { item: 'pipechairs', state: 'c5', x: 11250, y: 20000, r: 270 }
     ],
     hooks: { left: [], right: [] }, away: [] },
   { id: 'f_undoukai', scene: 'field', name: 'うんどうかい', yomi: 'うんどうかい', flip: true,
@@ -1194,13 +1234,14 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
 
   /* ---- 人と組 ---- */
   add('classgroup', ALL, { name: '{組|くみ}のまとまり', colors: CLASS_COLORS, states: {   // 2列×16人（0.5m間隔）＋組の名札
-    r2: { w: 1000, d: 8000, draw: function (w, h, col) { return dots(2, 16, w, h, col); } },
-    r4: { w: 2000, d: 4000, draw: function (w, h, col) { return dots(4, 8, w, h, col); } } } });
-  function dots(nx, ny, w, h, col) {
+    r2: { w: 1000, d: 8000, draw: function (w, h, col, p) { return dots(2, 16, w, h, col, p); } },
+    r4: { w: 2000, d: 4000, draw: function (w, h, col, p) { return dots(4, 8, w, h, col, p); } } } });
+  function dots(nx, ny, w, h, col, p) {
     var s = R(0, 0, w, h, 'rgba(255,255,255,.35)', 120, 8, 'rgba(58,53,46,.3)'), r = Math.min(w / nx, h / ny) * 0.36;
     for (var i = 0; i < nx; i++) for (var j = 0; j < ny; j++) s += C((i + 0.5) * w / nx, (j + 0.5) * h / ny, r, col, 6);
     var k = CLASS_COLORS.indexOf(col);
-    return s + tag(w / 2, h / 2, (k >= 0 ? k + 1 : '') + '組', Math.min(w * 0.42, 420));
+    var r = (p && p.r) || 0;   // 名札は回しても立てたまま（読める向き）
+    return s + '<g transform="rotate(' + (-r) + ' ' + w / 2 + ' ' + h / 2 + ')">' + tag(w / 2, h / 2, (k >= 0 ? k + 1 : '') + '組', Math.min(w * 0.42, 420)) + '</g>';
   }
   /* 児童：横 nx 人 × 縦 ny 人（合わせて1〜36人）を 横60cm・縦70cm 間隔で並べる。人数は置いた物ごと（p.nx, p.ny） */
   var KID = { dx: 600, dy: 700, max: 36 };
@@ -1275,6 +1316,14 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
   add('hinadan', ['gym'], { name: 'ひな{壇|だん}', states: one(5400, 1800, function (w, h) {   // 3段（奥ほど高い：上ほど濃い）
     return R(0, 0, w, h / 3, '#9A6B3F', 10, 10) + R(0, h / 3, w, h / 3, '#B8895A', 10, 10) + R(0, 2 * h / 3, w, h / 3, '#D3AE84', 10, 10);
   }) });
+  /* 文字（床に置く ことば：「ここで待つ」「1班」など）。大きさは 文字数と場所の倍率 K で決まる。拡大・縮小もできる */
+  add('words', ['class', 'gym', 'field'], { name: '{文字|もじ}', text: true, colors: ['#FFFFFF', '#F6EDCF', '#DCE8F5', '#FBEEEC'], states: { closed: { w: 600, d: 300, draw: function (w, h, col, p) {
+    var t = (p && p.text) || '文字', fs = h * 0.62;
+    return R(0, 0, w, h, col, h * 0.25, h * 0.06) + T(w / 2, h / 2, t, fs);
+  } } } });
+  ITEMS.words.size = function (p) { var t = (p && p.text) || '文字', fs = 30 * K; return [Math.max(fs * 2, textW(t, fs) + fs), fs * 1.6]; };
+  /* 床に描く物：ほかの物より いつも下に描く（draw.js の drawOrder） */
+  ['startline', 'goalline', 'tape', 'nummark', 'gline', 'fmark'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].floor = true; });
 })();
 /* ▲ extra.js ここまで ▲ */
 /* ▼ mesh.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
@@ -1797,7 +1846,16 @@ function rotBox(w, d, r) {
 }
 /* 立体の物（../gym/items.js）。床の上で p.r だけ回し（鏡は左右反転）、地図用の見方で描く。
    SVG の rotate で回すと高さの向きまで回ってしまうので、立体のほうを回す */
+/* 立体の絵は 物・状態・判型・向き・鏡 が同じなら同じ。作った絵を覚えておき、同じ物は計算しなおさない
+   （パイプいすを何十脚も並べたときの重さ対策。拡大・縮小は外側の transform でかけるので鍵に入れない） */
+var MESH_CACHE = {}, MESH_CACHE_N = 0;
 function meshSvg(p) {
+  var key = [p.item, stateOf(p), sizeOf(p), p.r || 0, p.m ? 1 : 0].join('|');
+  if (MESH_CACHE[key]) return MESH_CACHE[key];
+  if (++MESH_CACHE_N > 400) { MESH_CACHE = {}; MESH_CACHE_N = 1; }
+  return (MESH_CACHE[key] = meshSvgRaw(p));
+}
+function meshSvgRaw(p) {
   var m = ITEMS[p.item].mesh(p), a = (p.r || 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), mx = p.m ? -1 : 1;
   var faces = m.faces.map(function (f) {
     var q = Object.assign({}, f);
@@ -1957,6 +2015,18 @@ function floorTopSvg(bg) {
   return deskTopSvg();
 }
 
+/* 描く順：① 床に描く物（ライン・テープなど ITEMS の floor）→ ② 立体（奥＝上から順。手前の物が上に重なる）→ ③ そのほか。
+   ①③の中は置いた順（「いちばん上へ」で後ろへ回す）。data-i は置いた順の番号のまま */
+function drawOrder(top) {
+  var idx = top.map(function (_, i) { return i; });
+  var layer = function (p) { var it = ITEMS[p.item]; return it.floor ? 0 : it.mesh ? 1 : 2; };
+  return idx.sort(function (a, b) {
+    var pa = top[a], pb = top[b], la = layer(pa), lb = layer(pb);
+    if (la !== lb) return la - lb;
+    if (la === 1 && pa.y !== pb.y) return pa.y - pb.y;
+    return a - b;
+  });
+}
 /* 上から見た机1台（場所では床一面）。返す box は描いた範囲（ラベル込み） */
 function topView(lay, o) {
   var sides = o.sides || ['L', 'R', 'T'].concat(o.chair ? [] : ['B']);
@@ -1964,7 +2034,8 @@ function topView(lay, o) {
   var lab = o.noLabels ? { labels: [], margin: { L: 0, R: 0, T: 0, B: 0 } } : layoutLabels(lay.top, sides, o.ruby, bottom);
   var s = floorTopSvg(SCENE.desk ? null : floorColor(lay.bg)) + (o.chair ? chairTopSvg() : '') + outlineDefs();
   var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
-  lay.top.forEach(function (p, i) {
+  drawOrder(lay.top).forEach(function (i) {
+    var p = lay.top[i];
     s += drawTopItem(p, i, o.sel === i ? 'sel' : '');
     var wd = itemSize(p), bb = rotBox(wd[0], wd[1], p.r || 0);
     ib.x0 = Math.min(ib.x0, p.x - bb[0] / 2); ib.x1 = Math.max(ib.x1, p.x + bb[0] / 2);
@@ -2171,11 +2242,11 @@ function snap(x, y, level) {
   return { x: i * sx, y: j * sy };
 }
 function gridSvg(level) {
-  var m = gridMargin(), ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny, sw = 2 * K;
-  var s = '<g class="grid">';
+  var m = gridMargin(), ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny, z = GRID_ZOOM, sw = 2 * K / z;
+  var s = '<g class="grid" data-sw="' + 2 * K + '">';   // 線の太さ・丸の大きさは 編集画面の拡大率（GRID_ZOOM）で割る：拡大しても画面上は同じ太さ
   for (var i = -ki; i <= level.nx + ki; i++) s += '<line x1="' + i * DESK.w / level.nx + '" y1="' + (-m.y) + '" x2="' + i * DESK.w / level.nx + '" y2="' + (DESK.d + m.y) + '" style="stroke-width:' + sw + '"/>';
   for (var j = -kj; j <= level.ny + kj; j++) s += '<line x1="' + (-m.x) + '" y1="' + j * DESK.d / level.ny + '" x2="' + (DESK.w + m.x) + '" y2="' + j * DESK.d / level.ny + '" style="stroke-width:' + sw + '"/>';
-  gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 24 ? 2.5 : level.nx > 12 ? 4 : 6) * K + '" style="stroke-width:' + sw + '"/>'; });
+  gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 24 ? 2.5 : level.nx > 12 ? 4 : 6) * K / z + '" data-r="' + (level.nx > 24 ? 2.5 : level.nx > 12 ? 4 : 6) * K + '" style="stroke-width:' + sw + '"/>'; });
   return s + '</g>';
 }
 /* ▲ draw.js ここまで ▲ */
@@ -2187,14 +2258,27 @@ var $ = function (id) { return document.getElementById(id); };
 /* ---- 保存：この端末のブラウザだけ。読めない環境では標準の配置で動く ---- */
 function clone(x) { return JSON.parse(JSON.stringify(x)); }
 function freshState() {
-  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk', outline: false, spaceText: true } };
+  return { ver: SAVE_VER, layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk', outline: false, spaceText: true } };
+}
+/* 保存の版。ver が古ければ ここで読み替える（版を上げたら手順を1つ足す）
+   2：体育館の標準配置「跳び箱の準備」（古い床に合わせたもの）を捨て、新しい標準配置を足す */
+var SAVE_VER = 2;
+function migrate(s) {
+  var v = s.ver || 1;
+  if (v < 2) {
+    s.layouts = s.layouts.filter(function (l) { return l.id !== 'g_tobibako'; });
+    s.recent = (s.recent || []).filter(function (id) { return id !== 'g_tobibako'; });
+    DEFAULT_LAYOUTS.forEach(function (l) { if (/^g_(tobibako3|shukai)$/.test(l.id) && !s.layouts.some(function (x) { return x.id === l.id; })) s.layouts.push(clone(l)); });
+  }
+  s.ver = SAVE_VER;
+  return s;
 }
 function load() {
   try {
     var raw = localStorage.getItem(KEY);
     if (raw) {
       var s = JSON.parse(raw);
-      if (s && Array.isArray(s.layouts)) return sanitize(s);
+      if (s && Array.isArray(s.layouts)) return sanitize(migrate(s));
     }
   } catch (e) { /* 読めなければ標準へ */ }
   return freshState();
@@ -2227,7 +2311,7 @@ function sanitize(s) {
         .map(function (a) { return { item: a.item, place: a.place, label: !!a.label }; }) : []
     };
   });
-  return { layouts: layouts, recent: Array.isArray(s.recent) ? s.recent.map(String) : [], prefs: Object.assign(base.prefs, s.prefs || {}) };
+  return { ver: SAVE_VER, layouts: layouts, recent: Array.isArray(s.recent) ? s.recent.map(String) : [], prefs: Object.assign(base.prefs, s.prefs || {}) };
 }
 function isHang(h) { return h && ITEMS[h.item] && ITEMS[h.item].kind === 'hang'; }
 function save() {
@@ -2481,10 +2565,10 @@ function renderEdit() {
   // 余白は広めに固定して、吹き出しが増えても床が跳ねないようにする（場所の広さに合わせて K 倍）
   var x0 = Math.min(b.x0, -300 * K) - pad, y0 = Math.min(b.y0, -130 * K) - pad, x1 = Math.max(b.x1, DESK.w + 300 * K) + pad, y1 = Math.max(b.y1, DESK.d + 130 * K) + pad;
   EZ.base = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
-  applyZoom();
   var ps = cur.top[sel];
   if (!ps || ps.item !== 'arrow' || !isPath(ps)) arrowEdit = false;
   svg.innerHTML = t.svg + (arrowEdit ? arrowMarks(ps) : '');
+  applyZoom();
   var p = cur.top[sel];
   $('selBar').hidden = !p;
   if (p) {
@@ -2593,6 +2677,7 @@ $('eBg').addEventListener('click', function (e) {
   var id = b.getAttribute('data-bg'); if (id) cur.bg = id; else delete cur.bg; save(); renderEdit();
 });
 $('eText').onchange = function () { SPACE_TEXT = S.prefs.spaceText = this.checked; save(); renderEdit(); };
+document.addEventListener('pointerdown', function (e) { var d = $('eDisp'); if (d.open && !e.target.closest('#eDisp')) d.open = false; });   // 外を押すと閉じる
 $('eGridShow').onchange = function () { S.prefs.gridShow = this.checked; save(); renderEdit(); };
 $('eOutline').onchange = function () { OUTLINE = S.prefs.outline = this.checked; save(); renderEdit(); };
 $('eBack').onclick = renderHome;
@@ -2774,6 +2859,12 @@ function applyZoom() {
   if (EZ.k > 1) { EZ.cx = cx; EZ.cy = cy; }
   svg.setAttribute('viewBox', (cx - w / 2) + ' ' + (cy - h / 2) + ' ' + w + ' ' + h);
   $('zReset').textContent = Math.round(EZ.k * 100) + '%';
+  GRID_ZOOM = EZ.k;   // グリッドの線と丸を 画面上で同じ太さに保つ（描き直さずに太さだけ変える）
+  var gg = svg.querySelector('.grid');
+  if (gg) {
+    var sw = +gg.getAttribute('data-sw') / EZ.k;
+    Array.prototype.forEach.call(gg.children, function (el) { el.style.strokeWidth = sw; if (el.hasAttribute('data-r')) el.setAttribute('r', +el.getAttribute('data-r') / EZ.k); });
+  }
   $('zReset').disabled = EZ.k === 1;
 }
 function zoomAt(q, f) {   // 図の点 q を画面上で動かさずに 倍率を f 倍
