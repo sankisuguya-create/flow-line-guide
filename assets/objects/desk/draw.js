@@ -252,8 +252,17 @@ function labelsSvg(labels, ruby) {
 
 /* 場所の床。机以外は平らな床に、その場所の目印の線を入れる */
 function floorTopSvg(bg) {
+  if (SCENE.rot) {   // 回した場所：元の向きで描いて 回す。文字は読める向きに戻す（spaceFloorSvg の rot）
+    var b = SCENE.base, r = SCENE.rot, keep = SCENE;
+    var tf = r === 90 ? 'translate(' + b.d + ' 0) rotate(90)' : r === 180 ? 'translate(' + b.w + ' ' + b.d + ') rotate(180)' : 'translate(0 ' + b.w + ') rotate(270)';
+    SCENE = DESK = b;
+    try { return '<g transform="' + tf + '">' + floorTopSvgIn(bg, r) + '</g>'; } finally { SCENE = DESK = keep; }
+  }
+  return floorTopSvgIn(bg, 0);
+}
+function floorTopSvgIn(bg, rot) {
   var w = DESK.w, d = DESK.d;
-  if (SCENE.space) return spaceFloorSvg(SCENE.space, bg);   // 場（assets/spaces）の床。apps/haichi/src/scenes.js
+  if (SCENE.space) return spaceFloorSvg(SCENE.space, bg, rot);   // 場（assets/spaces）の床。apps/haichi/src/scenes.js
   if (SCENE.id === 'class') {
     // 木の床＋前の壁と黒板（上）＋後ろの壁の帯（下）
     return R(0, 0, w, d, bg || '#EBDDBE', 0, 30 * K, '#B99F72') +
@@ -303,6 +312,10 @@ function topView(lay, o) {
     ib.x0 = Math.min(ib.x0, bb.x0); ib.x1 = Math.max(ib.x1, bb.x1);
     ib.y0 = Math.min(ib.y0, bb.y0); ib.y1 = Math.max(ib.y1, bb.y1);
   });
+  if (SCENE.rot && SCENE.space && SCENE.space.up) {   // 回した場所の方位：もとの「上」が いまどちらを向くか
+    var arrows = ['▲', '▶', '▼', '◀'][SCENE.rot / 90];
+    s += '<text x="' + DESK.w + '" y="' + (-600) + '" font-size="800" font-weight="800" fill="#3B4650" text-anchor="end" dominant-baseline="middle">' + arrows + ' ' + esc(SCENE.space.up) + '</text>';
+  }
   if (o.grid) s += gridSvg(o.grid);
   s += labelsSvg(lab.labels, o.ruby);
   var m = lab.margin, E = 20 * K;

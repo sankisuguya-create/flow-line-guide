@@ -61,28 +61,43 @@
 
 <!-- ③ つくる・なおす -->
 <section id="vEdit" class="edit" hidden>
+  <!-- 上の帯：①配置そのもの（名前・読み・反転）②場所とグリッド ③見え方 ／ 右：取り消し・映す・その他。毎回は触らない物は ▾ の中 -->
   <header class="ebar">
     <button type="button" id="eBack">← 戻る</button>
-    <label class="fld">配置名<input id="eName" maxlength="20"></label>
-    <label class="fld">読み<input id="eYomi" maxlength="30" placeholder="ふりがな"></label>
-    <label class="chk" title="見せる画面で左右反転してよい"><input type="checkbox" id="eFlip">反転を許可</label>
-    <div class="gridsel">グリッド<div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div></div>
-    <!-- 見え方の設定は「表示」にまとめる（毎回は触らないので、上の帯を1段に保つ） -->
-    <details class="dispmenu" id="eDisp">
-      <summary>表示</summary>
-      <div class="dpanel">
-        <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
-        <label class="chk"><input type="checkbox" id="eGridShow" checked>グリッド線を表示</label>
-        <label class="chk"><input type="checkbox" id="eOutline">輪郭を強調</label>
-        <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">エリア名</label>
-      </div>
-    </details>
+    <div class="egroup">
+      <label class="fld">配置名<input id="eName" maxlength="20"></label>
+      <label class="fld">読み<input id="eYomi" maxlength="30" placeholder="ふりがな"></label>
+    </div>
+    <div class="egroup">
+      <button type="button" id="eTurn" title="場所を時計回りに90°回転（置いた物も一緒に回ります）">↻ 場所を回転</button>
+      <details class="dispmenu" id="eGridMenu">
+        <summary>グリッド：<span id="eGridName">標準</span></summary>
+        <div class="dpanel">
+          <div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div>
+          <label class="chk"><input type="checkbox" id="eGridShow" checked>グリッド線を表示</label>
+        </div>
+      </details>
+      <details class="dispmenu" id="eDisp">
+        <summary>表示</summary>
+        <div class="dpanel">
+          <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
+          <label class="chk"><input type="checkbox" id="eOutline">輪郭を強調</label>
+          <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">エリア名</label>
+          <label class="chk" title="映す画面で左右反転してよい"><input type="checkbox" id="eFlip">映す画面で反転を許可</label>
+        </div>
+      </details>
+    </div>
     <span id="ePeers" class="peers" hidden></span>
     <span class="sp"></span>
     <span class="seg" role="group" aria-label="取り消し"><button type="button" id="eUndo" title="取り消す（Ctrl+Z）" aria-label="取り消す" disabled>↶</button><button type="button" id="eRedo" title="やり直す（Ctrl+Y）" aria-label="やり直す" disabled>↷</button></span>
     <button type="button" id="eShow" class="primary">映す</button>
-    <button type="button" id="eCopy">複製</button>
-    <button type="button" id="eDel" class="danger">削除</button>
+    <details class="dispmenu" id="eMore">
+      <summary aria-label="その他">⋯</summary>
+      <div class="dpanel">
+        <button type="button" id="eCopy">この配置を複製</button>
+        <button type="button" id="eDel" class="danger">この配置を削除</button>
+      </div>
+    </details>
   </header>
   <div class="ebody">
     <div class="ecanvas">
@@ -95,20 +110,27 @@
         <button type="button" id="mDel" class="danger">削除</button>
         <button type="button" id="mNone">選択を解除</button>
       </div>
+      <!-- 選んだ物の操作：①種類（状態・判型・色・文字）②形（大きさ・回転・人数・矢印）③そのほか -->
       <div id="selBar" class="selbar" hidden>
         <strong id="selName"></strong>
-        <span id="selState" class="seg"></span>
-        <button type="button" id="selSize"></button>
-        <span id="selColors" class="swatches"></span>
-        <span class="seg" role="group" aria-label="大きさ"><button type="button" id="selSmall" aria-label="縮小">－</button><button type="button" id="selReal">100%</button><button type="button" id="selBig" aria-label="拡大">＋</button></span>
-        <span id="selGrid" class="kgrid" hidden>横<span class="seg"><button type="button" data-k="x" data-d="-1" aria-label="横を1人減らす">－</button><b id="kNx">1</b><button type="button" data-k="x" data-d="1" aria-label="横を1人増やす">＋</button></span>
-          縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人減らす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人増やす">＋</button></span><span id="kSum"></span></span>
-        <button type="button" id="selPath" aria-pressed="false" hidden>矢印を編集</button>
-        <button type="button" id="selRot">回転 ↻</button>
-        <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：待機場所"></label>
-        <button type="button" id="selLabel" aria-pressed="false">名称を表示</button>
-        <button type="button" id="selFront">最前面へ</button>
-        <button type="button" id="selDel" class="danger">削除</button>
+        <span class="bgroup">
+          <span id="selState" class="seg"></span>
+          <button type="button" id="selSize"></button>
+          <span id="selColors" class="swatches"></span>
+          <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：待機場所"></label>
+        </span>
+        <span class="bgroup">
+          <span class="seg" role="group" aria-label="大きさ"><button type="button" id="selSmall" aria-label="縮小">－</button><button type="button" id="selReal">100%</button><button type="button" id="selBig" aria-label="拡大">＋</button></span>
+          <button type="button" id="selRot">回転 ↻</button>
+          <span id="selGrid" class="kgrid" hidden>横<span class="seg"><button type="button" data-k="x" data-d="-1" aria-label="横を1人減らす">－</button><b id="kNx">1</b><button type="button" data-k="x" data-d="1" aria-label="横を1人増やす">＋</button></span>
+            縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人減らす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人増やす">＋</button></span><span id="kSum"></span></span>
+          <button type="button" id="selPath" aria-pressed="false" hidden>矢印を編集</button>
+        </span>
+        <span class="bgroup">
+          <button type="button" id="selLabel" aria-pressed="false">名称を表示</button>
+          <button type="button" id="selFront">最前面へ</button>
+          <button type="button" id="selDel" class="danger">削除</button>
+        </span>
       </div>
       <div class="ewrap">
         <svg id="editSvg" preserveAspectRatio="xMidYMid meet"></svg>

@@ -6,7 +6,7 @@ $('dReset').hidden = Store.kind === 'gas';   // 共有では「標準に戻す�
 $('dHint').textContent = Store.kind === 'gas' ? '配置は校内で共有されています（同時に編集しても統合されます）。書き出しはバックアップに使えます。'
                                               : '配置はこの端末のブラウザに保存されます。別の端末へは書き出したファイルで移行します。';
 function refreshView() {
-  if (!$('vEdit').hidden && cur) { if (!byId(cur.id)) return renderHome(); useScene(scOf(cur)); renderEdit(); renderPalette(); }
+  if (!$('vEdit').hidden && cur) { if (!byId(cur.id)) return renderHome(); useLayout(cur); renderEdit(); renderPalette(); }
   else if (!$('vShow').hidden && cur) { if (!byId(cur.id)) return renderHome(); renderShow(); }
   else renderHome();
 }

@@ -175,6 +175,9 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
   ITEMS.words.size = function (p) { var t = (p && p.text) || '文字', fs = 30 * K; return [Math.max(fs * 2, textW(t, fs) + fs), fs * 1.6]; };
   /* 床に描く物：ほかの物より いつも下に描く（draw.js の drawOrder） */
   ['startline', 'goalline', 'tape', 'nummark', 'gline', 'fmark'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].floor = true; });
+  /* パレットの分け方（group）：thing＝用具・設備（既定）、mark＝矢印・目印、people＝人 */
+  ['arrow', 'gline', 'tape', 'startline', 'goalline', 'nummark', 'fmark', 'flag', 'words'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].group = 'mark'; });
+  ['person', 'kids', 'classgroup', 'teacher', 'rowdot', 'rowline', 'rowseno'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].group = 'people'; });
 })();
 
 /* ---- 矢印の「じゆう」：交点を結ぶ折れ線 ---- */

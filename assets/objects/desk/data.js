@@ -64,9 +64,23 @@ var SCENE = SCENES.desk;
 var DESK = SCENE;                 // いまの床（机モードでは机そのもの）
 var GRID_LEVELS = SCENE.grid;
 var K = 1;                       // 文字・線・余白の倍率（床の幅÷机の幅650）
-function useScene(id) {
+function useScene(id, rot) {
   SCENE = SCENES[id] || SCENES.desk;
-  DESK = SCENE; GRID_LEVELS = SCENE.grid; K = SCENE.k || DESK.w / 650;   // k：倍率を幅から決めない場所（広い場の余白が広がりすぎないように）
+  rot = SCENE.desk ? 0 : ((rot | 0) % 360 + 360) % 360;
+  if (rot) SCENE = turnedScene(SCENE, rot);
+  DESK = SCENE; GRID_LEVELS = SCENE.grid; K = SCENE.k || SCENES[SCENE.id].w / 650;   // k：倍率を幅から決めない場所（広い場の余白が広がりすぎないように）
+}
+/* 場所を90°ずつ回した姿（配置ごとの rot）。幅と奥行き・グリッドの縦横を入れかえ、床は描くときに回す（draw.js の floorTopSvg）。
+   置いた物は 回したときに座標と向きを変える（app の turnLayout）。元の場所は SCENE.base */
+var TURN_CACHE = {};
+function turnedScene(sc, rot) {
+  var key = sc.id + '@' + rot;
+  if (TURN_CACHE[key]) return TURN_CACHE[key];
+  var odd = rot % 180 !== 0, t = Object.create(sc);
+  t.base = sc; t.rot = rot;
+  t.w = odd ? sc.d : sc.w; t.d = odd ? sc.w : sc.d;
+  t.grid = sc.grid.map(function (g) { return odd ? { id: g.id, name: g.name, nx: g.ny, ny: g.nx } : g; });
+  return (TURN_CACHE[key] = t);
 }
 /* 椅子：新JIS 3号（座面幅360・座面高340）。机3号（高さ580）と組むので座面は天板の 240 下 */
 var CHAIR = { w: 360, d: 340, gap: 40, seatV: 240, backV: 20 };

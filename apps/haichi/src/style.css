@@ -209,3 +209,13 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 /* まとめて選ぶ：囲みの四角 */
 #editSvg .band{fill:rgba(44,92,158,.08);stroke:var(--accent);stroke-width:2px;stroke-dasharray:8 6;vector-effect:non-scaling-stroke}
 .peers{font-size:13px;font-weight:700;color:var(--a-ink);background:var(--a-bg);border:1px solid var(--a-line);border-radius:999px;padding:4px 12px}
+
+/* 上の帯と選んだ物の帯：まとまりごとに区切る */
+.egroup,.bgroup{display:inline-flex;align-items:center;gap:6px;padding-left:10px;border-left:1px solid var(--rule)}
+.selbar>.bgroup:first-of-type{border-left:none;padding-left:0}
+#eMore summary{font-size:20px;padding:4px 14px}
+#eMore summary::after{content:none}
+#eMore .dpanel button{width:100%}
+/* パレット：用具・設備／矢印・目印／人 に分けて見出し */
+.pgroup{grid-column:1/-1;margin:8px 0 2px;font-size:13px;font-weight:800;color:var(--ink-soft);border-bottom:1px solid var(--rule-soft);padding-bottom:2px}
+.pgroup:first-child{margin-top:0}

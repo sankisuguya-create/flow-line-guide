@@ -13,7 +13,7 @@ function renderHome() {
   var html = '';
   orderedLayouts().forEach(function (l) {
     if (scOf(l) !== scene) return;
-    var t = inScene(scOf(l), function () { return topView(l, { noLabels: true }); });
+    var t = inLayout(l, function () { return topView(l, { noLabels: true }); });
     var b = t.box;
     html += '<div class="card"><button type="button" class="go" data-id="' + esc(l.id) + '">' +
       '<svg viewBox="' + (b.x0) + ' ' + (b.y0) + ' ' + (b.x1 - b.x0) + ' ' + (b.y1 - b.y0) + '" aria-hidden="true">' + t.svg + '</svg>' +

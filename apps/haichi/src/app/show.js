@@ -2,7 +2,7 @@
 /* ---- ② 見せる ---- */
 function openShow(id) {
   cur = byId(id); if (!cur) return renderHome();
-  useScene(scOf(cur));
+  useLayout(cur);
   flip = false;
   $('bigMsg').innerHTML = SCENE.msg;
   var deskMode = !!SCENE.desk;   // 机だけの機能：4人・いす・横から見た図・しまう物
@@ -68,7 +68,7 @@ $('sEdit').onclick = function () { openEdit(cur.id); };   // 映している配�
    見せる画面の「印刷」はいま映している形（左右反転・4人・いす・横から見た図）のまま。
    まとめて印刷は、各配置を反転なしで、見せる画面の設定（4人・いす・横から見た図・ふりがな）で刷る */
 var DATE_BLANK = '　　月　　日（　　）';
-function printPage(l, o) { return inScene(scOf(l), function () { return printPageIn(l, o); }); }
+function printPage(l, o) { return inLayout(l, function () { return printPageIn(l, o); }); }
 function printPageIn(l, o) {
   var deskMode = !!SCENE.desk;
   var c = deskMode && S.prefs.group ? composeGroup(l, o) : composeSingle(l, o);

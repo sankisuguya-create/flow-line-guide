@@ -2,7 +2,7 @@
 /* ---- ③ つくる・なおす ---- */
 function openEdit(id) {
   cur = byId(id); if (!cur) return renderHome();
-  useScene(scOf(cur));
+  useLayout(cur);
   sel = -1; msel = []; EZ.k = 1; EZ.cx = null;
   hist = { undo: [], redo: [], last: JSON.stringify(cur) };
   histButtons();
@@ -49,12 +49,13 @@ function renderEdit() {
     }).join('');
   }
   renderChips();
-  $('eBgBox').hidden = !!SCENE.desk;   // 床の色は場所だけ（机の天板は木の色のまま）
+  $('eBgBox').hidden = !!SCENE.desk; $('eTurn').hidden = !!SCENE.desk;   // 床の色は場所だけ（机の天板は木の色のまま）
   $('eBg').innerHTML = FLOOR_COLORS.map(function (f) {
     var on = (cur.bg || '') === f.id;
     return '<button type="button" class="sw bg' + (on ? ' on' : '') + '" data-bg="' + f.id + '" aria-pressed="' + on + '" title="' + f.name + '"' +
       (f.c ? ' style="background:' + f.c + '"' : '') + '>' + f.name + '</button>';
   }).join('');
+  $('eGridName').textContent = S.prefs.grid === 'free' ? '自由配置' : gridLevel(S.prefs.grid).name;
   $('eGrid').innerHTML = GRID_LEVELS.concat([{ id: 'free', name: '自由配置' }]).map(function (g) {
     var on = S.prefs.grid === 'free' ? g.id === 'free' : g.id === gridLevel(S.prefs.grid).id;
     return '<button type="button" data-grid="' + g.id + '" class="' + (on ? 'on' : '') + '">' + g.name + '</button>';
@@ -87,6 +88,7 @@ document.querySelector('.lists').addEventListener('click', function (e) {
   save(); renderEdit();
 });
 
+var PALETTE_GROUPS = [['thing', '用具・設備'], ['mark', '矢印・目印'], ['people', '人']];
 function renderPalette() {
   var deskMode = !!SCENE.desk;
   document.querySelector('.tabs').hidden = !deskMode;   // 机以外はタブなし：置ける物をそのまま並べる
@@ -103,8 +105,12 @@ function renderPalette() {
   var kind = tab === 'hang' ? 'hang' : 'top';
   var ids = deskMode ? Object.keys(ITEMS).filter(function (id) { return (tab === 'away' || ITEMS[id].kind === kind) && !(ITEMS[id].scenes || []).length; })
                      : SCENE.items.slice();
-  $('pItems').innerHTML = ids.map(function (id) {
-    return '<button type="button" data-add="' + id + '">' + iconSvg(id, 54) + '<span>' + plainName(ITEMS[id].name) + '</span></button>';
+  var tile = function (id) { return '<button type="button" data-add="' + id + '">' + iconSvg(id, 54) + '<span>' + plainName(ITEMS[id].name) + '</span></button>'; };
+  if (deskMode) { $('pItems').innerHTML = ids.map(tile).join(''); return; }
+  // 場所：用具・設備／矢印・目印／人 に分けて並べる
+  $('pItems').innerHTML = PALETTE_GROUPS.map(function (g) {
+    var list = ids.filter(function (id) { return (ITEMS[id].group || 'thing') === g[0]; });
+    return list.length ? '<h3 class="pgroup">' + g[1] + '</h3>' + list.map(tile).join('') : '';
   }).join('');
 }
 document.querySelector('.tabs').addEventListener('click', function (e) {
@@ -134,7 +140,9 @@ $('eBg').addEventListener('click', function (e) {
   var id = b.getAttribute('data-bg'); if (id) cur.bg = id; else delete cur.bg; save(); renderEdit();
 });
 $('eText').onchange = function () { SPACE_TEXT = S.prefs.spaceText = this.checked; save(); renderEdit(); };
-document.addEventListener('pointerdown', function (e) { var d = $('eDisp'); if (d.open && !e.target.closest('#eDisp')) d.open = false; });   // 外を押すと閉じる
+document.addEventListener('pointerdown', function (e) {   // ▾ の板は 外を押すと閉じる
+  ['eDisp', 'eGridMenu', 'eMore'].forEach(function (id) { var d = $(id); if (d.open && !e.target.closest('#' + id)) d.open = false; });
+});
 $('eGridShow').onchange = function () { S.prefs.gridShow = this.checked; save(); renderEdit(); };
 $('eOutline').onchange = function () { OUTLINE = S.prefs.outline = this.checked; save(); renderEdit(); };
 $('eBack').onclick = renderHome;
@@ -169,6 +177,21 @@ function setScale(p, s) { s = Math.round(Math.min(SCALE_MAX, Math.max(SCALE_MIN,
 $('selSmall').onclick = function () { var p = cur.top[sel]; setScale(p, scaleOf(p) / 1.25); };
 $('selBig').onclick = function () { var p = cur.top[sel]; setScale(p, scaleOf(p) * 1.25); };
 $('selReal').onclick = function () { setScale(cur.top[sel], 1); };
+/* 場所ごと90°回す（時計回り）：床を回し、置いた物は 位置と向きを いっしょに回す。
+   回した後の床の奥行きを D とすると (x, y) → (D − y, x)。交点の上の物は 交点の上のまま */
+function turnLayout() {
+  if (SCENE.desk) return;
+  var D = DESK.d;
+  cur.top.forEach(function (p) {
+    var x = p.x; p.x = D - p.y; p.y = x;
+    if (isPath(p)) p.pts = p.pts.map(function (v) { return [-v[1], v[0]]; });
+    else p.r = ((p.r || 0) + 90) % 360;
+  });
+  cur.rot = ((cur.rot || 0) + 90) % 360; if (!cur.rot) delete cur.rot;
+  useLayout(cur); EZ.k = 1; EZ.cx = null;
+  save(); renderEdit();
+}
+$('eTurn').onclick = turnLayout;
 $('selRot').onclick = function () {
   var p = cur.top[sel];
   if (isPath(p)) p.pts = p.pts.map(function (v) { return [-v[1], v[0]]; });   // 折れ線の矢印は 交点を始点のまわりに90°回す

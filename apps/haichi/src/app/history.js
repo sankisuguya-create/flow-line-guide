@@ -15,6 +15,7 @@ function restore(s) {   // cur は S.layouts の中の同じ物なので、中�
   hist.last = s;
   if (sel >= cur.top.length) sel = -1;
   msel = msel.filter(function (i) { return i < cur.top.length; }); if (msel.length < 2) msel = [];
+  useLayout(cur);   // 場所の向き（rot）も戻る
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
   try { Store.save(S); } catch (e) {}
   renderEdit(); renderPalette(); histButtons();

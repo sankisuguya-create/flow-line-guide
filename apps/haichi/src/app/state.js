@@ -47,6 +47,7 @@ function sanitize(s) {
     return {
       id: String(l.id), name: String(l.name || '無題'), yomi: String(l.yomi || ''), flip: l.flip !== false, scene: sc,
       bg: sc !== 'desk' && floorColor(l.bg) ? l.bg : undefined,
+      rot: sc !== 'desk' && [90, 180, 270].indexOf(+l.rot) >= 0 ? +l.rot : undefined,   // 場所の向き（90°ずつ）
       top: l.top.filter(function (p) { return ok(p.item); }).map(function (p) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
@@ -68,7 +69,9 @@ function sanitize(s) {
 /* 物が持つ 編集画面の追加の操作（ITEMS の controls）：'grid'＝横・縦の人数、'path'＝矢印をのばす */
 function hasCtl(id, c) { return ((ITEMS[id] || {}).controls || []).indexOf(c) >= 0; }
 /* 場所を一時的に切り替えて描く（終わったら 元の場所に戻す。戻し忘れを防ぐ） */
-function inScene(id, fn) { var keep = SCENE.id; useScene(id); try { return fn(); } finally { useScene(keep); } }
+function inScene(id, fn, rot) { var keep = SCENE.id, kr = SCENE.rot || 0; useScene(id, rot); try { return fn(); } finally { useScene(keep, kr); } }
+function inLayout(l, fn) { return inScene(scOf(l), fn, l.rot); }   // 配置の場所（回した向きも）で描く
+function useLayout(l) { useScene(scOf(l), l && l.rot); }
 function isHang(h) { return h && ITEMS[h.item] && ITEMS[h.item].kind === 'hang'; }
 function save() {
   record();

@@ -115,9 +115,9 @@ await step('児童：横×縦の人数、36人まで', async () => {
 await step('拡大・縮小とグリッドの線', async () => {
   await p.click('#selBig'); assert.equal(await p.textContent('#selReal'), '125%');
   await p.click('#selReal'); assert.equal(await p.textContent('#selReal'), '100%');
-  await p.click('#eDisp summary'); await p.click('#eGridShow');
+  await p.click('#eGridMenu summary'); await p.click('#eGridShow');
   assert.equal(await p.locator('#editSvg .grid').count(), 0);
-  await p.click('#eGridShow'); await p.click('#eDisp summary');
+  await p.click('#eGridShow'); await p.click('#eGridMenu summary');
 });
 
 await step('自由配置：交点に合わせない／ふりがなは映す画面だけ', async () => {
@@ -125,16 +125,43 @@ await step('自由配置：交点に合わせない／ふりがなは映す画�
   assert.equal(await p.locator('#cards ruby').count(), 0, 'カードには ふりがなを付けない');
   await p.click('[data-fix="g_tobibako3"]');
   assert.equal(await p.locator('#editSvg ruby, #editSvg .labels rt').count(), 0);
+  await p.click('#eGridMenu summary');
   await p.click('[data-grid="free"]');
   assert.ok(await p.locator('[data-grid="free"].on').count(), '自由配置のボタンが選ばれる');
   const q = await p.evaluate(() => { const o = { x: 1234, y: 4567 }; clampP(o); return o; });
   assert.deepEqual([q.x, q.y], [1234, 4567], '自由配置では 交点に合わせない');
-  await p.click('[data-grid="normal"]');
+  await p.click('[data-grid="normal"]'); await p.click('#eGridMenu summary');
   const q2 = await p.evaluate(() => { const o = { x: 1234, y: 4567 }; clampP(o); return o; });
   assert.ok(q2.x % 1250 === 0 && q2.y % 1250 === 0, '標準に戻すと交点に合う');
   await p.click('#eShow');
   assert.ok((await p.innerHTML('#sTitle')).includes('<ruby>'), '映す画面は ふりがな');
   await p.click('#sBack');
+});
+
+await step('場所を90°回転：物も回り、4回で元に戻る。取り消しで戻る', async () => {
+  await p.click('[data-fix="g_tobibako3"]');
+  const get = () => p.evaluate(() => JSON.parse(localStorage.getItem('haichi.v1')).layouts.find(l => l.id === 'g_tobibako3'));
+  const l0 = await get();
+  await p.click('#eTurn');
+  const l1 = await get();
+  assert.equal(l1.rot, 90);
+  const a0 = l0.top.find(q => q.item === 'arrow'), a1 = l1.top.find(q => q.item === 'arrow');
+  assert.equal(a1.r, ((a0.r || 0) + 90) % 360, '物の向きも回る');
+  const [W, D] = await p.evaluate(() => [DESK.w, DESK.d]);
+  assert.ok(W < D, '体育館（横長）が縦長になる');
+  await p.keyboard.press('Control+z');
+  assert.equal(JSON.stringify((await get()).top), JSON.stringify(l0.top), '取り消すと元の位置');
+  for (let i = 0; i < 4; i++) await p.click('#eTurn');
+  const l4 = await get();
+  assert.ok(!l4.rot, '4回で元の向き');
+  assert.deepEqual(l4.top.map(q => [q.x, q.y, q.r || 0]), l0.top.map(q => [q.x, q.y, q.r || 0]));
+  await p.click('#eBack');
+});
+
+await step('パレット：用具・設備／矢印・目印／人 に分かれる', async () => {
+  await p.click('[data-fix="g_shukai"]');
+  assert.deepEqual(await p.$$eval('#pItems .pgroup', els => els.map(e => e.textContent)), ['用具・設備', '矢印・目印', '人']);
+  await p.click('#eBack');
 });
 
 await step('まとめて印刷：1配置1枚', async () => {
