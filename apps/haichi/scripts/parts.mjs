@@ -14,6 +14,7 @@ export const FILES = {
   "items.js": "assets/objects/gym/items.js",
   "scenes.js": "apps/haichi/src/scenes.js",
   "draw.js": "assets/objects/desk/draw.js",
+  "store.js": "apps/haichi/src/store.js",
   "app.js": "apps/haichi/src/app.js",
 };
 // 場の一覧：assets/spaces/<場所>/space.json。床の絵に要る項目だけを持ってくる（動線・隊形は配置図では使わない）
@@ -35,4 +36,4 @@ export function read(name) {
   return fs.readFileSync(path.join(ROOT, FILES[name]), "utf8");
 }
 // テストが vm で読む順（app.js は画面が要るので除く）
-export const LOGIC = ["data.js", "extra.js", "mesh.js", "items.js", "spaces.js", "scenes.js", "draw.js"];
+export const LOGIC = ["data.js", "extra.js", "mesh.js", "items.js", "spaces.js", "scenes.js", "draw.js", "store.js"];

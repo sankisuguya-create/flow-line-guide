@@ -28,7 +28,7 @@
       <label class="filebtn">読み込む<input type="file" id="dImport" accept="application/json,.json" hidden></label>
       <button type="button" id="dReset" class="danger">標準の配置に戻す</button>
     </div>
-    <p class="hint">配置はこの端末のブラウザに保存されます。別の端末へは書き出したファイルで移します。</p>
+    <p class="hint" id="dHint">配置はこの端末のブラウザに保存されます。別の端末へは書き出したファイルで移します。</p>
   </details>
 </main>
 
@@ -77,6 +77,7 @@
         <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">場所の名前</label>
       </div>
     </details>
+    <span id="ePeers" class="peers" hidden></span>
     <span class="sp"></span>
     <span class="seg" role="group" aria-label="取り消し"><button type="button" id="eUndo" title="取り消す（Ctrl+Z）" aria-label="取り消す" disabled>↶</button><button type="button" id="eRedo" title="やり直す（Ctrl+Y）" aria-label="やり直す" disabled>↷</button></span>
     <button type="button" id="eShow" class="primary">映す</button>
@@ -152,6 +153,7 @@
 /* @include spaces.js */
 /* @include scenes.js */
 /* @include draw.js */
+/* @include store.js */
 /* @include app.js */
 </script>
 </body>

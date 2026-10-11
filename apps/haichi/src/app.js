@@ -22,12 +22,12 @@ function migrate(s) {
 }
 function load() {
   try {
-    var raw = localStorage.getItem(KEY);
+    var raw = Store.load();
     if (raw) {
       var s = JSON.parse(raw);
       if (s && Array.isArray(s.layouts)) {
         var old = s.ver || 1, out = sanitize(migrate(s));
-        if (old < SAVE_VER) try { localStorage.setItem(KEY, JSON.stringify(out)); } catch (e2) {}   // 読み替えた結果をすぐ残す
+        if (old < SAVE_VER && Store.kind === 'local') try { Store.save(out); } catch (e2) {}   // 読み替えた結果をすぐ残す
         return out;
       }
     }
@@ -51,6 +51,7 @@ function sanitize(s) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
                  text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined,
+                 u: p.u ? String(p.u) : undefined,
                  nx: hasCtl(p.item, 'grid') ? kidsN(p).nx : undefined, ny: hasCtl(p.item, 'grid') ? kidsN(p).ny : undefined,
                  pts: hasCtl(p.item, 'path') && Array.isArray(p.pts) ? p.pts.filter(function (q) { return Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]); }).map(function (q) { return [+q[0], +q[1]]; }) : undefined, s: scaleOf(p) !== 1 ? scaleOf(p) : undefined };
       }),
@@ -71,7 +72,7 @@ function inScene(id, fn) { var keep = SCENE.id; useScene(id); try { return fn();
 function isHang(h) { return h && ITEMS[h.item] && ITEMS[h.item].kind === 'hang'; }
 function save() {
   record();
-  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('この端末には保存できません（書き出しで残してください）'); }
+  try { Store.save(S); } catch (e) { toast('この端末には保存できません（書き出しで残してください）'); }
 }
 
 var S = load();
@@ -600,7 +601,7 @@ function restore(s) {   // cur は S.layouts の中の同じ物なので、中�
   if (sel >= cur.top.length) sel = -1;
   msel = msel.filter(function (i) { return i < cur.top.length; }); if (msel.length < 2) msel = [];
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
-  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+  try { Store.save(S); } catch (e) {}
   renderEdit(); renderPalette(); histButtons();
 }
 function undo() { if (!hist.undo.length) return; hist.redo.push(hist.last); restore(hist.undo.pop()); }
@@ -802,3 +803,29 @@ document.addEventListener('keydown', function (e) {   // 矢印キーでグリ�
 $('editSvg').addEventListener('pointercancel', function (e) { touchEnd(e); pan = null; endDrag(); });
 
 renderHome();
+
+/* ---- 共有（GAS版）：起動したら共有の配置を受け取り、ほかの人の変更が来たら描き直す ---- */
+$('dReset').hidden = Store.kind === 'gas';   // 共有では「標準に戻す」はしない（みんなの配置が消えるため）
+$('dHint').textContent = Store.kind === 'gas' ? '配置は学校のみんなで共有しています（同時に直してもまざります）。書き出しは控えに使えます。'
+                                              : '配置はこの端末のブラウザに保存されます。別の端末へは書き出したファイルで移します。';
+function refreshView() {
+  if (!$('vEdit').hidden && cur) { if (!byId(cur.id)) return renderHome(); useScene(scOf(cur)); renderEdit(); renderPalette(); }
+  else if (!$('vShow').hidden && cur) { if (!byId(cur.id)) return renderHome(); renderShow(); }
+  else renderHome();
+}
+Store.onPresence = function () { if (!$('vEdit').hidden && cur) peers(); };
+function peers() {
+  var who = Store.editors ? Store.editors(cur.id) : [];
+  $('ePeers').hidden = !who.length;
+  $('ePeers').textContent = who.length ? 'いっしょに編集中：' + who.join('、') : '';
+}
+Store.start(refreshView, function (id, by, conflict) {
+  if (cur && cur.id === id && !$('vEdit').hidden) {
+    hist = { undo: [], redo: [], last: JSON.stringify(cur) }; histButtons();   // 取り消しは 取り込んだ後から数え直す
+    if (sel >= cur.top.length) sel = -1;
+    msel = msel.filter(function (i) { return i < cur.top.length; }); if (msel.length < 2) msel = [];
+    if (!conflict) toast((by || 'ほかの人') + 'さんの変更を取り込みました');
+  }
+  refreshView();
+});
+
