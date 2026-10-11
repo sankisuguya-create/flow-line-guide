@@ -66,7 +66,7 @@ var GRID_LEVELS = SCENE.grid;
 var K = 1;                       // 文字・線・余白の倍率（床の幅÷机の幅650）
 function useScene(id) {
   SCENE = SCENES[id] || SCENES.desk;
-  DESK = SCENE; GRID_LEVELS = SCENE.grid; K = DESK.w / 650;
+  DESK = SCENE; GRID_LEVELS = SCENE.grid; K = SCENE.k || DESK.w / 650;   // k：倍率を幅から決めない場所（広い場の余白が広がりすぎないように）
 }
 /* 椅子：新JIS 3号（座面幅360・座面高340）。机3号（高さ580）と組むので座面は天板の 240 下 */
 var CHAIR = { w: 360, d: 340, gap: 40, seatV: 240, backV: 20 };
@@ -690,10 +690,10 @@ var DEFAULT_LAYOUTS = [
     hooks: { left: [], right: [] }, away: [] },
   { id: 'g_tobibako', scene: 'gym', name: '跳び箱の準備', yomi: 'とびばこのじゅんび', flip: true,
     top: [
-      { item: 'gbox',   state: 'closed', x: 10000, y: 8750,  r: 0 },
-      { item: 'gmat',   state: 'closed', x: 10000, y: 6250,  r: 0, size: 'l' },
-      { item: 'gmat',   state: 'closed', x: 6250,  y: 8750,  r: 90 },
-      { item: 'gmat',   state: 'closed', x: 13750, y: 8750,  r: 90 },
+      { item: 'gbox',   state: 'dan6', x: 10000, y: 8750,  r: 0 },
+      { item: 'gmat',   state: 'hide', x: 10000, y: 6250,  r: 0, size: 'l' },
+      { item: 'gmat',   state: 'hide', x: 6250,  y: 8750,  r: 90 },
+      { item: 'gmat',   state: 'hide', x: 13750, y: 8750,  r: 90 },
       { item: 'gboard', state: 'closed', x: 10000, y: 10000, r: 0 },
       { item: 'arrow',  state: 'go',     x: 10000, y: 16250, r: 0, label: true },
       { item: 'person', state: 'normal', x: 11250, y: 17500, r: 0 }
