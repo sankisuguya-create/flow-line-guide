@@ -12,6 +12,7 @@ export function hm(s) { const [h, m] = String(s).split(":").map(Number); return 
 const fill = (s, v) => String(s).replace(/\{(\w+)\}/g, (_, k) => (v[k] !== undefined ? v[k] : `{${k}}`));
 
 export function compile(plan, space) {
+  const AL = space.alias || {}, fillP = (x, v) => { const r = fill(x, v); return AL[r] || r; };   // 上乗せの別名（line.1 → line.SE など）
   const warn = [], P = space.points, speed = plan.speed || 0.8; // m/s
   // 通路のグラフ
   const adj = {};
@@ -101,7 +102,7 @@ export function compile(plan, space) {
     const here = () => form ? cen(forms[form]) : P[at];
     for (const step of plan.scripts[g.script]) {
       if (step.place) {
-        const p = fill(step.place, v); if (!P[p]) { warn.push(`${g.label}: 場所 ${p} がない`); continue; }
+        const p = fillP(step.place, v); if (!P[p]) { warn.push(`${g.label}: 場所 ${p} がない`); continue; }
         at = p; t = hm(step.at); form = arrive(p); put(t, here(), form); continue;
       }
       VIA = step.via || null;
@@ -118,17 +119,17 @@ export function compile(plan, space) {
       if (step.layout) {                                 // 入水：1列目から ひとりずつ 水の中の位置へ
         if (!(LAY[step.layout]?.place || LAY[step.layout]?.spots || {})[g.id]) { warn.push(`${g.label}: 配置「${step.layout}」に この組がない`); continue; }
         const key = "@" + step.layout; forms[key] ||= layoutSlots(step.layout, g.id);
-        const p = fill(step.point, v); P[p] = cen(forms[key]);   // 水の中の点を 隊形の中心に合わせる（あとの経路の起点）
+        const p = fillP(step.point, v); P[p] = cen(forms[key]);   // 水の中の点を 隊形の中心に合わせる（あとの経路の起点）
         form = key; at = p; t += step.dur || 1.6; put(t, here(), form, true); continue;
       }
       if (step.return) {                                 // 水から上がる：入水した位置（整列の隊形）へ ひとりずつ戻る。ふち側の列から
-        const p = fill(step.return, v), key = arrive(p);
+        const p = fillP(step.return, v), key = arrive(p);
         if (!key) { warn.push(`${g.label}: ${p} に 隊形がない`); continue; }
         form = key; at = p; t += step.dur || 1.2; put(t, here(), form, 2); continue;
       }
       if (form) { t += 0.3; form = null; put(t, P[at], null, true); }   // 隊形から かたまりに戻ってから 動く
       for (const raw of step.to) {
-        const tg = typeof raw === "string" ? { p: raw } : raw, p = fill(tg.p, v);
+        const tg = typeof raw === "string" ? { p: raw } : raw, p = fillP(tg.p, v);
         if (!P[p]) { warn.push(`${g.label}: 場所 ${p} がない`); continue; }
         const r = route(at, p);
         if (!r) { warn.push(`${g.label}: ${at} → ${p} へ行ける通路がない（一方通行を確認）`); continue; }
@@ -206,9 +207,24 @@ export function compile(plan, space) {
 }
 const clock = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 
+// 場を読む。extends があれば 基礎の場に 上乗せする（区画・通路・注は足す、点・隊形・ラベル・別名は 上書き）
+export function loadSpace(id) {
+  const sp = JSON.parse(rd(`spaces/${id}/space.json`));
+  if (!sp.extends) return sp;
+  const b = loadSpace(sp.extends), ids = new Set((sp.areas || []).map(a => a.id));
+  return { ...b, ...sp,
+    title: sp.title || b.title, status: sp.status || b.status, up: sp.up || b.up, size: sp.size || b.size,
+    statusNote: [b.statusNote, sp.statusNote].filter(Boolean).join(" ／ "),
+    sources: [...(b.sources || []), ...(sp.sources || [])],
+    areas: [...b.areas.filter(a => !ids.has(a.id)), ...(sp.areas || [])],
+    points: { ...b.points, ...(sp.points || {}) }, paths: [...b.paths, ...(sp.paths || [])],
+    pointLabels: { ...(b.pointLabels || {}), ...(sp.pointLabels || {}) }, forms: { ...(b.forms || {}), ...(sp.forms || {}) },
+    alias: { ...(b.alias || {}), ...(sp.alias || {}) }, views: [...(b.views || []), ...(sp.views || [])] };
+}
+
 export function build(planPath) {
   const plan = JSON.parse(rd(planPath));
-  const space = JSON.parse(rd(`spaces/${plan.space}/space.json`));
+  const space = loadSpace(plan.space);
   const { warn, data } = compile(plan, space);
   const event = path.basename(path.dirname(planPath));
   const out = `gas/${event}/${plan.key}.html`;

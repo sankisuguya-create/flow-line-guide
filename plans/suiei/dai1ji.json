@@ -3,7 +3,7 @@
   "title": "4年 すいえい 1回目",
   "subtitle": "6月10日（1・2時間目）",
   "grade": "4年",
-  "space": "pool",
+  "space": "suiei-4nen-dai1ji",
   "source": "4年 水泳 第1時 指導計画（全体指揮 高瀨）",
   "start": "8:25",
   "end": "10:36",
@@ -15,7 +15,7 @@
       "script": "swim",
       "vars": {
         "c": 1,
-        "kutsu": "kutsu.12",
+        "kutsu": "kutsu.kubomi",
         "kutsuName": "入口前のくぼみ"
       },
       "color": "#B3172B",
@@ -27,7 +27,7 @@
       "script": "swim",
       "vars": {
         "c": 2,
-        "kutsu": "kutsu.12",
+        "kutsu": "kutsu.kubomi",
         "kutsuName": "入口前のくぼみ"
       },
       "color": "#F2C037",
@@ -39,7 +39,7 @@
       "script": "swim",
       "vars": {
         "c": 3,
-        "kutsu": "kutsu.3",
+        "kutsu": "kutsu.yokoE",
         "kutsuName": "入口の横（東）"
       },
       "color": "#1E5FCC",
@@ -51,7 +51,7 @@
       "script": "swim",
       "vars": {
         "c": 4,
-        "kutsu": "kutsu.4",
+        "kutsu": "kutsu.yokoW",
         "kutsuName": "入口の横（西）"
       },
       "color": "#46B97A",
@@ -64,7 +64,7 @@
       "style": "watch",
       "vars": {
         "c": "W",
-        "kutsu": "kutsu.12"
+        "kutsu": "kutsu.kubomi"
       },
       "n": 4
     }

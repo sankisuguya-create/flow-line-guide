@@ -20,7 +20,7 @@ flow-line-guide/
 │   ├─ kikaku.md     共通規格の設計メモ（3層・型の見分け方・落とし穴）
 │   └─ tsuika.md     資料を1本足す手順
 ├─ objects/          物（実寸mmの絵）。いまは desk-layout の複製
-├─ spaces/<場>/      場（実寸mの区画・点・通路）
+├─ spaces/<場>/      場（実寸mの区画・点・通路）。pool-area＝プールエリア基礎
 ├─ core/             操作UI（再生部・見た目・ひな形）
 ├─ plans/<行事>/     中身（計画書から起こしたデータ）
 ├─ tools/            build.mjs（生成・検査）／check.mjs（撮影）／align.html（間取り合わせ）
@@ -67,6 +67,10 @@ Classroomの資料としてHTMLファイルを添付する方法は、児童側�
 | ≡ | 操作パネルの開閉。畳むと図が全幅になる |
 
 ## 収録している資料
+
+### プールエリア 基礎（`gas/pool-area/kihon.html`、生成）
+
+プール周りの区画と動線の決まりだけを持つ基礎データ `spaces/pool-area/` の見本。プール指導の資料はこの基礎に上乗せして作る。
 
 ### 水泳 4年 1回目の動き（`gas/suiei/dai1ji.html`、生成）
 

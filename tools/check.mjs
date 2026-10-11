@@ -1,6 +1,6 @@
 // できあがった資料を 実際のブラウザで開いて 確かめる。
 // 使い方: node tools/check.mjs gas/suiei/dai1ji.html <出力フォルダ>
-// 各場面の はじめで「ぜんぶ」と 1組を 撮る。Chromebook（1366×768の表示域）と スマホ横（844×390）。
+// 各場面の はじめで「ぜんぶ」と 最初の組を 撮る。Chromebook（1366×768の表示域）と スマホ横（844×390）。
 // JSエラー・横はみ出しが あれば 失敗にする。playwright が要る（PLAYWRIGHT_BROWSERS_PATH の chromium を使う）。
 import { createRequire } from "node:module";
 import fs from "node:fs";
@@ -18,7 +18,8 @@ for (const [w, h, tag] of [[1366, 657, "cb"], [844, 390, "phone"]]) {
   const errs = []; p.on("pageerror", e => errs.push(e.message));
   await p.goto("file://" + path.resolve(file));
   const n = await p.evaluate(() => document.querySelectorAll("#chap button").length);
-  for (let i = 0; i < n; i++) for (const who of ["all", "1"]) {
+  const first = await p.evaluate(() => document.querySelectorAll("#who button")[1].dataset.w);   // 最初の組
+  for (let i = 0; i < n; i++) for (const who of ["all", first]) {
     await p.evaluate(([i, who]) => { document.querySelector(`#who [data-w="${who}"]`).click(); document.querySelectorAll("#chap button")[i].click(); }, [i, who]);
     await p.waitForTimeout(1200);
     if (tag === "phone" && i % 3) continue;

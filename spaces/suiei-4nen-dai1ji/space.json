@@ -1,0 +1,96 @@
+{
+ "id": "suiei-4nen-dai1ji",
+ "extends": "pool-area",
+ "title": "プールエリア＋4年の教室（第1時）",
+ "statusNote": "4年 水泳 第1時 の上乗せ。2F の4年の教室（別の階。階段まで2分と仮定）と、組と場所の対応（1組＝南東、2組＝南西、4組＝北東、3組＝北西。上ばきは 1・2組＝くぼみ、3組＝入口の横・東、4組＝入口の横・西 と仮置き）。",
+ "sources": [
+  {
+   "kind": "計画書",
+   "ref": "4年 水泳 第1時 指導計画（開始時の整列場所の図）"
+  }
+ ],
+ "areas": [
+  {
+   "id": "floor2",
+   "kind": "room",
+   "label": "2F 教室（別の階）",
+   "rect": [
+    42,
+    29,
+    17,
+    8.4
+   ]
+  }
+ ],
+ "points": {
+  "room.1": [
+   44.5,
+   33
+  ],
+  "room.2": [
+   49,
+   33
+  ],
+  "room.3": [
+   53.5,
+   33
+  ],
+  "room.4": [
+   44.5,
+   36
+  ],
+  "room.W": [
+   50,
+   36
+  ]
+ },
+ "paths": [
+  [
+   "room.1",
+   "st2",
+   {
+    "minutes": 2,
+    "note": "2F教室〜階段（実測していない）"
+   }
+  ],
+  [
+   "room.2",
+   "st2",
+   {
+    "minutes": 2
+   }
+  ],
+  [
+   "room.3",
+   "st2",
+   {
+    "minutes": 2
+   }
+  ],
+  [
+   "room.4",
+   "st2",
+   {
+    "minutes": 2
+   }
+  ],
+  [
+   "room.W",
+   "st2",
+   {
+    "minutes": 2
+   }
+  ]
+ ],
+ "alias": {
+  "line.1": "line.SE",
+  "line.2": "line.SW",
+  "line.4": "line.NE",
+  "line.3": "line.NW"
+ },
+ "pointLabels": {
+  "kutsu.kubomi": "上ばき 1・2組（くぼみ）",
+  "kutsu.yokoE": "上ばき 3組（入口の横）",
+  "kutsu.yokoW": "上ばき 4組（入口の横）"
+ }
+}
