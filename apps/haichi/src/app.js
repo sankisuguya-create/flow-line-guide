@@ -5,14 +5,31 @@ var $ = function (id) { return document.getElementById(id); };
 /* ---- 保存：この端末のブラウザだけ。読めない環境では標準の配置で動く ---- */
 function clone(x) { return JSON.parse(JSON.stringify(x)); }
 function freshState() {
-  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk', outline: false, spaceText: true } };
+  return { ver: SAVE_VER, layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk', outline: false, spaceText: true } };
+}
+/* 保存の版。ver が古ければ ここで読み替える（版を上げたら手順を1つ足す）
+   2：体育館の標準配置「跳び箱の準備」（古い床に合わせたもの）を捨て、新しい標準配置を足す */
+var SAVE_VER = 2;
+function migrate(s) {
+  var v = s.ver || 1;
+  if (v < 2) {
+    s.layouts = s.layouts.filter(function (l) { return l.id !== 'g_tobibako'; });
+    s.recent = (s.recent || []).filter(function (id) { return id !== 'g_tobibako'; });
+    DEFAULT_LAYOUTS.forEach(function (l) { if (/^g_(tobibako3|shukai)$/.test(l.id) && !s.layouts.some(function (x) { return x.id === l.id; })) s.layouts.push(clone(l)); });
+  }
+  s.ver = SAVE_VER;
+  return s;
 }
 function load() {
   try {
     var raw = localStorage.getItem(KEY);
     if (raw) {
       var s = JSON.parse(raw);
-      if (s && Array.isArray(s.layouts)) return sanitize(s);
+      if (s && Array.isArray(s.layouts)) {
+        var old = s.ver || 1, out = sanitize(migrate(s));
+        if (old < SAVE_VER) try { localStorage.setItem(KEY, JSON.stringify(out)); } catch (e2) {}   // 読み替えた結果をすぐ残す
+        return out;
+      }
     }
   } catch (e) { /* 読めなければ標準へ */ }
   return freshState();
@@ -34,8 +51,8 @@ function sanitize(s) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
                  text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined,
-                 nx: ITEMS[p.item].grid ? kidsN(p).nx : undefined, ny: ITEMS[p.item].grid ? kidsN(p).ny : undefined,
-                 pts: p.item === 'arrow' && Array.isArray(p.pts) ? p.pts.filter(function (q) { return Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]); }).map(function (q) { return [+q[0], +q[1]]; }) : undefined, s: scaleOf(p) !== 1 ? scaleOf(p) : undefined };
+                 nx: hasCtl(p.item, 'grid') ? kidsN(p).nx : undefined, ny: hasCtl(p.item, 'grid') ? kidsN(p).ny : undefined,
+                 pts: hasCtl(p.item, 'path') && Array.isArray(p.pts) ? p.pts.filter(function (q) { return Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]); }).map(function (q) { return [+q[0], +q[1]]; }) : undefined, s: scaleOf(p) !== 1 ? scaleOf(p) : undefined };
       }),
       hooks: sc === 'desk' ? {
         left: ((l.hooks || {}).left || []).filter(isHang).map(function (h) { return { item: h.item, label: !!h.label }; }),
@@ -45,8 +62,12 @@ function sanitize(s) {
         .map(function (a) { return { item: a.item, place: a.place, label: !!a.label }; }) : []
     };
   });
-  return { layouts: layouts, recent: Array.isArray(s.recent) ? s.recent.map(String) : [], prefs: Object.assign(base.prefs, s.prefs || {}) };
+  return { ver: SAVE_VER, layouts: layouts, recent: Array.isArray(s.recent) ? s.recent.map(String) : [], prefs: Object.assign(base.prefs, s.prefs || {}) };
 }
+/* 物が持つ 編集画面の追加の操作（ITEMS の controls）：'grid'＝横・縦の人数、'path'＝矢印をのばす */
+function hasCtl(id, c) { return ((ITEMS[id] || {}).controls || []).indexOf(c) >= 0; }
+/* 場所を一時的に切り替えて描く（終わったら 元の場所に戻す。戻し忘れを防ぐ） */
+function inScene(id, fn) { var keep = SCENE.id; useScene(id); try { return fn(); } finally { useScene(keep); } }
 function isHang(h) { return h && ITEMS[h.item] && ITEMS[h.item].kind === 'hang'; }
 function save() {
   record();
@@ -98,15 +119,13 @@ function renderHome() {
   var html = '';
   orderedLayouts().forEach(function (l) {
     if (scOf(l) !== scene) return;
-    useScene(scOf(l));
-    var t = topView(l, { noLabels: true });
+    var t = inScene(scOf(l), function () { return topView(l, { noLabels: true }); });
     var b = t.box;
     html += '<div class="card"><button type="button" class="go" data-id="' + esc(l.id) + '">' +
       '<svg viewBox="' + (b.x0) + ' ' + (b.y0) + ' ' + (b.x1 - b.x0) + ' ' + (b.y1 - b.y0) + '" aria-hidden="true">' + t.svg + '</svg>' +
       '<span class="nm">' + rubyHtml(l.name, l.yomi) + '</span></button>' +
       '<button type="button" class="fix" data-fix="' + esc(l.id) + '">なおす</button></div>';
   });
-  useScene(scene);
   $('cards').innerHTML = html || '<p class="hint">この場所の配置はまだありません。「＋ 新しい配置」で作れます。</p>';
   go('vHome');
 }
@@ -217,8 +236,8 @@ $('sEdit').onclick = function () { openEdit(cur.id); };   // 映している配�
    見せる画面の「印刷」はいま映している形（左右反転・4人・いす・横から見た図）のまま。
    まとめて印刷は、各配置を反転なしで、見せる画面の設定（4人・いす・横から見た図・ふりがな）で刷る */
 var DATE_BLANK = '　　月　　日（　　）';
-function printPage(l, o) {
-  useScene(scOf(l));
+function printPage(l, o) { return inScene(scOf(l), function () { return printPageIn(l, o); }); }
+function printPageIn(l, o) {
   var deskMode = !!SCENE.desk;
   var c = deskMode && S.prefs.group ? composeGroup(l, o) : composeSingle(l, o);
   var vb = c.viewBox.split(' ').map(Number);
@@ -236,20 +255,18 @@ function printOpts(l, fl) {
   return { ruby: S.prefs.ruby, chair: deskMode && S.prefs.chair, flip: !!(fl && l.flip), topOnly: S.prefs.topOnly };
 }
 function doPrint(pages) {
-  var keep = SCENE.id;
   $('printArea').innerHTML = pages.join('');
-  useScene(keep);
   window.print();   // 印刷ダイアログを閉じるまで止まる（Chrome）。閉じたら中身を消す
   $('printArea').innerHTML = '';
 }
 // ブラウザの印刷（Ctrl+P）でも、見せる画面ならいま映している1枚を刷る。ほかの画面では何も刷らない
 window.addEventListener('beforeprint', function () {
   if ($('printArea').innerHTML || $('vShow').hidden) return;
-  $('printArea').innerHTML = printPage(cur, printOpts(cur, flip)); useScene(scOf(cur)); autoPrint = true;
+  $('printArea').innerHTML = printPage(cur, printOpts(cur, flip)); autoPrint = true;
 });
 var autoPrint = false;
 window.addEventListener('afterprint', function () { if (autoPrint) { $('printArea').innerHTML = ''; autoPrint = false; } });
-$('sPrint').onclick = function () { doPrint([printPage(cur, printOpts(cur, flip))]); useScene(scOf(cur)); };
+$('sPrint').onclick = function () { doPrint([printPage(cur, printOpts(cur, flip))]); };
 $('hPrint').onclick = function () {
   var list = orderedLayouts().filter(function (l) { return scOf(l) === scene; });
   if (!list.length) { toast('この場所の配置はまだありません'); return; }
@@ -267,7 +284,6 @@ $('pGo').onclick = function () {
   if (!ids.length) { toast('印刷する配置を選んでください'); return; }
   $('pDlg').close();
   doPrint(ids.map(function (id) { var l = byId(id); return printPage(l, printOpts(l, false)); }));
-  useScene(scene);
 };
 $('bigExit').onclick = function () { setBig(false); };
 document.addEventListener('fullscreenchange', function () { if (!document.fullscreenElement && big) setBig(false); });
@@ -275,9 +291,9 @@ document.addEventListener('keydown', function (e) { if (big && e.key === 'Escape
 document.addEventListener('keydown', function (e) {   // ← → で活動を切り替える
   if ($('vShow').hidden || e.target.closest('input')) return;
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-  var list = orderedLayouts(), i = list.indexOf(cur);
+  var list = orderedLayouts().filter(function (l) { return scOf(l) === scOf(cur); }), i = list.indexOf(cur);   // 同じ場所の配置の中で回る
   var n = list[(i + (e.key === 'ArrowRight' ? 1 : -1) + list.length) % list.length];
-  cur = n; flip = false; renderShow();
+  if (n && n !== cur) { cur = n; flip = false; renderShow(); }   // 並び（最近使った順）は変えない
 });
 
 /* ---- ③ つくる・なおす ---- */
@@ -299,10 +315,10 @@ function renderEdit() {
   // 余白は広めに固定して、吹き出しが増えても床が跳ねないようにする（場所の広さに合わせて K 倍）
   var x0 = Math.min(b.x0, -300 * K) - pad, y0 = Math.min(b.y0, -130 * K) - pad, x1 = Math.max(b.x1, DESK.w + 300 * K) + pad, y1 = Math.max(b.y1, DESK.d + 130 * K) + pad;
   EZ.base = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
-  applyZoom();
   var ps = cur.top[sel];
-  if (!ps || ps.item !== 'arrow' || !isPath(ps)) arrowEdit = false;
+  if (!ps || !hasCtl(ps.item, 'path') || !isPath(ps)) arrowEdit = false;
   svg.innerHTML = t.svg + (arrowEdit ? arrowMarks(ps) : '');
+  applyZoom();
   var p = cur.top[sel];
   $('selBar').hidden = !p;
   if (p) {
@@ -318,9 +334,9 @@ function renderEdit() {
     if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
     $('selSize').hidden = !it.sizes;
     if (it.sizes) $('selSize').textContent = Object.keys(it.sizes).map(function (k) { return (k === sizeOf(p) ? '●' : '○') + it.sizes[k].name; }).join(' ');
-    $('selGrid').hidden = !it.grid;
-    if (it.grid) { var kn = kidsN(p); $('kNx').textContent = kn.nx; $('kNy').textContent = kn.ny; $('kSum').textContent = '（' + kn.nx * kn.ny + '人）'; }
-    $('selPath').hidden = p.item !== 'arrow'; $('selPath').setAttribute('aria-pressed', String(arrowEdit && p.item === 'arrow'));
+    $('selGrid').hidden = !hasCtl(p.item, 'grid');
+    if (hasCtl(p.item, 'grid')) { var kn = kidsN(p); $('kNx').textContent = kn.nx; $('kNy').textContent = kn.ny; $('kSum').textContent = '（' + kn.nx * kn.ny + '人）'; }
+    $('selPath').hidden = !hasCtl(p.item, 'path'); $('selPath').setAttribute('aria-pressed', String(arrowEdit && hasCtl(p.item, 'path')));
     $('selColors').hidden = !it.colors;
     if (it.colors) $('selColors').innerHTML = '色' + it.colors.map(function (c, k) {
       return '<button type="button" class="sw' + (k === colorIndex(p) ? ' on' : '') + '" data-col="' + k + '" style="background:' + c + '" aria-label="色' + (k + 1) + '"></button>';
@@ -411,6 +427,7 @@ $('eBg').addEventListener('click', function (e) {
   var id = b.getAttribute('data-bg'); if (id) cur.bg = id; else delete cur.bg; save(); renderEdit();
 });
 $('eText').onchange = function () { SPACE_TEXT = S.prefs.spaceText = this.checked; save(); renderEdit(); };
+document.addEventListener('pointerdown', function (e) { var d = $('eDisp'); if (d.open && !e.target.closest('#eDisp')) d.open = false; });   // 外を押すと閉じる
 $('eGridShow').onchange = function () { S.prefs.gridShow = this.checked; save(); renderEdit(); };
 $('eOutline').onchange = function () { OUTLINE = S.prefs.outline = this.checked; save(); renderEdit(); };
 $('eBack').onclick = renderHome;
@@ -505,7 +522,7 @@ $('selGrid').addEventListener('click', function (e) {
   p.nx = nx; p.ny = ny; clampP(p); save(); renderEdit();
 });
 $('selPath').onclick = function () {
-  var p = cur.top[sel]; if (!p || p.item !== 'arrow') return;
+  var p = cur.top[sel]; if (!p || !hasCtl(p.item, 'path')) return;
   arrowEdit = !arrowEdit;
   if (arrowEdit) { toPath(p); save(); }
   renderEdit();
@@ -592,6 +609,12 @@ function applyZoom() {
   if (EZ.k > 1) { EZ.cx = cx; EZ.cy = cy; }
   svg.setAttribute('viewBox', (cx - w / 2) + ' ' + (cy - h / 2) + ' ' + w + ' ' + h);
   $('zReset').textContent = Math.round(EZ.k * 100) + '%';
+  GRID_ZOOM = EZ.k;   // グリッドの線と丸を 画面上で同じ太さに保つ（描き直さずに太さだけ変える）
+  var gg = svg.querySelector('.grid');
+  if (gg) {
+    var sw = +gg.getAttribute('data-sw') / EZ.k;
+    Array.prototype.forEach.call(gg.children, function (el) { el.style.strokeWidth = sw; if (el.hasAttribute('data-r')) el.setAttribute('r', +el.getAttribute('data-r') / EZ.k); });
+  }
   $('zReset').disabled = EZ.k === 1;
 }
 function zoomAt(q, f) {   // 図の点 q を画面上で動かさずに 倍率を f 倍

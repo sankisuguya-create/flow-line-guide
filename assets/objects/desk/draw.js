@@ -79,29 +79,32 @@ function baseSize(p) {
 var SCALE_MIN = 0.25, SCALE_MAX = 4;
 function scaleOf(p) { var s = +p.s; return s > 0 ? Math.min(SCALE_MAX, Math.max(SCALE_MIN, s)) : 1; }
 function itemSize(p) {
-  if (isPath(p)) { var b0 = pathBox(p); return [b0.x1 - b0.x0, b0.y1 - b0.y0]; }
+  var c = ITEMS[p.item].custom && ITEMS[p.item].custom(p);
+  if (c) return [c.box.x1 - c.box.x0, c.box.y1 - c.box.y0];
   var b = baseSize(p), s = scaleOf(p); return [b[0] * s, b[1] * s];
 }
-/* ---- 矢印の「じゆう」：交点を結ぶ折れ線 ---- */
-function isPath(p) { return p.item === 'arrow' && stateOf(p) === 'path' && Array.isArray(p.pts) && p.pts.length >= 2; }
-function pathBox(p) {   // p.x,p.y からのずれで、線の太さ・矢じりの分を足した範囲
-  var m = 500 * scaleOf(p), xs = p.pts.map(function (q) { return q[0]; }), ys = p.pts.map(function (q) { return q[1]; });
-  return { x0: Math.min.apply(null, xs) - m, x1: Math.max.apply(null, xs) + m, y0: Math.min.apply(null, ys) - m, y1: Math.max.apply(null, ys) + m };
+/* ---- 自分で描く物 ----
+   ふつうの物は states の draw(w,h) で「回す前・拡大前の絵」を返し、ここが回転・鏡・拡大をかける。
+   それでは描けない物（立体＝立体のほうを回す、矢印の「じゆう」＝交点を結ぶ）は custom(p) を持ち、
+   { box: p.x,p.y から見た描く範囲（回転・拡大ずみ）, draw: function () { svg } } を返す（null ならふつうに描く）。
+   本体（このファイル・app.js）は custom の中身を知らない。立体は items.js の mesh を持つ物すべてに meshCustom を使う */
+function customOf(p) { var it = ITEMS[p.item]; return it.mesh ? meshCustom(p) : it.custom ? it.custom(p) : null; }
+function meshCustom(p) {
+  var s = scaleOf(p), f = ITEMS[p.item].mesh(p).foot, fb = rotBox(f.W * s, f.L * s, p.r || 0);
+  return { box: { x0: -fb[0] / 2, y0: -fb[1] / 2, x1: fb[0] / 2, y1: fb[1] / 2 },
+           draw: function () { return s !== 1 ? '<g transform="scale(' + s + ')">' + meshSvg(p) + '</g>' : meshSvg(p); } };
 }
-function pathArrowSvg(p) {
-  var s = scaleOf(p), P = p.pts, n = P.length, T = P[n - 1], B = P[n - 2];
-  var dx = T[0] - B[0], dy = T[1] - B[1], L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
-  var hl = Math.min(750 * s, L * 0.9), hw = 850 * s, bx = T[0] - ux * hl, by = T[1] - uy * hl;
-  var d = 'M ' + P.slice(0, n - 1).map(function (q) { return q[0] + ' ' + q[1]; }).join(' L ') + ' L ' + bx + ' ' + by;
-  var prev = ARROW; ARROW = colorOf(p) || ARROW;
-  var out = arrowShaft(d, 300 * s) + arrowHead([[bx - uy * hw / 2, by + ux * hw / 2], [T[0], T[1]], [bx + uy * hw / 2, by - ux * hw / 2]]);
-  ARROW = prev;
-  return out;
+/* 床の上で物が占める範囲（絶対座標） */
+function itemBounds(p) {
+  var c = customOf(p);
+  if (c) return { x0: p.x + c.box.x0, y0: p.y + c.box.y0, x1: p.x + c.box.x1, y1: p.y + c.box.y1 };
+  var wd = itemSize(p), bb = rotBox(wd[0], wd[1], p.r || 0);
+  return { x0: p.x - bb[0] / 2, y0: p.y - bb[1] / 2, x1: p.x + bb[0] / 2, y1: p.y + bb[1] / 2 };
 }
 /* 物の置き方（位置・回転・鏡・拡大）。ドラッグ中の描き直し（app.js）も同じものを使う */
 function itemTransform(p) {
   var s = scaleOf(p);
-  if (ITEMS[p.item].mesh || isPath(p)) return 'translate(' + p.x + ' ' + p.y + ')';   // 立体は立体のほうを、折れ線の矢印は交点のほうを回す
+  if (customOf(p)) return 'translate(' + p.x + ' ' + p.y + ')';   // 自分で描く物は 回転・拡大を自分でかける
   return 'translate(' + p.x + ' ' + p.y + ') rotate(' + (p.r || 0) + ')' + (p.m ? ' scale(-1 1)' : '') + (s !== 1 ? ' scale(' + s + ')' : '');
 }
 /* 回転したときの外接箱の幅・奥行き */
@@ -111,7 +114,16 @@ function rotBox(w, d, r) {
 }
 /* 立体の物（../gym/items.js）。床の上で p.r だけ回し（鏡は左右反転）、地図用の見方で描く。
    SVG の rotate で回すと高さの向きまで回ってしまうので、立体のほうを回す */
+/* 立体の絵は 物・状態・判型・向き・鏡 が同じなら同じ。作った絵を覚えておき、同じ物は計算しなおさない
+   （パイプいすを何十脚も並べたときの重さ対策。拡大・縮小は外側の transform でかけるので鍵に入れない） */
+var MESH_CACHE = {}, MESH_CACHE_N = 0;
 function meshSvg(p) {
+  var key = [p.item, stateOf(p), sizeOf(p), p.r || 0, p.m ? 1 : 0].join('|');
+  if (MESH_CACHE[key]) return MESH_CACHE[key];
+  if (++MESH_CACHE_N > 400) { MESH_CACHE = {}; MESH_CACHE_N = 1; }
+  return (MESH_CACHE[key] = meshSvgRaw(p));
+}
+function meshSvgRaw(p) {
   var m = ITEMS[p.item].mesh(p), a = (p.r || 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), mx = p.m ? -1 : 1;
   var faces = m.faces.map(function (f) {
     var q = Object.assign({}, f);
@@ -133,24 +145,18 @@ function outlineDefs() {
     '<feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
 }
 function olAttr() { return OUTLINE ? ' filter="url(#' + outlineId() + ')"' : ''; }
+function selBox(b) {
+  return '<rect class="selbox" x="' + (b.x0 - 10 * K) + '" y="' + (b.y0 - 10 * K) + '" width="' + (b.x1 - b.x0 + 20 * K) + '" height="' + (b.y1 - b.y0 + 20 * K) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>';
+}
 function drawTopItem(p, i, cls) {
-  if (isPath(p)) {
-    var pb = pathBox(p);
-    return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="' + itemTransform(p) + '"><g' + olAttr() + '>' + pathArrowSvg(p) + '</g>' +
-      (cls === 'sel' ? '<rect class="selbox" x="' + pb.x0 + '" y="' + pb.y0 + '" width="' + (pb.x1 - pb.x0) + '" height="' + (pb.y1 - pb.y0) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>' : '') + '</g>';
-  }
-  if (ITEMS[p.item].mesh) {
-    var fw = itemSize(p), fb = rotBox(fw[0], fw[1], p.r || 0);
-    var ms = scaleOf(p);
-    return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="' + itemTransform(p) + '"><g' + olAttr() + (ms !== 1 ? ' transform="scale(' + ms + ')"' : '') + '>' + meshSvg(p) + '</g>' +
-      (cls === 'sel' ? '<rect class="selbox" x="' + (-fb[0] / 2 - 10 * K) + '" y="' + (-fb[1] / 2 - 10 * K) + '" width="' + (fb[0] + 20 * K) + '" height="' + (fb[1] + 20 * K) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>' : '') + '</g>';
-  }
+  var head = '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="' + itemTransform(p) + '">';
+  var c = customOf(p);
+  if (c) return head + '<g' + olAttr() + '>' + c.draw() + '</g>' + (cls === 'sel' ? selBox(c.box) : '') + '</g>';
   var st = ITEMS[p.item].states[stateOf(p)], wd = baseSize(p), w = wd[0], d = wd[1], k = K / scaleOf(p);   // k：選ぶ枠の線は拡大しても同じ太さ
   MIRROR = p.m ? -1 : 1;
-  var arrowPrev = ARROW; if (p.item === 'arrow') ARROW = colorOf(p) || ARROW;   // 矢印の色
   var body = st.draw(w, d, colorOf(p), p);
-  MIRROR = 1; ARROW = arrowPrev;
-  return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="' + itemTransform(p) + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')"><g' + olAttr() + '>' + body + '</g>' +
+  MIRROR = 1;
+  return head + '<g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')"><g' + olAttr() + '>' + body + '</g>' +
          (cls === 'sel' ? '<rect class="selbox" x="' + (-10 * k) + '" y="' + (-10 * k) + '" width="' + (w + 20 * k) + '" height="' + (d + 20 * k) + '" rx="' + 10 * k + '" style="stroke-width:' + 6 * k + ';stroke-dasharray:' + 18 * k + ' ' + 10 * k + '"/>' : '') + '</g></g>';
 }
 function iconSvg(itemId, size) {   // しまう物・編集のパレット用の小さな絵
@@ -271,6 +277,18 @@ function floorTopSvg(bg) {
   return deskTopSvg();
 }
 
+/* 描く順：① 床に描く物（ライン・テープなど ITEMS の floor）→ ② 立体（奥＝上から順。手前の物が上に重なる）→ ③ そのほか。
+   ①③の中は置いた順（「いちばん上へ」で後ろへ回す）。data-i は置いた順の番号のまま */
+function drawOrder(top) {
+  var idx = top.map(function (_, i) { return i; });
+  var layer = function (p) { var it = ITEMS[p.item]; return it.floor ? 0 : it.mesh ? 1 : 2; };
+  return idx.sort(function (a, b) {
+    var pa = top[a], pb = top[b], la = layer(pa), lb = layer(pb);
+    if (la !== lb) return la - lb;
+    if (la === 1 && pa.y !== pb.y) return pa.y - pb.y;
+    return a - b;
+  });
+}
 /* 上から見た机1台（場所では床一面）。返す box は描いた範囲（ラベル込み） */
 function topView(lay, o) {
   var sides = o.sides || ['L', 'R', 'T'].concat(o.chair ? [] : ['B']);
@@ -278,11 +296,12 @@ function topView(lay, o) {
   var lab = o.noLabels ? { labels: [], margin: { L: 0, R: 0, T: 0, B: 0 } } : layoutLabels(lay.top, sides, o.ruby, bottom);
   var s = floorTopSvg(SCENE.desk ? null : floorColor(lay.bg)) + (o.chair ? chairTopSvg() : '') + outlineDefs();
   var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
-  lay.top.forEach(function (p, i) {
+  drawOrder(lay.top).forEach(function (i) {
+    var p = lay.top[i];
     s += drawTopItem(p, i, o.sel === i ? 'sel' : '');
-    var wd = itemSize(p), bb = rotBox(wd[0], wd[1], p.r || 0);
-    ib.x0 = Math.min(ib.x0, p.x - bb[0] / 2); ib.x1 = Math.max(ib.x1, p.x + bb[0] / 2);
-    ib.y0 = Math.min(ib.y0, p.y - bb[1] / 2); ib.y1 = Math.max(ib.y1, p.y + bb[1] / 2);
+    var bb = itemBounds(p);
+    ib.x0 = Math.min(ib.x0, bb.x0); ib.x1 = Math.max(ib.x1, bb.x1);
+    ib.y0 = Math.min(ib.y0, bb.y0); ib.y1 = Math.max(ib.y1, bb.y1);
   });
   if (o.grid) s += gridSvg(o.grid);
   s += labelsSvg(lab.labels, o.ruby);
@@ -485,10 +504,10 @@ function snap(x, y, level) {
   return { x: i * sx, y: j * sy };
 }
 function gridSvg(level) {
-  var m = gridMargin(), ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny, sw = 2 * K;
-  var s = '<g class="grid">';
+  var m = gridMargin(), ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny, z = GRID_ZOOM, sw = 2 * K / z;
+  var s = '<g class="grid" data-sw="' + 2 * K + '">';   // 線の太さ・丸の大きさは 編集画面の拡大率（GRID_ZOOM）で割る：拡大しても画面上は同じ太さ
   for (var i = -ki; i <= level.nx + ki; i++) s += '<line x1="' + i * DESK.w / level.nx + '" y1="' + (-m.y) + '" x2="' + i * DESK.w / level.nx + '" y2="' + (DESK.d + m.y) + '" style="stroke-width:' + sw + '"/>';
   for (var j = -kj; j <= level.ny + kj; j++) s += '<line x1="' + (-m.x) + '" y1="' + j * DESK.d / level.ny + '" x2="' + (DESK.w + m.x) + '" y2="' + j * DESK.d / level.ny + '" style="stroke-width:' + sw + '"/>';
-  gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 24 ? 2.5 : level.nx > 12 ? 4 : 6) * K + '" style="stroke-width:' + sw + '"/>'; });
+  gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 24 ? 2.5 : level.nx > 12 ? 4 : 6) * K / z + '" data-r="' + (level.nx > 24 ? 2.5 : level.nx > 12 ? 4 : 6) * K + '" style="stroke-width:' + sw + '"/>'; });
   return s + '</g>';
 }

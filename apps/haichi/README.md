@@ -35,6 +35,14 @@ homeroom-tools の「机の配置図」（apps/desk-layout）をそのまま移�
    紙は A4。向きは図が大きく刷れるほうを自動で選ぶ。上に活動名（ふりがなの設定に従う）と日付の記入欄（　月　日（　））
 6. 保存はこの端末のブラウザ（`haichi.v1`）。別の端末へは「データの書き出し・読み込み」のJSONで移す。机の配置図で書き出したJSONも読み込める
 
+## 物の足し方（作りの約束）
+
+- ふつうの物は `states` の `draw(w, h, 色, p)` で「回す前・拡大前の絵」を返すだけ。回転・鏡・拡大・選ぶ枠は本体がかける。
+- それで描けない物は `custom(p)` で `{ box, draw }` を返す（矢印の「じゆう」）。立体は `mesh` を持てば本体が同じ形で扱う。
+- 編集画面に専用の操作が要る物は `controls` に名前を書く（`'grid'`＝横・縦の人数、`'path'`＝矢印をのばす）。
+- 床に描く物（ライン・テープ）は `floor: true`。いつも ほかの物の下に描く。
+- 保存の形を変えたら `app.js` の `SAVE_VER` を上げ、`migrate` に読み替えを1つ足す。
+
 ## 部品と正本
 
 `src/Index.html` の `/* @include 名前 */` を `scripts/build.mjs` が差し込んで1ファイルにする。名前と正本の対応は `scripts/parts.mjs`。
@@ -50,6 +58,7 @@ homeroom-tools の「机の配置図」（apps/desk-layout）をそのまま移�
 node apps/haichi/scripts/build.mjs           # src → dist
 node apps/haichi/scripts/build.mjs --check   # dist が古いと止まる
 node apps/haichi/tests/test-app.mjs          # 不変条件
+node apps/haichi/tests/e2e.mjs               # 画面の操作（playwright が要る。Chromium の場所は PW_CHROMIUM）
 node apps/haichi/scripts/screenshot.mjs <出力先>   # 画面を撮る（playwright が要る）
 ```
 

@@ -188,3 +188,20 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 .kgrid{display:inline-flex;align-items:center;gap:6px;font-weight:700}
 .kgrid .seg{display:inline-flex;align-items:center}
 .kgrid b{min-width:2em;text-align:center;font-variant-numeric:tabular-nums}
+
+/* 表示の設定（編集画面の上の帯から開く小さな板） */
+.dispmenu{position:relative}
+.dispmenu summary{list-style:none;cursor:pointer;min-height:40px;display:flex;align-items:center;padding:6px 14px;border:1px solid var(--rule);border-radius:8px;background:var(--sheet);font-weight:700}
+.dispmenu summary::-webkit-details-marker{display:none}
+.dispmenu summary::after{content:"▾";margin-left:6px;color:var(--ink-soft)}
+.dispmenu[open] summary{background:var(--a-bg);border-color:var(--a-line);color:var(--a-ink)}
+.dpanel{position:absolute;z-index:5;top:calc(100% + 6px);right:0;display:flex;flex-direction:column;gap:10px;padding:12px 14px;background:var(--sheet);border:1px solid var(--rule);border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.12);white-space:nowrap}
+
+/* 1366px で上の帯を1段に収める：名前・よみの欄を詰め、間を狭く */
+.ebar{gap:6px 8px}
+.ebar .fld input{width:7.5em}
+.ebar #eYomi{width:6.5em}
+.ebar #eUndo,.ebar #eRedo{min-width:44px;font-size:20px;padding:4px 10px}
+
+/* 名前の吹き出し・引き出し線は 押せない（下の物を選べるように） */
+#editSvg .labels{pointer-events:none}
