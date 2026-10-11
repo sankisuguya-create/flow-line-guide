@@ -131,9 +131,10 @@ $('editSvg').addEventListener('pointermove', function (e) {
   drag.items.forEach(function (o) { o.q.x = p.x + o.ox; o.q.y = p.y + o.oy; if (o.el) o.el.setAttribute('transform', itemTransform(o.q)); });
 });
 function endDrag() {
-  if (!drag) return;
+  if (!drag) { if (Store.flush) Store.flush(); return; }
   var moved = drag.moved; drag = null;
   if (moved) { save(); renderEdit(); }
+  if (Store.flush) Store.flush();   // 引きずっている間に届いた ほかの人の変更を取り込む
 }
 $('editSvg').addEventListener('pointerup', function (e) {
   touchEnd(e);
@@ -141,6 +142,7 @@ $('editSvg').addEventListener('pointerup', function (e) {
     var p0 = pan; pan = null;
     if (!p0.moved) { emptyTap(p0.q); return; }
     if (p0.band) bandSelect(p0.q, svgPoint(this, e), p0.add);
+    if (Store.flush) Store.flush();
     return;
   }
   endDrag();

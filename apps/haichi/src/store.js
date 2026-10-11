@@ -57,7 +57,10 @@ var Store = (function () {
   /* ===== 共有（GAS）===== */
   var base = {}, timer = null, busy = false, again = false, since = 0, editors = {}, me = '', onRemote = null, ready = false;
   function LOCAL() { return KEY + '.mine'; }   // 端末ごとの物（表示の設定・最近使った順）と、すぐ開くための写し（KEY は app/state.js）
+  // この端末の印（メールが取れない設定のとき、だれかを区別するのに使う）
+  var CID = (function () { try { var c = localStorage.getItem(KEY + '.cid'); if (!c) { c = Math.random().toString(36).slice(2, 6); localStorage.setItem(KEY + '.cid', c); } return c; } catch (e) { return Math.random().toString(36).slice(2, 6); } })();
   function call(name, args, ok, ng) {
+    args = args.concat([CID]);
     var r = google.script.run.withSuccessHandler(ok).withFailureHandler(ng || function (e) { toast('共有の保存に失敗しました：' + (e && e.message || e)); });
     r[name].apply(r, args);
   }
@@ -80,7 +83,8 @@ var Store = (function () {
         var sent = list[k];
         if (r.ok) { if (r.del) delete base[sent.id]; else base[sent.id] = { json: sent.json, ver: r.ver }; return; }
         // 先にだれかが書いていた：まぜて もう一度送る
-        merged = applyRemote(r.row, true) || merged;
+        merged = take(r.row, true) || merged;
+        if (uiBusy()) merged = true;   // 取っておいた：あとで送り直す
       });
       if (merged || again) { again = false; schedule(); }
       saveMine();
@@ -89,6 +93,7 @@ var Store = (function () {
   function schedule(ms) { if (timer) clearTimeout(timer); timer = setTimeout(sync, ms || SYNC_WAIT); }
   /* 相手の版 row（{id, json, ver, by, del}）を取り込む。自分に送っていない変更があれば まぜる。描き直しが要れば true */
   function applyRemote(row, conflict) {
+    if (Store.before) Store.before();
     var i = S.layouts.findIndex(function (l) { return l.id === row.id; }), local = i >= 0 ? S.layouts[i] : null;
     var b = base[row.id], localJ = local ? JSON.stringify(local) : null, dirty = b ? localJ !== b.json : !!local;
     if (row.del) {
@@ -108,16 +113,32 @@ var Store = (function () {
     if (local) {   // 同じ物（配置の入れ物）を書きかえる：cur がこれを指していても そのまま使える
       Object.keys(local).forEach(function (k) { delete local[k]; });
       Object.keys(clean).forEach(function (k) { local[k] = clean[k]; });
-    } else S.layouts.push(clean);
+    } else {
+      S.layouts.push(clean);
+      if (conflict) toast('「' + clean.name + '」は ほかの人が直していたので、消さずに残しました');
+    }
     if (onRemote) onRemote(row.id, row.by, conflict);
     return true;
+  }
+  /* 引きずっている間に届いた相手の版は 取っておき、離したときにまとめて取り込む（動かした分が消えないように） */
+  var held = [];
+  function uiBusy() { return (typeof drag !== 'undefined' && drag) || (typeof pan !== 'undefined' && pan); }
+  function take(row, conflict) {
+    if (uiBusy()) { held.push([row, conflict]); return false; }
+    return applyRemote(row, conflict);
+  }
+  function flushHeld() {
+    if (!held.length || uiBusy()) return;
+    var h = held; held = []; var any = false;
+    h.forEach(function (x) { if (x[0].del || !base[x[0].id] || base[x[0].id].ver < x[0].ver || x[1]) any = applyRemote(x[0], x[1]) || any; });
+    if (any) { saveMine(); schedule(); }
   }
   function poll() {
     if (!ready || document.hidden || busy || (typeof drag !== 'undefined' && drag) || (typeof pan !== 'undefined' && pan)) return;   // 引きずっている間は取りに行かない
     call('haichiChanges', [since, (typeof cur !== 'undefined' && cur && !$('vEdit').hidden) ? cur.id : ''], function (res) {
-      since = res.now; editors = res.editors || {}; me = res.me || me;
+      since = res.now - 15000; editors = res.editors || {}; me = res.me || me;   // 少し前から取り直す：書き込みの途中に読んだ行を取りこぼさない（重なりは版で捨てる）
       var any = false;
-      res.rows.forEach(function (row) { if (!base[row.id] || base[row.id].ver < row.ver || row.del) any = applyRemote(row, false) || any; });
+      res.rows.forEach(function (row) { if (!base[row.id] || base[row.id].ver < row.ver || (row.del && base[row.id])) any = take(row, false) || any; });
       if (any) { saveMine(); schedule(); }
       if (Store.onPresence) Store.onPresence(editors);
     }, function () {});
@@ -127,12 +148,13 @@ var Store = (function () {
     kind: 'gas',
     load: function () { try { return localStorage.getItem(LOCAL()); } catch (e) { return null; } },   // まず端末の写しで すぐ開く
     save: function (s) { saveMine(); schedule(); },
+    flush: flushHeld,   // 引きずり終わり（pointer.js）に呼ぶ
     editors: function (id) { return (editors[id] || []).filter(function (n) { return n !== me; }); },
     /* 起動：共有の配置をすべて受け取り、写しと入れかえる。初めて（空）なら 標準の配置を送る */
     start: function (done, remote) {
       onRemote = remote;
       call('haichiList', [], function (res) {
-        since = res.now; me = res.me || '';
+        since = res.now - 15000; me = res.me || '';
         if (!res.rows.length) {
           S.layouts.forEach(ensureUids);
           ready = true; schedule(10); done(); setInterval(poll, POLL_MS); return;

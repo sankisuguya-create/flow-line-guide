@@ -17,12 +17,13 @@ function doGet() {
 }
 
 /* ---- 画面から呼ぶ ---- */
-function haichiList() { return withLock_(function (t) { return haichiCore_(t, me_(), Date.now()).list(); }); }
-function haichiPut(list) { return withLock_(function (t) { return haichiCore_(t, me_(), Date.now()).put(list); }); }
-function haichiChanges(since, editing) {
-  var core = haichiCore_(sheetTable_(), me_(), Date.now());   // 読むだけなので鍵はかけない
+/* cid：画面の端末ごとの印。メールが取れないとき（組織の外など）の名前の代わり */
+function haichiList(cid) { return withLock_(function (t) { return haichiCore_(t, me_(cid), Date.now()).list(); }); }
+function haichiPut(list, cid) { return withLock_(function (t) { return haichiCore_(t, me_(cid), Date.now()).put(list); }); }
+function haichiChanges(since, editing, cid) {
+  var core = haichiCore_(sheetTable_(), me_(cid), Date.now());   // 読むだけなので鍵はかけない（画面は 少し前から取り直す）
   var res = core.changes(since);
-  res.editors = presence_(editing);
+  res.editors = presence_(editing, me_(cid));
   return res;
 }
 
@@ -87,18 +88,20 @@ function withLock_(fn) {
   lock.waitLock(20000);
   try { return fn(sheetTable_()); } finally { lock.releaseLock(); }
 }
-function me_() {
+function me_(cid) {
   var e = '';
   try { e = Session.getActiveUser().getEmail(); } catch (x) {}
-  return e ? e.split('@')[0] : 'だれか';
+  return e ? e.split('@')[0] : 'だれか' + (cid ? '-' + String(cid).slice(0, 4) : '');
 }
 /* だれが どの配置を開いているか（30秒以内に聞いてきた人）。CacheService に置くだけ（消えてもよい） */
-function presence_(editing) {
-  var c = CacheService.getScriptCache(), key = 'presence', now = Date.now(), who = me_(), p = {};
+function presence_(editing, who) {
+  var c = CacheService.getScriptCache(), key = 'presence', now = Date.now(), p = {};
+  var lock = LockService.getScriptLock(), locked = lock.tryLock(500);   // 2人が同時に書いて 片方が消えるのを防ぐ（取れなければそのまま）
   try { p = JSON.parse(c.get(key) || '{}'); } catch (e) { p = {}; }
   Object.keys(p).forEach(function (k) { if (now - p[k].at > 30000) delete p[k]; });
   if (editing) p[who] = { id: editing, at: now }; else delete p[who];
   c.put(key, JSON.stringify(p), 120);
+  if (locked) lock.releaseLock();
   var out = {};
   Object.keys(p).forEach(function (k) { (out[p[k].id] = out[p[k].id] || []).push(k); });
   return out;
