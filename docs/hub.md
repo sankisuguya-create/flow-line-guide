@@ -12,6 +12,7 @@
 |---|---|---|
 | `assets/objects/<分類>/` | 物 | 用具の立体（実寸 mm）。gym＝跳び箱・ロイター板・マット。desk は desk-layout の複製（`assets/objects/desk/ORIGIN.md`） |
 | `assets/spaces/<場>/space.json` | 場 | 区画・点・通路（実寸 m）。確認状態（仮／確認済）と出典を持つ |
+| `assets/icons/`・`assets/ui/` | 素材 | アイコン（Lucide・Tabler 人物、ライセンス同梱）と共通の見た目（base.css）。homeroom-tools の複製（各 `ORIGIN.md`） |
 | `engine/player/` | 操作UI | 再生部 `flow.js`・見た目 `flow.css`・ひな形 `page.html` |
 | `guides/<行事>/plans/<場面>.json` | 中身 | 組・動き・場面のことば・合図・未確定事項 |
 | `guides/<行事>/<場面>.html` | 生成物 | `engine/tools/build.mjs` が作る。配布にも GAS にも同じファイルを使う。直接直さない |
