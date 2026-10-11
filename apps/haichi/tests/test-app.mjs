@@ -187,4 +187,20 @@ assert.equal((vm.runInContext("drawTopItem({item:'kids',state:'closed',x:0,y:0,r
 const pa=vm.runInContext("drawTopItem({item:'arrow',state:'path',x:5000,y:5000,r:0,pts:[[0,0],[0,-2500],[2500,-2500]],color:2},0,'sel')",ctx);
 assert.ok(pa.includes('#2F80ED')&&!/NaN/.test(pa));
 g.useScene('desk');
+// 3方向でまぜる（GAS版の同時編集）：自分が足した・相手が足した・自分が消した・相手が動かした
+{
+  const m3 = (a, b, c) => JSON.parse(JSON.stringify(vm.runInContext('merge3', ctx)(a, b, c)));
+  const base = { id: 'x', name: 'もと', bg: '', top: [{ u: 'a', x: 1 }, { u: 'b', x: 2 }, { u: 'c', x: 3 }] };
+  const mine = { id: 'x', name: '自分が変えた', bg: '', top: [{ u: 'a', x: 1 }, { u: 'c', x: 30 }, { u: 'm', x: 9 }] };      // b を消し、c を動かし、m を足す
+  const theirs = { id: 'x', name: 'もと', bg: 'green', top: [{ u: 'a', x: 10 }, { u: 'b', x: 2 }, { u: 'c', x: 3 }, { u: 't', x: 8 }] };   // a を動かし、t を足し、床を緑に
+  const r = m3(base, mine, theirs);
+  assert.equal(r.name, '自分が変えた'); assert.equal(r.bg, 'green');
+  assert.deepEqual(r.top.map(p => p.u + p.x), ['a10', 'c30', 't8', 'm9']);
+  // 相手が消した物を 自分が変えていたら残す。変えていなければ消える
+  const r2 = m3(base, { ...base, top: [{ u: 'a', x: 1 }, { u: 'b', x: 99 }, { u: 'c', x: 3 }] }, { ...base, top: [{ u: 'c', x: 3 }] });
+  assert.deepEqual(r2.top.map(p => p.u + p.x), ['c3', 'b99']);
+  // もとが無い（同じ id を両方が新しく作った）：自分の物も相手の物も残る
+  const r3 = m3(null, { id: 'x', top: [{ u: 'm', x: 1 }] }, { id: 'x', top: [{ u: 't', x: 2 }] });
+  assert.deepEqual(r3.top.map(p => p.u), ['t', 'm']);
+}
 console.log('ok');

@@ -52,7 +52,7 @@ function haichiCore_(table, user, now) {
       });
     },
     changes: function (since) {
-      return { now: now, me: user, rows: table.rows().filter(function (r) { return r.at > (+since || 0); }).map(out) };
+      return { now: now, me: user, rows: table.rows().filter(function (r) { return r.at >= (+since || 0); }).map(out) };   // >=：同じ時刻に書かれた物も取りこぼさない（画面側は版で重複を捨てる）
     }
   };
 }

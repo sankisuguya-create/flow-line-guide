@@ -2341,7 +2341,7 @@ var Store = (function () {
 
   /* ===== 共有（GAS）===== */
   var base = {}, timer = null, busy = false, again = false, since = 0, editors = {}, me = '', onRemote = null, ready = false;
-  function LOCAL() { return KEY + '.mine'; }   // 端末ごとの物（表示の設定・最近使った順）と、すぐ開くための写し（KEY は app.js）
+  function LOCAL() { return KEY + '.mine'; }   // 端末ごとの物（表示の設定・最近使った順）と、すぐ開くための写し（KEY は app/state.js）
   function call(name, args, ok, ng) {
     var r = google.script.run.withSuccessHandler(ok).withFailureHandler(ng || function (e) { toast('共有の保存に失敗しました：' + (e && e.message || e)); });
     r[name].apply(r, args);
@@ -2382,12 +2382,13 @@ var Store = (function () {
       delete base[row.id];
       return !!local;
     }
-    var theirs = JSON.parse(row.json), next;
-    if (!local) next = theirs;
-    else if (!dirty) next = theirs;
-    else next = merge3(b ? JSON.parse(b.json) : null, local, theirs);
-    base[row.id] = { json: row.json, ver: row.ver };
-    var clean = sanitize({ layouts: [next] }).layouts[0];
+    // 相手の版は 読み替え（sanitize）をかけた形で基準にする。生の JSON のままだと 形のちがいだけで「変わった」と見て
+    // 送り合いが止まらなくなる
+    var theirs = sanitize({ layouts: [JSON.parse(row.json)] }).layouts[0];
+    if (!theirs) return false;
+    var next = local && dirty ? merge3(b ? JSON.parse(b.json) : null, local, theirs) : theirs;
+    base[row.id] = { json: JSON.stringify(theirs), ver: row.ver };
+    var clean = next === theirs ? theirs : sanitize({ layouts: [next] }).layouts[0];
     if (!clean) return false;
     if (local) {   // 同じ物（配置の入れ物）を書きかえる：cur がこれを指していても そのまま使える
       Object.keys(local).forEach(function (k) { delete local[k]; });
@@ -2433,7 +2434,7 @@ var Store = (function () {
   };
 })();
 /* ▲ store.js ここまで ▲ */
-/* ▼ app.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* ▼ state.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
 /* ===== 画面と保存 ===== */
 var KEY = 'haichi.v1';   // homeroom-tools の机の配置図（desk-layout.v1）とは別の保存。移すときは書き出し→読み込み
 var $ = function (id) { return document.getElementById(id); };
@@ -2548,7 +2549,9 @@ function go(view) {
   ['vHome', 'vShow', 'vEdit'].forEach(function (v) { $(v).hidden = v !== view; });
   window.scrollTo(0, 0);
 }
-
+/* ▲ state.js ここまで ▲ */
+/* ▼ home.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* 配置図の画面 ①：えらぶ（活動カード・場所・データの書き出し） */
 /* ---- ① えらぶ ---- */
 function orderedLayouts() {
   var rank = function (l) { var i = S.recent.indexOf(l.id); return i < 0 ? 1e6 + S.layouts.indexOf(l) : i; };
@@ -2611,7 +2614,9 @@ $('dReset').onclick = function () {
   if (!confirm('つくった配置と直した内容をすべて消して、標準の配置に戻します。よろしいですか？')) return;
   var prefs = S.prefs; S = freshState(); S.prefs = prefs; save(); renderHome(); toast('標準の配置に戻しました');
 };
-
+/* ▲ home.js ここまで ▲ */
+/* ▼ show.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* 配置図の画面 ②：見せる（大きく映す・印刷） */
 /* ---- ② 見せる ---- */
 function openShow(id) {
   cur = byId(id); if (!cur) return renderHome();
@@ -2739,7 +2744,9 @@ document.addEventListener('keydown', function (e) {   // ← → で活動を切
   var n = list[(i + (e.key === 'ArrowRight' ? 1 : -1) + list.length) % list.length];
   if (n && n !== cur) { cur = n; flip = false; renderShow(); }   // 並び（最近使った順）は変えない
 });
-
+/* ▲ show.js ここまで ▲ */
+/* ▼ edit.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* 配置図の画面 ③：つくる・なおす（選んだ物の操作・まとめて選ぶ・矢印をのばす） */
 /* ---- ③ つくる・なおす ---- */
 function openEdit(id) {
   cur = byId(id); if (!cur) return renderHome();
@@ -3020,6 +3027,9 @@ function svgPoint(svg, e) {
   var pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
   return pt.matrixTransform(svg.getScreenCTM().inverse());
 }
+/* ▲ edit.js ここまで ▲ */
+/* ▼ history.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* 配置図の画面 ③：取り消し・やり直し と 写す・貼る（キーボード） */
 /* ---- 取り消し・やり直し（Ctrl+Z／Ctrl+Y・Ctrl+Shift+Z）----
    編集画面で保存するたびに、変える前の配置を積む。配置を開き直すと空になる（配置ごと・この画面の間だけ）。 */
 var hist = { undo: [], redo: [], last: null }, HIST_MAX = 100;
@@ -3080,7 +3090,9 @@ document.addEventListener('keydown', function (e) {
   if (mod && k === 'd') { e.preventDefault(); pasteN = 0; pasteItem(items.length > 1 ? items : items[0]); return; }
   if (k === 'delete' || k === 'backspace') { e.preventDefault(); removeItems(set); save(); renderEdit(); }
 });
-
+/* ▲ history.js ここまで ▲ */
+/* ▼ pointer.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* 配置図の画面 ③：指・マウスの操作（引きずる・囲む・拡大縮小・2本指） */
 /* ---- 編集画面の拡大・縮小 ----
    ホイール（マウス・タッチパッド）：指している所を中心に拡大・縮小。2本指：つまんで拡大・縮小、そのまま動かすと移動。
    空いた所を引きずる：拡大しているとき、見る範囲を動かす（引きずらずに離せば、これまでどおり「選んだ物をそこへ移す」）。
@@ -3237,7 +3249,9 @@ document.addEventListener('keydown', function (e) {   // 矢印キーでグリ�
   save(); renderEdit();
 });
 $('editSvg').addEventListener('pointercancel', function (e) { touchEnd(e); pan = null; endDrag(); });
-
+/* ▲ pointer.js ここまで ▲ */
+/* ▼ boot.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* 配置図：起動（最初の画面と、共有のときの受け取り） */
 renderHome();
 
 /* ---- 共有（GAS版）：起動したら共有の配置を受け取り、ほかの人の変更が来たら描き直す ---- */
@@ -3264,7 +3278,7 @@ Store.start(refreshView, function (id, by, conflict) {
   }
   refreshView();
 });
-/* ▲ app.js ここまで ▲ */
+/* ▲ boot.js ここまで ▲ */
 </script>
 </body>
 </html>

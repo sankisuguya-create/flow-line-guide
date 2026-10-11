@@ -56,7 +56,7 @@ homeroom-tools の「机の配置図」（apps/desk-layout）をそのまま移�
 - それで描けない物は `custom(p)` で `{ box, draw }` を返す（矢印の「じゆう」）。立体は `mesh` を持てば本体が同じ形で扱う。
 - 編集画面に専用の操作が要る物は `controls` に名前を書く（`'grid'`＝横・縦の人数、`'path'`＝矢印をのばす）。
 - 床に描く物（ライン・テープ）は `floor: true`。いつも ほかの物の下に描く。
-- 保存の形を変えたら `app.js` の `SAVE_VER` を上げ、`migrate` に読み替えを1つ足す。
+- 保存の形を変えたら `src/app/state.js` の `SAVE_VER` を上げ、`migrate` に読み替えを1つ足す。
 
 ## 部品と正本
 
@@ -67,7 +67,7 @@ homeroom-tools の「机の配置図」（apps/desk-layout）をそのまま移�
 | 物（机・教室・体育館・運動場） | `assets/objects/desk/data.js`・`draw.js` |
 | 体育館の用具の立体・置く物 | `assets/objects/gym/mesh.js`・`items.js` |
 | 場の床 | `assets/spaces/*/space.json`（`extends` を持つ行事用の上乗せは出さない）。描き方は `src/scenes.js` |
-| 画面・見た目 | `src/app.js`・`src/style.css`・`src/tokens.css`（中立の色は `assets/ui/base.css`） |
+| 画面・見た目 | `src/app/`（state 保存と状態／home えらぶ／show 見せる・印刷／edit なおす／history 取り消し・写す／pointer 指とマウス／boot 起動）・`src/store.js`（保存のしかた：端末／共有）・`src/style.css`・`src/tokens.css`（中立の色は `assets/ui/base.css`） |
 
 ```bash
 node apps/haichi/scripts/build.mjs           # src → dist と gas（同じ1ファイル）

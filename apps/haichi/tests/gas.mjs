@@ -104,6 +104,11 @@ await step('Bが消した物は Aからも消える（Aが同じ時に別の物�
   assert.ok(now.find(p => p.item === 'teacher').x < x0, 'Aの移動も残る');
   assert.equal(await A.locator('#editSvg .it').count(), now.length);
 });
+await step('だれも直さなければ 送り合わない（版が上がらない）', async () => {
+  const v0 = table._rows.map(r => r.id + ':' + r.ver).join();
+  await wait(9000);
+  assert.equal(table._rows.map(r => r.id + ':' + r.ver).join(), v0);
+});
 await step('ページのエラーなし', async () => { assert.deepEqual(A.errs.concat(B.errs), []); });
 await b.close();
 console.log('ok');

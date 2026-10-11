@@ -56,7 +56,7 @@ var Store = (function () {
 
   /* ===== 共有（GAS）===== */
   var base = {}, timer = null, busy = false, again = false, since = 0, editors = {}, me = '', onRemote = null, ready = false;
-  function LOCAL() { return KEY + '.mine'; }   // 端末ごとの物（表示の設定・最近使った順）と、すぐ開くための写し（KEY は app.js）
+  function LOCAL() { return KEY + '.mine'; }   // 端末ごとの物（表示の設定・最近使った順）と、すぐ開くための写し（KEY は app/state.js）
   function call(name, args, ok, ng) {
     var r = google.script.run.withSuccessHandler(ok).withFailureHandler(ng || function (e) { toast('共有の保存に失敗しました：' + (e && e.message || e)); });
     r[name].apply(r, args);
@@ -97,12 +97,13 @@ var Store = (function () {
       delete base[row.id];
       return !!local;
     }
-    var theirs = JSON.parse(row.json), next;
-    if (!local) next = theirs;
-    else if (!dirty) next = theirs;
-    else next = merge3(b ? JSON.parse(b.json) : null, local, theirs);
-    base[row.id] = { json: row.json, ver: row.ver };
-    var clean = sanitize({ layouts: [next] }).layouts[0];
+    // 相手の版は 読み替え（sanitize）をかけた形で基準にする。生の JSON のままだと 形のちがいだけで「変わった」と見て
+    // 送り合いが止まらなくなる
+    var theirs = sanitize({ layouts: [JSON.parse(row.json)] }).layouts[0];
+    if (!theirs) return false;
+    var next = local && dirty ? merge3(b ? JSON.parse(b.json) : null, local, theirs) : theirs;
+    base[row.id] = { json: JSON.stringify(theirs), ver: row.ver };
+    var clean = next === theirs ? theirs : sanitize({ layouts: [next] }).layouts[0];
     if (!clean) return false;
     if (local) {   // 同じ物（配置の入れ物）を書きかえる：cur がこれを指していても そのまま使える
       Object.keys(local).forEach(function (k) { delete local[k]; });
