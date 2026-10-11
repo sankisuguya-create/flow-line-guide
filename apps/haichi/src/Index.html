@@ -17,8 +17,8 @@
     <h1 id="hTitle">机の配置図</h1>
     <div id="hScenes" class="seg hscenes" role="group" aria-label="場所"></div>
     <span class="sp"></span>
-    <button type="button" id="hPrint" class="ghost">まとめて印刷</button>
-    <button type="button" id="hNew" class="ghost">＋ 新しい配置</button>
+    <button type="button" id="hPrint" class="ghost">一括印刷</button>
+    <button type="button" id="hNew" class="ghost">＋ 新規作成</button>
   </header>
   <div id="cards" class="cards"></div>
   <details class="data">
@@ -26,33 +26,33 @@
     <div class="row">
       <button type="button" id="dExport">書き出す（JSON）</button>
       <label class="filebtn">読み込む<input type="file" id="dImport" accept="application/json,.json" hidden></label>
-      <button type="button" id="dReset" class="danger">標準の配置に戻す</button>
+      <button type="button" id="dReset" class="danger">初期配置に戻す</button>
     </div>
-    <p class="hint" id="dHint">配置はこの端末のブラウザに保存されます。別の端末へは書き出したファイルで移します。</p>
+    <p class="hint" id="dHint">配置はこの端末のブラウザに保存されます。別の端末へは書き出したファイルで移行します。</p>
   </details>
 </main>
 
 <!-- ② 見せる：モニターに映す -->
 <section id="vShow" class="show" hidden>
   <div class="tools">
-    <button type="button" id="sBack" class="tb" aria-label="もどる">←</button>
+    <button type="button" id="sBack" class="tb" aria-label="戻る">←</button>
     <h2 id="sTitle" class="stitle"></h2>
     <span class="sp"></span>
     <div class="seg" id="sGroup" role="group" aria-label="机の数">
       <button type="button" id="sOne" class="tb">1人</button><button type="button" id="sFour" class="tb">4人</button>
     </div>
     <button type="button" id="sFlip" class="tb" aria-pressed="false">左右反転</button>
-    <button type="button" id="sSides" class="tb" aria-pressed="true">横から見た図</button>
-    <button type="button" id="sChair" class="tb" aria-pressed="false">いす</button>
+    <button type="button" id="sSides" class="tb" aria-pressed="true">側面図</button>
+    <button type="button" id="sChair" class="tb" aria-pressed="false">椅子</button>
     <button type="button" id="sRuby" class="tb" aria-pressed="true">ふりがな</button>
-    <button type="button" id="sText" class="tb" aria-pressed="true" hidden>場所の名前</button>
-    <button type="button" id="sOutline" class="tb" aria-pressed="false">輪郭を太く</button>
-    <button type="button" id="sEdit" class="tb">なおす</button>
+    <button type="button" id="sText" class="tb" aria-pressed="true" hidden>エリア名</button>
+    <button type="button" id="sOutline" class="tb" aria-pressed="false">輪郭を強調</button>
+    <button type="button" id="sEdit" class="tb">編集</button>
     <button type="button" id="sPrint" class="tb">印刷</button>
-    <button type="button" id="sBig" class="primary">大きく映す</button>
+    <button type="button" id="sBig" class="primary">全画面で映す</button>
   </div>
   <p id="bigMsg" class="bigmsg" hidden><ruby>机<rt>つくえ</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね</p>
-  <button type="button" id="bigExit" class="bigexit" hidden aria-label="大きく映すのをやめる">×</button>
+  <button type="button" id="bigExit" class="bigexit" hidden aria-label="全画面を終了">×</button>
   <div class="stage">
     <svg id="stageSvg" preserveAspectRatio="xMidYMid meet" role="img"></svg>
     <aside id="away" class="away"></aside>
@@ -62,19 +62,19 @@
 <!-- ③ つくる・なおす -->
 <section id="vEdit" class="edit" hidden>
   <header class="ebar">
-    <button type="button" id="eBack">← もどる</button>
-    <label class="fld">活動の名前<input id="eName" maxlength="20"></label>
-    <label class="fld">よみ<input id="eYomi" maxlength="30" placeholder="ひらがな"></label>
-    <label class="chk" title="見せる画面で左右反転してよい"><input type="checkbox" id="eFlip">反転してよい</label>
+    <button type="button" id="eBack">← 戻る</button>
+    <label class="fld">配置名<input id="eName" maxlength="20"></label>
+    <label class="fld">読み<input id="eYomi" maxlength="30" placeholder="ふりがな"></label>
+    <label class="chk" title="見せる画面で左右反転してよい"><input type="checkbox" id="eFlip">反転を許可</label>
     <div class="gridsel">グリッド<div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div></div>
     <!-- 見え方の設定は「表示」にまとめる（毎回は触らないので、上の帯を1段に保つ） -->
     <details class="dispmenu" id="eDisp">
       <summary>表示</summary>
       <div class="dpanel">
         <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
-        <label class="chk"><input type="checkbox" id="eGridShow" checked>グリッドの線を出す</label>
-        <label class="chk"><input type="checkbox" id="eOutline">輪郭を太く</label>
-        <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">場所の名前</label>
+        <label class="chk"><input type="checkbox" id="eGridShow" checked>グリッド線を表示</label>
+        <label class="chk"><input type="checkbox" id="eOutline">輪郭を強調</label>
+        <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">エリア名</label>
       </div>
     </details>
     <span id="ePeers" class="peers" hidden></span>
@@ -88,27 +88,27 @@
     <div class="ecanvas">
       <div id="multiBar" class="selbar" hidden>
         <strong id="mCount"></strong>
-        <span class="seg" role="group" aria-label="横をそろえる"><button type="button" data-al="left" title="左をそろえる">⇤ 左</button><button type="button" data-al="hcenter" title="横の真ん中をそろえる">↔ 真ん中</button><button type="button" data-al="right" title="右をそろえる">右 ⇥</button></span>
-        <span class="seg" role="group" aria-label="縦をそろえる"><button type="button" data-al="top" title="上をそろえる">⤒ 上</button><button type="button" data-al="vcenter" title="縦の真ん中をそろえる">↕ 真ん中</button><button type="button" data-al="bottom" title="下をそろえる">下 ⤓</button></span>
+        <span class="seg" role="group" aria-label="横をそろえる"><button type="button" data-al="left" title="左揃え">⇤ 左揃え</button><button type="button" data-al="hcenter" title="左右中央揃え">↔ 中央</button><button type="button" data-al="right" title="右揃え">右揃え ⇥</button></span>
+        <span class="seg" role="group" aria-label="縦をそろえる"><button type="button" data-al="top" title="上揃え">⤒ 上揃え</button><button type="button" data-al="vcenter" title="上下中央揃え">↕ 中央</button><button type="button" data-al="bottom" title="下揃え">下揃え ⤓</button></span>
         <span class="seg" role="group" aria-label="等間隔に並べる"><button type="button" data-al="hdist">横に等間隔</button><button type="button" data-al="vdist">縦に等間隔</button></span>
         <button type="button" id="mDup">複製</button>
-        <button type="button" id="mDel" class="danger">けす</button>
-        <button type="button" id="mNone">選ぶのをやめる</button>
+        <button type="button" id="mDel" class="danger">削除</button>
+        <button type="button" id="mNone">選択を解除</button>
       </div>
       <div id="selBar" class="selbar" hidden>
         <strong id="selName"></strong>
         <span id="selState" class="seg"></span>
         <button type="button" id="selSize"></button>
         <span id="selColors" class="swatches"></span>
-        <span class="seg" role="group" aria-label="大きさ"><button type="button" id="selSmall" aria-label="小さく">－</button><button type="button" id="selReal">100%</button><button type="button" id="selBig" aria-label="大きく">＋</button></span>
-        <span id="selGrid" class="kgrid" hidden>横<span class="seg"><button type="button" data-k="x" data-d="-1" aria-label="横を1人へらす">－</button><b id="kNx">1</b><button type="button" data-k="x" data-d="1" aria-label="横を1人ふやす">＋</button></span>
-          縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人へらす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人ふやす">＋</button></span><span id="kSum"></span></span>
-        <button type="button" id="selPath" aria-pressed="false" hidden>矢印をのばす</button>
-        <button type="button" id="selRot">回す ↻</button>
-        <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：ここで待つ"></label>
-        <button type="button" id="selLabel" aria-pressed="false">名前を出す</button>
-        <button type="button" id="selFront">いちばん上へ</button>
-        <button type="button" id="selDel" class="danger">けす</button>
+        <span class="seg" role="group" aria-label="大きさ"><button type="button" id="selSmall" aria-label="縮小">－</button><button type="button" id="selReal">100%</button><button type="button" id="selBig" aria-label="拡大">＋</button></span>
+        <span id="selGrid" class="kgrid" hidden>横<span class="seg"><button type="button" data-k="x" data-d="-1" aria-label="横を1人減らす">－</button><b id="kNx">1</b><button type="button" data-k="x" data-d="1" aria-label="横を1人増やす">＋</button></span>
+          縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人減らす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人増やす">＋</button></span><span id="kSum"></span></span>
+        <button type="button" id="selPath" aria-pressed="false" hidden>矢印を編集</button>
+        <button type="button" id="selRot">回転 ↻</button>
+        <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：待機場所"></label>
+        <button type="button" id="selLabel" aria-pressed="false">名称を表示</button>
+        <button type="button" id="selFront">最前面へ</button>
+        <button type="button" id="selDel" class="danger">削除</button>
       </div>
       <div class="ewrap">
         <svg id="editSvg" preserveAspectRatio="xMidYMid meet"></svg>
@@ -117,14 +117,14 @@
       <div class="lists" id="eLists">
         <div><h3>左のフック</h3><div id="lHookL" class="chips"></div></div>
         <div><h3>右のフック</h3><div id="lHookR" class="chips"></div></div>
-        <div class="wide"><h3>しまう物</h3><div id="lAway" class="chips"></div></div>
+        <div class="wide"><h3>収納物</h3><div id="lAway" class="chips"></div></div>
       </div>
     </div>
     <div class="palette">
       <div class="tabs" role="tablist">
-        <button type="button" role="tab" data-tab="top" aria-selected="true">机の上</button>
+        <button type="button" role="tab" data-tab="top" aria-selected="true">机上</button>
         <button type="button" role="tab" data-tab="hang" aria-selected="false">フック</button>
-        <button type="button" role="tab" data-tab="away" aria-selected="false">しまう</button>
+        <button type="button" role="tab" data-tab="away" aria-selected="false">収納</button>
       </div>
       <div id="pDest" class="seg dest"></div>
       <div id="pItems" class="tiles"></div>
@@ -134,11 +134,11 @@
 
 <!-- 印刷：まとめて印刷で刷る配置を選ぶ -->
 <dialog id="pDlg" class="pdlg" aria-labelledby="pDlgT">
-  <h2 id="pDlgT">まとめて印刷</h2>
-  <p class="hint">1つの配置を A4 1枚に刷ります。紙の向きは図の形に合わせて変わります。</p>
-  <div class="row"><button type="button" id="pAll">すべて選ぶ</button><button type="button" id="pNone">すべて外す</button></div>
+  <h2 id="pDlgT">一括印刷</h2>
+  <p class="hint">1つの配置を A4 1枚に印刷します。用紙の向きは図の形に合わせて自動で決まります。</p>
+  <div class="row"><button type="button" id="pAll">すべて選択</button><button type="button" id="pNone">すべて解除</button></div>
   <div id="pList" class="plist"></div>
-  <div class="row end"><button type="button" id="pCancel">やめる</button><button type="button" id="pGo" class="primary">印刷する</button></div>
+  <div class="row end"><button type="button" id="pCancel">キャンセル</button><button type="button" id="pGo" class="primary">印刷する</button></div>
 </dialog>
 <!-- 印刷するページ（印刷の間だけ中身が入る） -->
 <div id="printArea" class="printarea" aria-hidden="true"></div>

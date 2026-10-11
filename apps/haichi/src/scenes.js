@@ -18,7 +18,7 @@ SPACES.forEach(function (sp) {
   var c = lv(5000), n = { nx: c.nx * 2, ny: c.ny * 2 }, f = { nx: c.nx * 4, ny: c.ny * 4 };   // 2倍ずつ（段を変えても交点がずれない）
   SCENES[id] = { id: id, name: name, title: name + 'の配置図', space: sp, w: w, d: d, k: 30,   // 文字・余白の倍率は体育館（幅20m）と同じ。用具の大きさがそろって見える
    
-    grid: [{ id: 'coarse', name: 'あらい', nx: c.nx, ny: c.ny }, { id: 'normal', name: 'ふつう', nx: n.nx, ny: n.ny }, { id: 'fine', name: 'こまかい', nx: f.nx, ny: f.ny }],
+    grid: [{ id: 'coarse', name: '粗い', nx: c.nx, ny: c.ny }, { id: 'normal', name: '標準', nx: n.nx, ny: n.ny }, { id: 'fine', name: '細かい', nx: f.nx, ny: f.ny }],
     items: SPACE_ITEMS.slice(),
     msg: 'この<ruby>形<rt>かたち</rt></ruby>にしてね' };
   SCENE_ORDER.push(id);
@@ -87,6 +87,6 @@ function zoneEdges(b, zs) {
 /* グリッドの4段目「とても細かい」：どの場所も「こまかい」をさらに2倍に割る（段を変えても交点がずれない） */
 Object.keys(SCENES).forEach(function (id) {
   var g = SCENES[id].grid, f = g[g.length - 1];
-  if (f.id !== 'xfine') g.push({ id: 'xfine', name: 'とても細かい', nx: f.nx * 2, ny: f.ny * 2 });
+  if (f.id !== 'xfine') g.push({ id: 'xfine', name: '極細', nx: f.nx * 2, ny: f.ny * 2 });
 });
 if (SCENE) GRID_LEVELS = SCENE.grid;

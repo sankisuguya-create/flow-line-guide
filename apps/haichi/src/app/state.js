@@ -72,7 +72,7 @@ function inScene(id, fn) { var keep = SCENE.id; useScene(id); try { return fn();
 function isHang(h) { return h && ITEMS[h.item] && ITEMS[h.item].kind === 'hang'; }
 function save() {
   record();
-  try { Store.save(S); } catch (e) { toast('この端末には保存できません（書き出しで残してください）'); }
+  try { Store.save(S); } catch (e) { toast('この端末に保存できません（書き出しで保存してください）'); }
 }
 
 var S = load();
@@ -95,12 +95,14 @@ function removeItems(ix) {   // 番号の大きい順に消す（前の番号が
 var tab = 'top', dest = { hang: 'left', away: 'tray' };
 
 function byId(id) { return S.layouts.filter(function (l) { return l.id === id; })[0]; }
+/* ふりがなは「映す」画面（児童が見る）だけ。ほかの画面（先生が使う）は付けない。RUBY は renderShow の間だけ真 */
+var RUBY = false;
 function rubyHtml(name, yomi) {
-  return yomi && S.prefs.ruby ? '<ruby>' + esc(name) + '<rt>' + esc(yomi) + '</rt></ruby>' : esc(name);
+  return yomi && RUBY && S.prefs.ruby ? '<ruby>' + esc(name) + '<rt>' + esc(yomi) + '</rt></ruby>' : esc(name);
 }
 function itemNameHtml(name) {
   return parseName(name).map(function (s) {
-    return s.r && S.prefs.ruby ? '<ruby>' + esc(s.b) + '<rt>' + esc(s.r) + '</rt></ruby>' : esc(s.b);
+    return s.r && RUBY && S.prefs.ruby ? '<ruby>' + esc(s.b) + '<rt>' + esc(s.r) + '</rt></ruby>' : esc(s.b);
   }).join('');
 }
 var toastTimer;

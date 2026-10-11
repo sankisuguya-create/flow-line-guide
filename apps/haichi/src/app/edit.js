@@ -12,7 +12,7 @@ function openEdit(id) {
   go('vEdit'); renderEdit(); renderPalette();
 }
 function renderEdit() {
-  var t = topView(cur, { ruby: S.prefs.ruby, sel: msel.length > 1 ? msel : sel, grid: S.prefs.gridShow === false ? null : gridLevel(S.prefs.grid) });   // 線を消しても交点への吸着は続く
+  var t = topView(cur, { ruby: false, sel: msel.length > 1 ? msel : sel, grid: S.prefs.gridShow === false ? null : gridLevel(S.prefs.grid) });   // 線を消しても交点への吸着は続く
   var b = t.box, pad = 60 * K;
   var svg = $('editSvg');
   // 余白は広めに固定して、吹き出しが増えても床が跳ねないようにする（場所の広さに合わせて K 倍）
@@ -55,8 +55,9 @@ function renderEdit() {
     return '<button type="button" class="sw bg' + (on ? ' on' : '') + '" data-bg="' + f.id + '" aria-pressed="' + on + '" title="' + f.name + '"' +
       (f.c ? ' style="background:' + f.c + '"' : '') + '>' + f.name + '</button>';
   }).join('');
-  $('eGrid').innerHTML = GRID_LEVELS.map(function (g) {
-    return '<button type="button" data-grid="' + g.id + '" class="' + (g.id === gridLevel(S.prefs.grid).id ? 'on' : '') + '">' + g.name + '</button>';
+  $('eGrid').innerHTML = GRID_LEVELS.concat([{ id: 'free', name: '自由配置' }]).map(function (g) {
+    var on = S.prefs.grid === 'free' ? g.id === 'free' : g.id === gridLevel(S.prefs.grid).id;
+    return '<button type="button" data-grid="' + g.id + '" class="' + (on ? 'on' : '') + '">' + g.name + '</button>';
   }).join('');
 }
 $('eGrid').addEventListener('click', function (e) {
@@ -65,8 +66,8 @@ $('eGrid').addEventListener('click', function (e) {
 });
 function chipHtml(entry, where, k, extra) {
   return '<span class="chip">' + iconSvg(entry.item, 34) + '<span>' + esc(plainName(ITEMS[entry.item].name)) + '</span>' + (extra || '') +
-    '<button type="button" data-lab="' + where + ':' + k + '" aria-pressed="' + !!entry.label + '">名前</button>' +
-    '<button type="button" data-rm="' + where + ':' + k + '" aria-label="けす">×</button></span>';
+    '<button type="button" data-lab="' + where + ':' + k + '" aria-pressed="' + !!entry.label + '">名称</button>' +
+    '<button type="button" data-rm="' + where + ':' + k + '" aria-label="削除">×</button></span>';
 }
 function renderChips() {
   $('eLists').hidden = !SCENE.desk;   // フック・しまう物は机だけの仕組み
@@ -224,7 +225,7 @@ $('selGrid').addEventListener('click', function (e) {
   var p = cur.top[sel], n = kidsN(p), k = b.getAttribute('data-k'), d = +b.getAttribute('data-d');
   var nx = n.nx + (k === 'x' ? d : 0), ny = n.ny + (k === 'y' ? d : 0);
   if (nx < 1 || ny < 1) return;
-  if (nx * ny > 36) { toast('36人までです'); return; }
+  if (nx * ny > 36) { toast('最大36人です'); return; }
   p.nx = nx; p.ny = ny; clampP(p); save(); renderEdit();
 });
 $('selPath').onclick = function () {
@@ -269,6 +270,7 @@ function toFront() { var p = cur.top.splice(sel, 1)[0]; cur.top.push(p); sel = c
 /* 物の中心をいちばん近いグリッドの交点に合わせる。交点は机の外にも「あらい」1目分広がる
    （本が半分だけ机に乗る配置）。それ以上はみ出すのは物の形まかせで許す（重ね置きなど実際の机でも起きる） */
 function clampP(p) {
+  if (S.prefs.grid === 'free') return;   // 自由配置：交点に合わせない（グリッドの線は「標準」の細かさで見せる）
   var q = snap(p.x, p.y, gridLevel(S.prefs.grid));
   p.x = q.x; p.y = q.y;
 }

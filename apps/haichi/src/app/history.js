@@ -30,7 +30,7 @@ var clip = null, pasteN = 0;
 function canPlace(id) { return SCENE.desk ? !(ITEMS[id].scenes || []).length : SCENE.items.indexOf(id) >= 0; }
 function pasteItem(src) {   // src：1つの物 か 物の並び。並びは 形を保ったまま ずらして貼る
   var list = (Array.isArray(src) ? src : [src]).filter(function (q) { return canPlace(q.item); });
-  if (!list.length) { toast('この場所には置けない物です'); return; }
+  if (!list.length) { toast('この場所には配置できない用具です'); return; }
   var g = gridLevel(S.prefs.grid), added = [];
   pasteN++;
   list.forEach(function (s0) {
@@ -53,7 +53,7 @@ document.addEventListener('keydown', function (e) {
   var items = set.map(function (i) { return clone(cur.top[i]); });
   if (mod && (k === 'c' || k === 'x')) {
     e.preventDefault(); clip = items.length > 1 ? items : items[0]; pasteN = 0;
-    if (k === 'x') { removeItems(set); save(); renderEdit(); toast('切り取りました'); } else toast('写しました（Ctrl+V で貼る）');
+    if (k === 'x') { removeItems(set); save(); renderEdit(); toast('切り取りました'); } else toast('コピーしました（Ctrl+V で貼り付け）');
     return;
   }
   if (mod && k === 'd') { e.preventDefault(); pasteN = 0; pasteItem(items.length > 1 ? items : items[0]); return; }

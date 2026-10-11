@@ -22,18 +22,18 @@ var SCENES = {
     legInset: 28,
     crop: 560,               // 横から見た図は上から 560mm までを描き、脚の下は切る
     grid: [
-      { id: 'coarse', name: 'あらい',   nx: 6,  ny: 4 },    // 約108×113mm
-      { id: 'normal', name: 'ふつう',   nx: 12, ny: 8 },    // 約54×56mm
-      { id: 'fine',   name: 'こまかい', nx: 24, ny: 16 }    // 約27×28mm
+      { id: 'coarse', name: '粗い',   nx: 6,  ny: 4 },    // 約108×113mm
+      { id: 'normal', name: '標準',   nx: 12, ny: 8 },    // 約54×56mm
+      { id: 'fine',   name: '細かい', nx: 24, ny: 16 }    // 約27×28mm
     ],
     msg: '<ruby>机<rt>つくえ</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
   },
   class: {   // 普通教室 7m×9m（利用者指定。標準的な63㎡級）
     id: 'class', name: '教室', title: '教室の配置図', w: 7000, d: 9000,
     grid: [
-      { id: 'coarse', name: 'あらい',   nx: 7,  ny: 9 },    // 1000mm
-      { id: 'normal', name: 'ふつう',   nx: 14, ny: 18 },   // 500mm
-      { id: 'fine',   name: 'こまかい', nx: 28, ny: 36 }    // 250mm
+      { id: 'coarse', name: '粗い',   nx: 7,  ny: 9 },    // 1000mm
+      { id: 'normal', name: '標準',   nx: 14, ny: 18 },   // 500mm
+      { id: 'fine',   name: '細かい', nx: 28, ny: 36 }    // 250mm
     ],
     items: ['cdesk', 'ctable', 'cshelf', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'],
     msg: '<ruby>教室<rt>きょうしつ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
@@ -41,9 +41,9 @@ var SCENES = {
   gym: {     // 体育館 20m×30m（利用者指定）
     id: 'gym', name: '体育館', title: '体育館の配置図', w: 20000, d: 30000,
     grid: [
-      { id: 'coarse', name: 'あらい',   nx: 4,  ny: 6 },    // 5000mm
-      { id: 'normal', name: 'ふつう',   nx: 8,  ny: 12 },   // 2500mm
-      { id: 'fine',   name: 'こまかい', nx: 16, ny: 24 }    // 1250mm
+      { id: 'coarse', name: '粗い',   nx: 4,  ny: 6 },    // 5000mm
+      { id: 'normal', name: '標準',   nx: 8,  ny: 12 },   // 2500mm
+      { id: 'fine',   name: '細かい', nx: 16, ny: 24 }    // 1250mm
     ],
     items: ['gbox', 'gboard', 'gmat', 'gbeam', 'gbar', 'gtora', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'],
     msg: '<ruby>体育館<rt>たいいくかん</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
@@ -51,9 +51,9 @@ var SCENES = {
   field: {   // 運動場 40m×60m（利用者指定）
     id: 'field', name: '運動場', title: '運動場の配置図', w: 40000, d: 60000,
     grid: [
-      { id: 'coarse', name: 'あらい',   nx: 8,  ny: 12 },   // 5000mm
-      { id: 'normal', name: 'ふつう',   nx: 16, ny: 24 },   // 2500mm
-      { id: 'fine',   name: 'こまかい', nx: 32, ny: 48 }    // 1250mm
+      { id: 'coarse', name: '粗い',   nx: 8,  ny: 12 },   // 5000mm
+      { id: 'normal', name: '標準',   nx: 16, ny: 24 },   // 2500mm
+      { id: 'fine',   name: '細かい', nx: 32, ny: 48 }    // 1250mm
     ],
     items: ['gbar', 'funten', 'fsand', 'ftire', 'fgoal', 'fcone', 'fmark', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'],
     msg: '<ruby>運動場<rt>うんどうじょう</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
@@ -164,9 +164,9 @@ function roundTrap(x0, y0, x1, y1, insetTop, insetBot, r, fill, stroke) {   // �
          (stroke ? ' stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"' : '') + '/>';
 }
 /* 状態の呼び名（編集画面のボタン） */
-var STATE_NAMES = { closed: 'とじる', open: 'ひらく', open360: '360°', open360r: '360°右', tablet: 'タブレット', tent: '山がた',
-                    go: 'まっすぐ', zag: 'つづら', flow: 'ながれる', path: 'じゆう',
-                    normal: 'ふつう', hat: 'ぼうし', bib: 'ゼッケン', r1: '1列', r2: '2列', r4: '4列' };
+var STATE_NAMES = { closed: '閉じた状態', open: '開いた状態', open360: '360°', open360r: '360°右', tablet: 'タブレット', tent: '山形',
+                    go: '直線', zag: 'ジグザグ', flow: '流れ', path: '自由',
+                    normal: '通常', hat: '紅白帽', bib: 'ゼッケン', r1: '1列', r2: '2列', r4: '4列' };
 
 var CLEAR = 'rgba(214,236,247,.85)', CLEAR_LINE = 'rgba(58,53,46,.35)';   // 透明なプラスチック
 function ticks(y0, y1, x) {   // 縦の目盛り（1cm＝10mm ごと、5cm ごとに長く）

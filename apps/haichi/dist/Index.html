@@ -278,8 +278,8 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
     <h1 id="hTitle">机の配置図</h1>
     <div id="hScenes" class="seg hscenes" role="group" aria-label="場所"></div>
     <span class="sp"></span>
-    <button type="button" id="hPrint" class="ghost">まとめて印刷</button>
-    <button type="button" id="hNew" class="ghost">＋ 新しい配置</button>
+    <button type="button" id="hPrint" class="ghost">一括印刷</button>
+    <button type="button" id="hNew" class="ghost">＋ 新規作成</button>
   </header>
   <div id="cards" class="cards"></div>
   <details class="data">
@@ -287,33 +287,33 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
     <div class="row">
       <button type="button" id="dExport">書き出す（JSON）</button>
       <label class="filebtn">読み込む<input type="file" id="dImport" accept="application/json,.json" hidden></label>
-      <button type="button" id="dReset" class="danger">標準の配置に戻す</button>
+      <button type="button" id="dReset" class="danger">初期配置に戻す</button>
     </div>
-    <p class="hint" id="dHint">配置はこの端末のブラウザに保存されます。別の端末へは書き出したファイルで移します。</p>
+    <p class="hint" id="dHint">配置はこの端末のブラウザに保存されます。別の端末へは書き出したファイルで移行します。</p>
   </details>
 </main>
 
 <!-- ② 見せる：モニターに映す -->
 <section id="vShow" class="show" hidden>
   <div class="tools">
-    <button type="button" id="sBack" class="tb" aria-label="もどる">←</button>
+    <button type="button" id="sBack" class="tb" aria-label="戻る">←</button>
     <h2 id="sTitle" class="stitle"></h2>
     <span class="sp"></span>
     <div class="seg" id="sGroup" role="group" aria-label="机の数">
       <button type="button" id="sOne" class="tb">1人</button><button type="button" id="sFour" class="tb">4人</button>
     </div>
     <button type="button" id="sFlip" class="tb" aria-pressed="false">左右反転</button>
-    <button type="button" id="sSides" class="tb" aria-pressed="true">横から見た図</button>
-    <button type="button" id="sChair" class="tb" aria-pressed="false">いす</button>
+    <button type="button" id="sSides" class="tb" aria-pressed="true">側面図</button>
+    <button type="button" id="sChair" class="tb" aria-pressed="false">椅子</button>
     <button type="button" id="sRuby" class="tb" aria-pressed="true">ふりがな</button>
-    <button type="button" id="sText" class="tb" aria-pressed="true" hidden>場所の名前</button>
-    <button type="button" id="sOutline" class="tb" aria-pressed="false">輪郭を太く</button>
-    <button type="button" id="sEdit" class="tb">なおす</button>
+    <button type="button" id="sText" class="tb" aria-pressed="true" hidden>エリア名</button>
+    <button type="button" id="sOutline" class="tb" aria-pressed="false">輪郭を強調</button>
+    <button type="button" id="sEdit" class="tb">編集</button>
     <button type="button" id="sPrint" class="tb">印刷</button>
-    <button type="button" id="sBig" class="primary">大きく映す</button>
+    <button type="button" id="sBig" class="primary">全画面で映す</button>
   </div>
   <p id="bigMsg" class="bigmsg" hidden><ruby>机<rt>つくえ</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね</p>
-  <button type="button" id="bigExit" class="bigexit" hidden aria-label="大きく映すのをやめる">×</button>
+  <button type="button" id="bigExit" class="bigexit" hidden aria-label="全画面を終了">×</button>
   <div class="stage">
     <svg id="stageSvg" preserveAspectRatio="xMidYMid meet" role="img"></svg>
     <aside id="away" class="away"></aside>
@@ -323,19 +323,19 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 <!-- ③ つくる・なおす -->
 <section id="vEdit" class="edit" hidden>
   <header class="ebar">
-    <button type="button" id="eBack">← もどる</button>
-    <label class="fld">活動の名前<input id="eName" maxlength="20"></label>
-    <label class="fld">よみ<input id="eYomi" maxlength="30" placeholder="ひらがな"></label>
-    <label class="chk" title="見せる画面で左右反転してよい"><input type="checkbox" id="eFlip">反転してよい</label>
+    <button type="button" id="eBack">← 戻る</button>
+    <label class="fld">配置名<input id="eName" maxlength="20"></label>
+    <label class="fld">読み<input id="eYomi" maxlength="30" placeholder="ふりがな"></label>
+    <label class="chk" title="見せる画面で左右反転してよい"><input type="checkbox" id="eFlip">反転を許可</label>
     <div class="gridsel">グリッド<div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div></div>
     <!-- 見え方の設定は「表示」にまとめる（毎回は触らないので、上の帯を1段に保つ） -->
     <details class="dispmenu" id="eDisp">
       <summary>表示</summary>
       <div class="dpanel">
         <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
-        <label class="chk"><input type="checkbox" id="eGridShow" checked>グリッドの線を出す</label>
-        <label class="chk"><input type="checkbox" id="eOutline">輪郭を太く</label>
-        <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">場所の名前</label>
+        <label class="chk"><input type="checkbox" id="eGridShow" checked>グリッド線を表示</label>
+        <label class="chk"><input type="checkbox" id="eOutline">輪郭を強調</label>
+        <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">エリア名</label>
       </div>
     </details>
     <span id="ePeers" class="peers" hidden></span>
@@ -349,27 +349,27 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
     <div class="ecanvas">
       <div id="multiBar" class="selbar" hidden>
         <strong id="mCount"></strong>
-        <span class="seg" role="group" aria-label="横をそろえる"><button type="button" data-al="left" title="左をそろえる">⇤ 左</button><button type="button" data-al="hcenter" title="横の真ん中をそろえる">↔ 真ん中</button><button type="button" data-al="right" title="右をそろえる">右 ⇥</button></span>
-        <span class="seg" role="group" aria-label="縦をそろえる"><button type="button" data-al="top" title="上をそろえる">⤒ 上</button><button type="button" data-al="vcenter" title="縦の真ん中をそろえる">↕ 真ん中</button><button type="button" data-al="bottom" title="下をそろえる">下 ⤓</button></span>
+        <span class="seg" role="group" aria-label="横をそろえる"><button type="button" data-al="left" title="左揃え">⇤ 左揃え</button><button type="button" data-al="hcenter" title="左右中央揃え">↔ 中央</button><button type="button" data-al="right" title="右揃え">右揃え ⇥</button></span>
+        <span class="seg" role="group" aria-label="縦をそろえる"><button type="button" data-al="top" title="上揃え">⤒ 上揃え</button><button type="button" data-al="vcenter" title="上下中央揃え">↕ 中央</button><button type="button" data-al="bottom" title="下揃え">下揃え ⤓</button></span>
         <span class="seg" role="group" aria-label="等間隔に並べる"><button type="button" data-al="hdist">横に等間隔</button><button type="button" data-al="vdist">縦に等間隔</button></span>
         <button type="button" id="mDup">複製</button>
-        <button type="button" id="mDel" class="danger">けす</button>
-        <button type="button" id="mNone">選ぶのをやめる</button>
+        <button type="button" id="mDel" class="danger">削除</button>
+        <button type="button" id="mNone">選択を解除</button>
       </div>
       <div id="selBar" class="selbar" hidden>
         <strong id="selName"></strong>
         <span id="selState" class="seg"></span>
         <button type="button" id="selSize"></button>
         <span id="selColors" class="swatches"></span>
-        <span class="seg" role="group" aria-label="大きさ"><button type="button" id="selSmall" aria-label="小さく">－</button><button type="button" id="selReal">100%</button><button type="button" id="selBig" aria-label="大きく">＋</button></span>
-        <span id="selGrid" class="kgrid" hidden>横<span class="seg"><button type="button" data-k="x" data-d="-1" aria-label="横を1人へらす">－</button><b id="kNx">1</b><button type="button" data-k="x" data-d="1" aria-label="横を1人ふやす">＋</button></span>
-          縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人へらす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人ふやす">＋</button></span><span id="kSum"></span></span>
-        <button type="button" id="selPath" aria-pressed="false" hidden>矢印をのばす</button>
-        <button type="button" id="selRot">回す ↻</button>
-        <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：ここで待つ"></label>
-        <button type="button" id="selLabel" aria-pressed="false">名前を出す</button>
-        <button type="button" id="selFront">いちばん上へ</button>
-        <button type="button" id="selDel" class="danger">けす</button>
+        <span class="seg" role="group" aria-label="大きさ"><button type="button" id="selSmall" aria-label="縮小">－</button><button type="button" id="selReal">100%</button><button type="button" id="selBig" aria-label="拡大">＋</button></span>
+        <span id="selGrid" class="kgrid" hidden>横<span class="seg"><button type="button" data-k="x" data-d="-1" aria-label="横を1人減らす">－</button><b id="kNx">1</b><button type="button" data-k="x" data-d="1" aria-label="横を1人増やす">＋</button></span>
+          縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人減らす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人増やす">＋</button></span><span id="kSum"></span></span>
+        <button type="button" id="selPath" aria-pressed="false" hidden>矢印を編集</button>
+        <button type="button" id="selRot">回転 ↻</button>
+        <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：待機場所"></label>
+        <button type="button" id="selLabel" aria-pressed="false">名称を表示</button>
+        <button type="button" id="selFront">最前面へ</button>
+        <button type="button" id="selDel" class="danger">削除</button>
       </div>
       <div class="ewrap">
         <svg id="editSvg" preserveAspectRatio="xMidYMid meet"></svg>
@@ -378,14 +378,14 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
       <div class="lists" id="eLists">
         <div><h3>左のフック</h3><div id="lHookL" class="chips"></div></div>
         <div><h3>右のフック</h3><div id="lHookR" class="chips"></div></div>
-        <div class="wide"><h3>しまう物</h3><div id="lAway" class="chips"></div></div>
+        <div class="wide"><h3>収納物</h3><div id="lAway" class="chips"></div></div>
       </div>
     </div>
     <div class="palette">
       <div class="tabs" role="tablist">
-        <button type="button" role="tab" data-tab="top" aria-selected="true">机の上</button>
+        <button type="button" role="tab" data-tab="top" aria-selected="true">机上</button>
         <button type="button" role="tab" data-tab="hang" aria-selected="false">フック</button>
-        <button type="button" role="tab" data-tab="away" aria-selected="false">しまう</button>
+        <button type="button" role="tab" data-tab="away" aria-selected="false">収納</button>
       </div>
       <div id="pDest" class="seg dest"></div>
       <div id="pItems" class="tiles"></div>
@@ -395,11 +395,11 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 
 <!-- 印刷：まとめて印刷で刷る配置を選ぶ -->
 <dialog id="pDlg" class="pdlg" aria-labelledby="pDlgT">
-  <h2 id="pDlgT">まとめて印刷</h2>
-  <p class="hint">1つの配置を A4 1枚に刷ります。紙の向きは図の形に合わせて変わります。</p>
-  <div class="row"><button type="button" id="pAll">すべて選ぶ</button><button type="button" id="pNone">すべて外す</button></div>
+  <h2 id="pDlgT">一括印刷</h2>
+  <p class="hint">1つの配置を A4 1枚に印刷します。用紙の向きは図の形に合わせて自動で決まります。</p>
+  <div class="row"><button type="button" id="pAll">すべて選択</button><button type="button" id="pNone">すべて解除</button></div>
   <div id="pList" class="plist"></div>
-  <div class="row end"><button type="button" id="pCancel">やめる</button><button type="button" id="pGo" class="primary">印刷する</button></div>
+  <div class="row end"><button type="button" id="pCancel">キャンセル</button><button type="button" id="pGo" class="primary">印刷する</button></div>
 </dialog>
 <!-- 印刷するページ（印刷の間だけ中身が入る） -->
 <div id="printArea" class="printarea" aria-hidden="true"></div>
@@ -432,18 +432,18 @@ var SCENES = {
     legInset: 28,
     crop: 560,               // 横から見た図は上から 560mm までを描き、脚の下は切る
     grid: [
-      { id: 'coarse', name: 'あらい',   nx: 6,  ny: 4 },    // 約108×113mm
-      { id: 'normal', name: 'ふつう',   nx: 12, ny: 8 },    // 約54×56mm
-      { id: 'fine',   name: 'こまかい', nx: 24, ny: 16 }    // 約27×28mm
+      { id: 'coarse', name: '粗い',   nx: 6,  ny: 4 },    // 約108×113mm
+      { id: 'normal', name: '標準',   nx: 12, ny: 8 },    // 約54×56mm
+      { id: 'fine',   name: '細かい', nx: 24, ny: 16 }    // 約27×28mm
     ],
     msg: '<ruby>机<rt>つくえ</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
   },
   class: {   // 普通教室 7m×9m（利用者指定。標準的な63㎡級）
     id: 'class', name: '教室', title: '教室の配置図', w: 7000, d: 9000,
     grid: [
-      { id: 'coarse', name: 'あらい',   nx: 7,  ny: 9 },    // 1000mm
-      { id: 'normal', name: 'ふつう',   nx: 14, ny: 18 },   // 500mm
-      { id: 'fine',   name: 'こまかい', nx: 28, ny: 36 }    // 250mm
+      { id: 'coarse', name: '粗い',   nx: 7,  ny: 9 },    // 1000mm
+      { id: 'normal', name: '標準',   nx: 14, ny: 18 },   // 500mm
+      { id: 'fine',   name: '細かい', nx: 28, ny: 36 }    // 250mm
     ],
     items: ['cdesk', 'ctable', 'cshelf', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'],
     msg: '<ruby>教室<rt>きょうしつ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
@@ -451,9 +451,9 @@ var SCENES = {
   gym: {     // 体育館 20m×30m（利用者指定）
     id: 'gym', name: '体育館', title: '体育館の配置図', w: 20000, d: 30000,
     grid: [
-      { id: 'coarse', name: 'あらい',   nx: 4,  ny: 6 },    // 5000mm
-      { id: 'normal', name: 'ふつう',   nx: 8,  ny: 12 },   // 2500mm
-      { id: 'fine',   name: 'こまかい', nx: 16, ny: 24 }    // 1250mm
+      { id: 'coarse', name: '粗い',   nx: 4,  ny: 6 },    // 5000mm
+      { id: 'normal', name: '標準',   nx: 8,  ny: 12 },   // 2500mm
+      { id: 'fine',   name: '細かい', nx: 16, ny: 24 }    // 1250mm
     ],
     items: ['gbox', 'gboard', 'gmat', 'gbeam', 'gbar', 'gtora', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'],
     msg: '<ruby>体育館<rt>たいいくかん</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
@@ -461,9 +461,9 @@ var SCENES = {
   field: {   // 運動場 40m×60m（利用者指定）
     id: 'field', name: '運動場', title: '運動場の配置図', w: 40000, d: 60000,
     grid: [
-      { id: 'coarse', name: 'あらい',   nx: 8,  ny: 12 },   // 5000mm
-      { id: 'normal', name: 'ふつう',   nx: 16, ny: 24 },   // 2500mm
-      { id: 'fine',   name: 'こまかい', nx: 32, ny: 48 }    // 1250mm
+      { id: 'coarse', name: '粗い',   nx: 8,  ny: 12 },   // 5000mm
+      { id: 'normal', name: '標準',   nx: 16, ny: 24 },   // 2500mm
+      { id: 'fine',   name: '細かい', nx: 32, ny: 48 }    // 1250mm
     ],
     items: ['gbar', 'funten', 'fsand', 'ftire', 'fgoal', 'fcone', 'fmark', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'],
     msg: '<ruby>運動場<rt>うんどうじょう</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
@@ -574,9 +574,9 @@ function roundTrap(x0, y0, x1, y1, insetTop, insetBot, r, fill, stroke) {   // �
          (stroke ? ' stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"' : '') + '/>';
 }
 /* 状態の呼び名（編集画面のボタン） */
-var STATE_NAMES = { closed: 'とじる', open: 'ひらく', open360: '360°', open360r: '360°右', tablet: 'タブレット', tent: '山がた',
-                    go: 'まっすぐ', zag: 'つづら', flow: 'ながれる', path: 'じゆう',
-                    normal: 'ふつう', hat: 'ぼうし', bib: 'ゼッケン', r1: '1列', r2: '2列', r4: '4列' };
+var STATE_NAMES = { closed: '閉じた状態', open: '開いた状態', open360: '360°', open360r: '360°右', tablet: 'タブレット', tent: '山形',
+                    go: '直線', zag: 'ジグザグ', flow: '流れ', path: '自由',
+                    normal: '通常', hat: '紅白帽', bib: 'ゼッケン', r1: '1列', r2: '2列', r4: '4列' };
 
 var CLEAR = 'rgba(214,236,247,.85)', CLEAR_LINE = 'rgba(58,53,46,.35)';   // 透明なプラスチック
 function ticks(y0, y1, x) {   // 縦の目盛り（1cm＝10mm ごと、5cm ごとに長く）
@@ -1694,7 +1694,7 @@ SPACES.forEach(function (sp) {
   var c = lv(5000), n = { nx: c.nx * 2, ny: c.ny * 2 }, f = { nx: c.nx * 4, ny: c.ny * 4 };   // 2倍ずつ（段を変えても交点がずれない）
   SCENES[id] = { id: id, name: name, title: name + 'の配置図', space: sp, w: w, d: d, k: 30,   // 文字・余白の倍率は体育館（幅20m）と同じ。用具の大きさがそろって見える
    
-    grid: [{ id: 'coarse', name: 'あらい', nx: c.nx, ny: c.ny }, { id: 'normal', name: 'ふつう', nx: n.nx, ny: n.ny }, { id: 'fine', name: 'こまかい', nx: f.nx, ny: f.ny }],
+    grid: [{ id: 'coarse', name: '粗い', nx: c.nx, ny: c.ny }, { id: 'normal', name: '標準', nx: n.nx, ny: n.ny }, { id: 'fine', name: '細かい', nx: f.nx, ny: f.ny }],
     items: SPACE_ITEMS.slice(),
     msg: 'この<ruby>形<rt>かたち</rt></ruby>にしてね' };
   SCENE_ORDER.push(id);
@@ -1763,7 +1763,7 @@ function zoneEdges(b, zs) {
 /* グリッドの4段目「とても細かい」：どの場所も「こまかい」をさらに2倍に割る（段を変えても交点がずれない） */
 Object.keys(SCENES).forEach(function (id) {
   var g = SCENES[id].grid, f = g[g.length - 1];
-  if (f.id !== 'xfine') g.push({ id: 'xfine', name: 'とても細かい', nx: f.nx * 2, ny: f.ny * 2 });
+  if (f.id !== 'xfine') g.push({ id: 'xfine', name: '極細', nx: f.nx * 2, ny: f.ny * 2 });
 });
 if (SCENE) GRID_LEVELS = SCENE.grid;
 /* ▲ scenes.js ここまで ▲ */
@@ -2400,7 +2400,7 @@ var Store = (function () {
       Object.keys(clean).forEach(function (k) { local[k] = clean[k]; });
     } else {
       S.layouts.push(clean);
-      if (conflict) toast('「' + clean.name + '」は ほかの人が直していたので、消さずに残しました');
+      if (conflict) toast('「' + clean.name + '」は他の先生が編集していたため、削除せずに残しました');
     }
     if (onRemote) onRemote(row.id, row.by, conflict);
     return true;
@@ -2531,7 +2531,7 @@ function inScene(id, fn) { var keep = SCENE.id; useScene(id); try { return fn();
 function isHang(h) { return h && ITEMS[h.item] && ITEMS[h.item].kind === 'hang'; }
 function save() {
   record();
-  try { Store.save(S); } catch (e) { toast('この端末には保存できません（書き出しで残してください）'); }
+  try { Store.save(S); } catch (e) { toast('この端末に保存できません（書き出しで保存してください）'); }
 }
 
 var S = load();
@@ -2554,12 +2554,14 @@ function removeItems(ix) {   // 番号の大きい順に消す（前の番号が
 var tab = 'top', dest = { hang: 'left', away: 'tray' };
 
 function byId(id) { return S.layouts.filter(function (l) { return l.id === id; })[0]; }
+/* ふりがなは「映す」画面（児童が見る）だけ。ほかの画面（先生が使う）は付けない。RUBY は renderShow の間だけ真 */
+var RUBY = false;
 function rubyHtml(name, yomi) {
-  return yomi && S.prefs.ruby ? '<ruby>' + esc(name) + '<rt>' + esc(yomi) + '</rt></ruby>' : esc(name);
+  return yomi && RUBY && S.prefs.ruby ? '<ruby>' + esc(name) + '<rt>' + esc(yomi) + '</rt></ruby>' : esc(name);
 }
 function itemNameHtml(name) {
   return parseName(name).map(function (s) {
-    return s.r && S.prefs.ruby ? '<ruby>' + esc(s.b) + '<rt>' + esc(s.r) + '</rt></ruby>' : esc(s.b);
+    return s.r && RUBY && S.prefs.ruby ? '<ruby>' + esc(s.b) + '<rt>' + esc(s.r) + '</rt></ruby>' : esc(s.b);
   }).join('');
 }
 var toastTimer;
@@ -2593,9 +2595,9 @@ function renderHome() {
     html += '<div class="card"><button type="button" class="go" data-id="' + esc(l.id) + '">' +
       '<svg viewBox="' + (b.x0) + ' ' + (b.y0) + ' ' + (b.x1 - b.x0) + ' ' + (b.y1 - b.y0) + '" aria-hidden="true">' + t.svg + '</svg>' +
       '<span class="nm">' + rubyHtml(l.name, l.yomi) + '</span></button>' +
-      '<button type="button" class="fix" data-fix="' + esc(l.id) + '">なおす</button></div>';
+      '<button type="button" class="fix" data-fix="' + esc(l.id) + '">編集</button></div>';
   });
-  $('cards').innerHTML = html || '<p class="hint">この場所の配置はまだありません。「＋ 新しい配置」で作れます。</p>';
+  $('cards').innerHTML = html || '<p class="hint">この場所の配置はまだありません。「＋ 新規作成」で作成できます。</p>';
   go('vHome');
 }
 $('hScenes').addEventListener('click', function (e) {
@@ -2629,12 +2631,12 @@ $('dImport').onchange = function (e) {
       n++;
     });
     save(); renderHome(); toast(n + '件の配置を読み込みました');
-  }).catch(function () { toast('このファイルは読み込めません'); });
+  }).catch(function () { toast('このファイルは読み込めません（形式が違います）'); });
   e.target.value = '';
 };
 $('dReset').onclick = function () {
   if (!confirm('つくった配置と直した内容をすべて消して、標準の配置に戻します。よろしいですか？')) return;
-  var prefs = S.prefs; S = freshState(); S.prefs = prefs; save(); renderHome(); toast('標準の配置に戻しました');
+  var prefs = S.prefs; S = freshState(); S.prefs = prefs; save(); renderHome(); toast('初期配置に戻しました');
 };
 /* ▲ home.js ここまで ▲ */
 /* ▼ show.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
@@ -2650,7 +2652,8 @@ function openShow(id) {
   S.recent = [id].concat(S.recent.filter(function (x) { return x !== id; })).slice(0, 30); save();
   go('vShow'); renderShow();
 }
-function renderShow() {
+function renderShow() { RUBY = true; try { renderShowIn(); } finally { RUBY = false; } }   // 児童が見る画面だけ ふりがな
+function renderShowIn() {
   var deskMode = !!SCENE.desk;
   var o = { ruby: S.prefs.ruby, chair: deskMode && S.prefs.chair, flip: flip && cur.flip };
   o.topOnly = S.prefs.topOnly || big;
@@ -2723,7 +2726,7 @@ function printPageIn(l, o) {
 }
 function printOpts(l, fl) {
   var deskMode = !!SCENES[scOf(l)].desk;
-  return { ruby: S.prefs.ruby, chair: deskMode && S.prefs.chair, flip: !!(fl && l.flip), topOnly: S.prefs.topOnly };
+  return { ruby: false, chair: deskMode && S.prefs.chair, flip: !!(fl && l.flip), topOnly: S.prefs.topOnly };   // 印刷は先生向け：ふりがなは付けない
 }
 function doPrint(pages) {
   $('printArea').innerHTML = pages.join('');
@@ -2782,7 +2785,7 @@ function openEdit(id) {
   go('vEdit'); renderEdit(); renderPalette();
 }
 function renderEdit() {
-  var t = topView(cur, { ruby: S.prefs.ruby, sel: msel.length > 1 ? msel : sel, grid: S.prefs.gridShow === false ? null : gridLevel(S.prefs.grid) });   // 線を消しても交点への吸着は続く
+  var t = topView(cur, { ruby: false, sel: msel.length > 1 ? msel : sel, grid: S.prefs.gridShow === false ? null : gridLevel(S.prefs.grid) });   // 線を消しても交点への吸着は続く
   var b = t.box, pad = 60 * K;
   var svg = $('editSvg');
   // 余白は広めに固定して、吹き出しが増えても床が跳ねないようにする（場所の広さに合わせて K 倍）
@@ -2825,8 +2828,9 @@ function renderEdit() {
     return '<button type="button" class="sw bg' + (on ? ' on' : '') + '" data-bg="' + f.id + '" aria-pressed="' + on + '" title="' + f.name + '"' +
       (f.c ? ' style="background:' + f.c + '"' : '') + '>' + f.name + '</button>';
   }).join('');
-  $('eGrid').innerHTML = GRID_LEVELS.map(function (g) {
-    return '<button type="button" data-grid="' + g.id + '" class="' + (g.id === gridLevel(S.prefs.grid).id ? 'on' : '') + '">' + g.name + '</button>';
+  $('eGrid').innerHTML = GRID_LEVELS.concat([{ id: 'free', name: '自由配置' }]).map(function (g) {
+    var on = S.prefs.grid === 'free' ? g.id === 'free' : g.id === gridLevel(S.prefs.grid).id;
+    return '<button type="button" data-grid="' + g.id + '" class="' + (on ? 'on' : '') + '">' + g.name + '</button>';
   }).join('');
 }
 $('eGrid').addEventListener('click', function (e) {
@@ -2835,8 +2839,8 @@ $('eGrid').addEventListener('click', function (e) {
 });
 function chipHtml(entry, where, k, extra) {
   return '<span class="chip">' + iconSvg(entry.item, 34) + '<span>' + esc(plainName(ITEMS[entry.item].name)) + '</span>' + (extra || '') +
-    '<button type="button" data-lab="' + where + ':' + k + '" aria-pressed="' + !!entry.label + '">名前</button>' +
-    '<button type="button" data-rm="' + where + ':' + k + '" aria-label="けす">×</button></span>';
+    '<button type="button" data-lab="' + where + ':' + k + '" aria-pressed="' + !!entry.label + '">名称</button>' +
+    '<button type="button" data-rm="' + where + ':' + k + '" aria-label="削除">×</button></span>';
 }
 function renderChips() {
   $('eLists').hidden = !SCENE.desk;   // フック・しまう物は机だけの仕組み
@@ -2994,7 +2998,7 @@ $('selGrid').addEventListener('click', function (e) {
   var p = cur.top[sel], n = kidsN(p), k = b.getAttribute('data-k'), d = +b.getAttribute('data-d');
   var nx = n.nx + (k === 'x' ? d : 0), ny = n.ny + (k === 'y' ? d : 0);
   if (nx < 1 || ny < 1) return;
-  if (nx * ny > 36) { toast('36人までです'); return; }
+  if (nx * ny > 36) { toast('最大36人です'); return; }
   p.nx = nx; p.ny = ny; clampP(p); save(); renderEdit();
 });
 $('selPath').onclick = function () {
@@ -3039,6 +3043,7 @@ function toFront() { var p = cur.top.splice(sel, 1)[0]; cur.top.push(p); sel = c
 /* 物の中心をいちばん近いグリッドの交点に合わせる。交点は机の外にも「あらい」1目分広がる
    （本が半分だけ机に乗る配置）。それ以上はみ出すのは物の形まかせで許す（重ね置きなど実際の机でも起きる） */
 function clampP(p) {
+  if (S.prefs.grid === 'free') return;   // 自由配置：交点に合わせない（グリッドの線は「標準」の細かさで見せる）
   var q = snap(p.x, p.y, gridLevel(S.prefs.grid));
   p.x = q.x; p.y = q.y;
 }
@@ -3083,7 +3088,7 @@ var clip = null, pasteN = 0;
 function canPlace(id) { return SCENE.desk ? !(ITEMS[id].scenes || []).length : SCENE.items.indexOf(id) >= 0; }
 function pasteItem(src) {   // src：1つの物 か 物の並び。並びは 形を保ったまま ずらして貼る
   var list = (Array.isArray(src) ? src : [src]).filter(function (q) { return canPlace(q.item); });
-  if (!list.length) { toast('この場所には置けない物です'); return; }
+  if (!list.length) { toast('この場所には配置できない用具です'); return; }
   var g = gridLevel(S.prefs.grid), added = [];
   pasteN++;
   list.forEach(function (s0) {
@@ -3106,7 +3111,7 @@ document.addEventListener('keydown', function (e) {
   var items = set.map(function (i) { return clone(cur.top[i]); });
   if (mod && (k === 'c' || k === 'x')) {
     e.preventDefault(); clip = items.length > 1 ? items : items[0]; pasteN = 0;
-    if (k === 'x') { removeItems(set); save(); renderEdit(); toast('切り取りました'); } else toast('写しました（Ctrl+V で貼る）');
+    if (k === 'x') { removeItems(set); save(); renderEdit(); toast('切り取りました'); } else toast('コピーしました（Ctrl+V で貼り付け）');
     return;
   }
   if (mod && k === 'd') { e.preventDefault(); pasteN = 0; pasteItem(items.length > 1 ? items : items[0]); return; }
@@ -3280,8 +3285,8 @@ renderHome();
 
 /* ---- 共有（GAS版）：起動したら共有の配置を受け取り、ほかの人の変更が来たら描き直す ---- */
 $('dReset').hidden = Store.kind === 'gas';   // 共有では「標準に戻す」はしない（みんなの配置が消えるため）
-$('dHint').textContent = Store.kind === 'gas' ? '配置は学校のみんなで共有しています（同時に直してもまざります）。書き出しは控えに使えます。'
-                                              : '配置はこの端末のブラウザに保存されます。別の端末へは書き出したファイルで移します。';
+$('dHint').textContent = Store.kind === 'gas' ? '配置は校内で共有されています（同時に編集しても統合されます）。書き出しはバックアップに使えます。'
+                                              : '配置はこの端末のブラウザに保存されます。別の端末へは書き出したファイルで移行します。';
 function refreshView() {
   if (!$('vEdit').hidden && cur) { if (!byId(cur.id)) return renderHome(); useScene(scOf(cur)); renderEdit(); renderPalette(); }
   else if (!$('vShow').hidden && cur) { if (!byId(cur.id)) return renderHome(); renderShow(); }
@@ -3291,7 +3296,7 @@ Store.onPresence = function () { if (!$('vEdit').hidden && cur) peers(); };
 function peers() {
   var who = Store.editors ? Store.editors(cur.id) : [];
   $('ePeers').hidden = !who.length;
-  $('ePeers').textContent = who.length ? 'いっしょに編集中：' + who.join('、') : '';
+  $('ePeers').textContent = who.length ? '同時編集中：' + who.join('、') : '';
 }
 var selU = [];   // 取り込む直前に選んでいた物の名札（store.js が取り込む前に before を呼ぶ）
 Store.before = function () { selU = cur ? selected().map(function (i) { return (cur.top[i] || {}).u; }).filter(Boolean) : []; };
@@ -3302,7 +3307,7 @@ Store.start(refreshView, function (id, by, conflict) {
     var at = function (u) { for (var i = 0; i < cur.top.length; i++) if (cur.top[i].u === u) return i; return -1; };
     sel = selU.length ? at(selU[selU.length - 1]) : -1;
     msel = selU.map(at).filter(function (i) { return i >= 0; }); if (msel.length < 2) msel = [];
-    if (!conflict) toast((by || 'ほかの人') + 'さんの変更を取り込みました');
+    if (!conflict) toast((by || '他の先生') + 'さんの変更を反映しました');
   }
   refreshView();
 });

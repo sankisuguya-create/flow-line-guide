@@ -115,7 +115,7 @@ var Store = (function () {
       Object.keys(clean).forEach(function (k) { local[k] = clean[k]; });
     } else {
       S.layouts.push(clean);
-      if (conflict) toast('「' + clean.name + '」は ほかの人が直していたので、消さずに残しました');
+      if (conflict) toast('「' + clean.name + '」は他の先生が編集していたため、削除せずに残しました');
     }
     if (onRemote) onRemote(row.id, row.by, conflict);
     return true;

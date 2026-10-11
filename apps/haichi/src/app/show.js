@@ -10,7 +10,8 @@ function openShow(id) {
   S.recent = [id].concat(S.recent.filter(function (x) { return x !== id; })).slice(0, 30); save();
   go('vShow'); renderShow();
 }
-function renderShow() {
+function renderShow() { RUBY = true; try { renderShowIn(); } finally { RUBY = false; } }   // 児童が見る画面だけ ふりがな
+function renderShowIn() {
   var deskMode = !!SCENE.desk;
   var o = { ruby: S.prefs.ruby, chair: deskMode && S.prefs.chair, flip: flip && cur.flip };
   o.topOnly = S.prefs.topOnly || big;
@@ -83,7 +84,7 @@ function printPageIn(l, o) {
 }
 function printOpts(l, fl) {
   var deskMode = !!SCENES[scOf(l)].desk;
-  return { ruby: S.prefs.ruby, chair: deskMode && S.prefs.chair, flip: !!(fl && l.flip), topOnly: S.prefs.topOnly };
+  return { ruby: false, chair: deskMode && S.prefs.chair, flip: !!(fl && l.flip), topOnly: S.prefs.topOnly };   // 印刷は先生向け：ふりがなは付けない
 }
 function doPrint(pages) {
   $('printArea').innerHTML = pages.join('');

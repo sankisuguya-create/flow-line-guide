@@ -120,8 +120,24 @@ await step('拡大・縮小とグリッドの線', async () => {
   await p.click('#eGridShow'); await p.click('#eDisp summary');
 });
 
+await step('自由配置：交点に合わせない／ふりがなは映す画面だけ', async () => {
+  await p.click('#eBack'); await p.click('[data-scene="gym"]');
+  assert.equal(await p.locator('#cards ruby').count(), 0, 'カードには ふりがなを付けない');
+  await p.click('[data-fix="g_tobibako3"]');
+  assert.equal(await p.locator('#editSvg ruby, #editSvg .labels rt').count(), 0);
+  await p.click('[data-grid="free"]');
+  assert.ok(await p.locator('[data-grid="free"].on').count(), '自由配置のボタンが選ばれる');
+  const q = await p.evaluate(() => { const o = { x: 1234, y: 4567 }; clampP(o); return o; });
+  assert.deepEqual([q.x, q.y], [1234, 4567], '自由配置では 交点に合わせない');
+  await p.click('[data-grid="normal"]');
+  const q2 = await p.evaluate(() => { const o = { x: 1234, y: 4567 }; clampP(o); return o; });
+  assert.ok(q2.x % 1250 === 0 && q2.y % 1250 === 0, '標準に戻すと交点に合う');
+  await p.click('#eShow');
+  assert.ok((await p.innerHTML('#sTitle')).includes('<ruby>'), '映す画面は ふりがな');
+  await p.click('#sBack');
+});
+
 await step('まとめて印刷：1配置1枚', async () => {
-  await p.click('#eBack');
   await p.evaluate(() => { window.print = () => { window.__pages = document.querySelectorAll('#printArea .pg').length; }; });
   await p.click('#hPrint'); await p.click('#pGo');
   const cards = await p.locator('.card').count();

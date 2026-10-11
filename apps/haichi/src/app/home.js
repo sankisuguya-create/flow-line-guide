@@ -18,9 +18,9 @@ function renderHome() {
     html += '<div class="card"><button type="button" class="go" data-id="' + esc(l.id) + '">' +
       '<svg viewBox="' + (b.x0) + ' ' + (b.y0) + ' ' + (b.x1 - b.x0) + ' ' + (b.y1 - b.y0) + '" aria-hidden="true">' + t.svg + '</svg>' +
       '<span class="nm">' + rubyHtml(l.name, l.yomi) + '</span></button>' +
-      '<button type="button" class="fix" data-fix="' + esc(l.id) + '">なおす</button></div>';
+      '<button type="button" class="fix" data-fix="' + esc(l.id) + '">編集</button></div>';
   });
-  $('cards').innerHTML = html || '<p class="hint">この場所の配置はまだありません。「＋ 新しい配置」で作れます。</p>';
+  $('cards').innerHTML = html || '<p class="hint">この場所の配置はまだありません。「＋ 新規作成」で作成できます。</p>';
   go('vHome');
 }
 $('hScenes').addEventListener('click', function (e) {
@@ -54,10 +54,10 @@ $('dImport').onchange = function (e) {
       n++;
     });
     save(); renderHome(); toast(n + '件の配置を読み込みました');
-  }).catch(function () { toast('このファイルは読み込めません'); });
+  }).catch(function () { toast('このファイルは読み込めません（形式が違います）'); });
   e.target.value = '';
 };
 $('dReset').onclick = function () {
   if (!confirm('つくった配置と直した内容をすべて消して、標準の配置に戻します。よろしいですか？')) return;
-  var prefs = S.prefs; S = freshState(); S.prefs = prefs; save(); renderHome(); toast('標準の配置に戻しました');
+  var prefs = S.prefs; S = freshState(); S.prefs = prefs; save(); renderHome(); toast('初期配置に戻しました');
 };
