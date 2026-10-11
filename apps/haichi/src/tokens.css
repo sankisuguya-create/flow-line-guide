@@ -1,0 +1,12 @@
+/* 配置図が使う色。中立の色・書体は assets/ui/base.css が正本。
+   ここは homeroom-tools の shared/ui/tokens.css から、配置図が使う分（選択の青・警告）だけを写した。
+   @dark{} は scripts/build.mjs が暗い配色の2ブロックへ展開する。 */
+/* @include base.css */
+:root{
+  --a-bg:#DCE8F6; --a-line:#8FB4DC; --a-ink:#173E70;
+  --warn:#B0392B; --warn-bg:#FBEEEC;
+}
+@dark{
+  --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
+  --warn:#E5776A; --warn-bg:#2E1C1A;
+}

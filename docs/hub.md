@@ -10,7 +10,7 @@
 
 | 置き場 | 層 | 中身 |
 |---|---|---|
-| `assets/objects/<分類>/` | 物 | 用具の立体（実寸 mm）。gym＝跳び箱・ロイター板・マット。desk は desk-layout の複製（`assets/objects/desk/ORIGIN.md`） |
+| `assets/objects/<分類>/` | 物 | 用具（実寸 mm）。gym＝立体（`mesh.js`）と配置図に置く物（`items.js`）。desk＝机の上・教室・体育館・運動場の物（`data.js`・`draw.js`）。どれも正本で、配置図 `apps/haichi` がビルド時に取り込む |
 | `assets/spaces/<場>/space.json` | 場 | 区画・点・通路（実寸 m）。確認状態（仮／確認済）と出典を持つ |
 | `assets/icons/`・`assets/ui/` | 素材 | アイコン（Lucide・Tabler 人物、ライセンス同梱）と共通の見た目（base.css）。homeroom-tools の複製（各 `ORIGIN.md`） |
 | `engine/player/` | 操作UI | 再生部 `flow.js`・見た目 `flow.css`・ひな形 `page.html` |
