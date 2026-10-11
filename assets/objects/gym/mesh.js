@@ -176,7 +176,8 @@ function drawFaces(objs,view){
 SPEC.pipechair={ name:"パイプいす", note:"幅487×奥行470×高さ746mm（利用者が示した製品 CAL-XS01M の寸法）。座面の高さ440と脚の位置は写真から読んだ仮。+Y が前（すわる人が向く側）",
   W:487, D:470, H:746, seatZ:440, backH:190, tube:22,
   frontFoot:140,   // 前の床の桟の位置（Y）。座面の前はしは D/2
-  lockZ:520 };     // うしろの脚が 前の脚から分かれる高さ
+  lockZ:520,       // うしろの脚が 前の脚から分かれる高さ
+  hole:{W:120,H:35,top:35} };   // 背もたれの持ち手の穴（幅・高さ・上の端からの距離。写真の比率から）
 SPEC.longtable={ name:"長机", note:"仮：1800×450×高さ700（折りたたみ長机の標準）", W:1800, D:450, H:700, top:25 };
 // 太さ t の角棒を a→b に置く（パイプの脚・桟）
 function addBeam(F,a,b,t,col,edge){
@@ -221,9 +222,23 @@ function pipeChair(){
   var yS=yA(S.seatZ);                                                              // 座面のうしろの端＝①と交わる所
   addPrismX(F,[[yS,S.seatZ-22],[S.D/2,S.seatZ-22],[S.D/2,S.seatZ],[yS,S.seatZ]],-(xa-t/2),xa-t/2,blk,blk);   // 座面
   var z0=S.H-S.backH, k=18;                                                        // 背もたれ：①に沿って傾いた板
-  addPrismX(F,[[yA(z0)-k,z0],[yA(z0),z0],[yA(S.H),S.H],[yA(S.H)-k,S.H]],-w,w,blk,blk);
+  // 背もたれ：①に沿って傾いた板。上の中ほどに 持ち手の穴（横長の矩形。写真）。穴のまわりを4枚の板に分けて組む
+  // 前・うしろの面は穴のまわりの4枚、ふちの4面、穴の内がわの4面を じかに組む（板を分けると継ぎ目の面が見える）
+  var hw=S.hole.W/2, h0=S.H-S.hole.top-S.hole.H, h1=S.H-S.hole.top;
+  var Q=function(x,z,f){ return [x, f?yA(z)+12:yA(z)-k, z]; };                     // f：前の面（柱を板の中に埋めるため前へ12）
+  var outer=[], hole=[];
+  [true,false].forEach(function(f){
+    [[-w,w,z0,h0],[-w,w,h1,S.H],[-w,-hw,h0,h1],[hw,w,h0,h1]].forEach(function(r){
+      outer.push({p:[Q(r[0],r[2],f),Q(r[1],r[2],f),Q(r[1],r[3],f),Q(r[0],r[3],f)],col:blk}); });
+  });
+  var ring=function(xs,zs,list){ var c=[[xs[0],zs[0]],[xs[1],zs[0]],[xs[1],zs[1]],[xs[0],zs[1]]];
+    for(var i=0;i<4;i++){ var a=c[i], b=c[(i+1)%4]; list.push({p:[Q(a[0],a[1],true),Q(b[0],b[1],true),Q(b[0],b[1],false),Q(a[0],a[1],false)],col:blk}); } };
+  ring([-w,w],[z0,S.H],outer); ring([-hw,hw],[h0,h1],hole);
+  outward(outer,[0,yA((z0+S.H)/2)-k/2+6,(z0+S.H)/2]);
+  outward(hole,[0,yA((h0+h1)/2)-k/2+6,(h0+h1)/2]); hole.forEach(function(f){ f.p.reverse(); });   // 穴の内がわの面は 穴の中を向く
+  outer.concat(hole).forEach(function(f){ F.push(f); });
   // 黒い部品（座面・背もたれ・留め具・足ゴム）は角を丸めない：面ごとに丸めると、ふちの面と中の面の間に すき間が出る
-  F.forEach(function(f){ if(f.col===blk){ f.sharp=f.p.map(function(_,i){return i;}); f.edge=blk; } });
+  F.forEach(function(f){ if(f.col===blk){ f.sharp=f.p.map(function(_,i){return i;}); f.edge=null; } });   // 線は面と同じ色（継ぎ目を見せない）
   return {faces:F, foot:{W:S.W,L:S.D}};
 }
 function longTable(){
