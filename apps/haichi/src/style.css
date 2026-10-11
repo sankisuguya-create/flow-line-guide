@@ -176,3 +176,15 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 .zoombar{position:absolute;top:8px;right:8px;display:flex;background:var(--sheet);border:1px solid var(--rule);border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .zoombar button{border:none;border-radius:0;min-width:44px;min-height:40px;font-weight:700}
 .zoombar #zReset{min-width:64px;font-variant-numeric:tabular-nums;border-left:1px solid var(--rule-soft);border-right:1px solid var(--rule-soft)}
+
+/* 矢印をのばす：先と元の となりの交点に出す＋、先と元の上の－ */
+.amark{cursor:pointer}
+.amark circle{fill:#FFFFFF;stroke:var(--accent);opacity:.95}
+.amark path{stroke:var(--accent);fill:none;stroke-linecap:round}
+.amark.shrink circle{fill:#FFF3F1;stroke:#B0392B}
+.amark.shrink path{stroke:#B0392B}
+
+/* 児童の並び：横・縦の人数 */
+.kgrid{display:inline-flex;align-items:center;gap:6px;font-weight:700}
+.kgrid .seg{display:inline-flex;align-items:center}
+.kgrid b{min-width:2em;text-align:center;font-variant-numeric:tabular-nums}

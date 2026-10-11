@@ -30,7 +30,7 @@ for(const sc of g.SCENE_ORDER){
 }
 for(const id of Object.keys(ITEMS))for(const sc of ITEMS[id].scenes||[])assert.ok(SCENES[sc].items.includes(id),id+'が'+sc+'の品ぞろえにない');
 // 矢印：4形、ながれるは動く印を持つ。closed を持たない物もアイコンを描ける
-assert.deepEqual(Object.keys(ITEMS.arrow.states),['go','turn','zag','flow']);
+assert.deepEqual(Object.keys(ITEMS.arrow.states),['go','zag','flow','path']);   // まがる は廃止（じゆう で曲げる）
 assert.ok(vm.runInContext("ITEMS.arrow.states.flow.draw(900,3200)",ctx).includes('<animate'));
 assert.ok(g.iconSvg('arrow',40).includes('path'));
 // 開く物は閉じた形と開いた形の両方を持つ
@@ -179,5 +179,12 @@ assert.ok(vm.runInContext(`drawTopItem({item:'classgroup',state:'r2',x:0,y:0,r:0
 assert.equal(vm.runInContext("itemSize({item:'notebook',state:'closed',s:2}).join()",ctx),'358,504');
 assert.equal(vm.runInContext("itemSize({item:'notebook',state:'closed',s:99})[0]",ctx),179*4,'上限');
 assert.ok(vm.runInContext("drawTopItem({item:'notebook',state:'closed',x:0,y:0,r:0,s:1.5},0,'')",ctx).includes('scale(1.5)'));
-g.useScene('gym'); assert.equal(vm.runInContext("itemSize({item:'pipechairs',state:'c1',s:2}).join()",ctx),'974,940'); g.useScene('desk');
+g.useScene('gym'); assert.equal(vm.runInContext("itemSize({item:'pipechairs',state:'c1',s:2}).join()",ctx),'974,940'); // 児童の並び・矢印のじゆう
+g.useScene('gym');
+assert.equal(vm.runInContext("itemSize({item:'kids',nx:6,ny:6}).join()",ctx),'3600,4200');
+assert.equal(vm.runInContext("JSON.stringify(kidsN({nx:10,ny:10}))",ctx),'{"nx":10,"ny":3}','36人まで');
+assert.equal((vm.runInContext("drawTopItem({item:'kids',state:'closed',x:0,y:0,r:0,nx:4,ny:2},0,'')",ctx).match(/<ellipse/g)||[]).length,8);
+const pa=vm.runInContext("drawTopItem({item:'arrow',state:'path',x:5000,y:5000,r:0,pts:[[0,0],[0,-2500],[2500,-2500]],color:2},0,'sel')",ctx);
+assert.ok(pa.includes('#2F80ED')&&!/NaN/.test(pa));
+g.useScene('desk');
 console.log('ok');

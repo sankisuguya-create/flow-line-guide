@@ -164,7 +164,7 @@ function roundTrap(x0, y0, x1, y1, insetTop, insetBot, r, fill, stroke) {   // �
 }
 /* 状態の呼び名（編集画面のボタン） */
 var STATE_NAMES = { closed: 'とじる', open: 'ひらく', open360: '360°', open360r: '360°右', tablet: 'タブレット', tent: '山がた',
-                    go: 'まっすぐ', turn: 'まがる', zag: 'つづら', flow: 'ながれる',
+                    go: 'まっすぐ', zag: 'つづら', flow: 'ながれる', path: 'じゆう',
                     normal: 'ふつう', hat: 'ぼうし', bib: 'ゼッケン', r1: '1列', r2: '2列', r4: '4列' };
 
 var CLEAR = 'rgba(214,236,247,.85)', CLEAR_LINE = 'rgba(58,53,46,.35)';   // 透明なプラスチック
@@ -547,13 +547,12 @@ var ITEMS = {
              C(w / 2, h * 0.87, r, col, 0) + C(w / 2, h * 0.87, r - 16, '#F7F4EA', 0) + T(w / 2, h * 0.85, '高', r * 0.9);
     } } } },
   /* 矢印：形で選ぶ（向きは「回す」）。ながれる矢印は中の破線が進行方向に動く */
-  arrow: { name: '{矢印|やじるし}', kind: 'top', scenes: ['class', 'gym', 'field'], states: {
+  /* 矢印。色を選べる。「じゆう」は グリッドの交点を結んだ折れ線（p.pts：p.x,p.y からのずれ）で、
+     編集画面の「矢印をのばす」で 先と元に となりの交点を足して のばす・曲げる（draw.js の pathArrowSvg） */
+  arrow: { name: '{矢印|やじるし}', kind: 'top', scenes: ['class', 'gym', 'field'],
+    colors: ['#F2994A', '#E5484D', '#2F80ED', '#46B97A', '#F2C94C', '#FFFFFF'], states: {
     go: { w: 800, d: 3000, draw: function (w, h) {
       return arrowHead([[w * 0.32, h], [w * 0.32, h * 0.44], [0, h * 0.44], [w / 2, 0], [w, h * 0.44], [w * 0.68, h * 0.44], [w * 0.68, h]]);
-    } },
-    turn: { w: 2200, d: 2200, draw: function (w, h) {   // 上に進んで右に曲がる
-      return arrowShaft('M ' + (w * 0.3) + ' ' + h + ' L ' + (w * 0.3) + ' ' + (h * 0.36) + ' Q ' + (w * 0.3) + ' ' + (h * 0.16) + ' ' + (w * 0.55) + ' ' + (h * 0.16) + ' L ' + (w * 0.78) + ' ' + (h * 0.16), w * 0.24) +
-             arrowHead([[w * 0.58, h * 0.02], [w, h * 0.16], [w * 0.58, h * 0.3]]);
     } },
     zag: { w: 1800, d: 2600, draw: function (w, h) {   // つづら折れ（ジグザグに進む）
       return arrowShaft('M ' + (w * 0.5) + ' ' + h + ' L ' + (w * 0.85) + ' ' + (h * 0.66) + ' L ' + (w * 0.15) + ' ' + (h * 0.38) + ' L ' + (w * 0.5) + ' ' + (h * 0.17), w * 0.2) +
@@ -563,6 +562,9 @@ var ITEMS = {
       return '<path d="' + roundPoly([[w * 0.18, h], [w * 0.18, h * 0.4], [0, h * 0.4], [w / 2, 0], [w, h * 0.4], [w * 0.82, h * 0.4], [w * 0.82, h]], 50) + '" fill="' + ARROW + '" stroke="' + INK + '" stroke-width="50" stroke-linejoin="round"/>' +
              '<line x1="' + (w / 2) + '" y1="' + (h * 0.93) + '" x2="' + (w / 2) + '" y2="' + (h * 0.16) + '" stroke="#FFF" stroke-width="' + (w * 0.14) + '" stroke-dasharray="' + (w * 0.22) + ' ' + (w * 0.16) + '" stroke-linecap="round">' +
              '<animate attributeName="stroke-dashoffset" from="' + (w * 0.38) + '" to="0" dur="0.9s" repeatCount="indefinite"/></line>';
+    } },
+    path: { w: 800, d: 3000, draw: function (w, h) {   // 交点がまだ無いとき（アイコン）は まっすぐの形
+      return arrowHead([[w * 0.32, h], [w * 0.32, h * 0.44], [0, h * 0.44], [w / 2, 0], [w, h * 0.44], [w * 0.68, h * 0.44], [w * 0.68, h]]);
     } } } },
 
   kyushoku: { name: '{給食袋|きゅうしょくぶくろ}', kind: 'hang', side: [200, 260], t: 40, color: '#F2B8B5', style: 'string' },

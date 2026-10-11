@@ -33,7 +33,9 @@ function sanitize(s) {
       top: l.top.filter(function (p) { return ok(p.item); }).map(function (p) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
-                 text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined, s: scaleOf(p) !== 1 ? scaleOf(p) : undefined };
+                 text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined,
+                 nx: ITEMS[p.item].grid ? kidsN(p).nx : undefined, ny: ITEMS[p.item].grid ? kidsN(p).ny : undefined,
+                 pts: p.item === 'arrow' && Array.isArray(p.pts) ? p.pts.filter(function (q) { return Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]); }).map(function (q) { return [+q[0], +q[1]]; }) : undefined, s: scaleOf(p) !== 1 ? scaleOf(p) : undefined };
       }),
       hooks: sc === 'desk' ? {
         left: ((l.hooks || {}).left || []).filter(isHang).map(function (h) { return { item: h.item, label: !!h.label }; }),
@@ -298,7 +300,9 @@ function renderEdit() {
   var x0 = Math.min(b.x0, -300 * K) - pad, y0 = Math.min(b.y0, -130 * K) - pad, x1 = Math.max(b.x1, DESK.w + 300 * K) + pad, y1 = Math.max(b.y1, DESK.d + 130 * K) + pad;
   EZ.base = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
   applyZoom();
-  svg.innerHTML = t.svg;
+  var ps = cur.top[sel];
+  if (!ps || ps.item !== 'arrow' || !isPath(ps)) arrowEdit = false;
+  svg.innerHTML = t.svg + (arrowEdit ? arrowMarks(ps) : '');
   var p = cur.top[sel];
   $('selBar').hidden = !p;
   if (p) {
@@ -314,6 +318,9 @@ function renderEdit() {
     if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
     $('selSize').hidden = !it.sizes;
     if (it.sizes) $('selSize').textContent = Object.keys(it.sizes).map(function (k) { return (k === sizeOf(p) ? '●' : '○') + it.sizes[k].name; }).join(' ');
+    $('selGrid').hidden = !it.grid;
+    if (it.grid) { var kn = kidsN(p); $('kNx').textContent = kn.nx; $('kNy').textContent = kn.ny; $('kSum').textContent = '（' + kn.nx * kn.ny + '人）'; }
+    $('selPath').hidden = p.item !== 'arrow'; $('selPath').setAttribute('aria-pressed', String(arrowEdit && p.item === 'arrow'));
     $('selColors').hidden = !it.colors;
     if (it.colors) $('selColors').innerHTML = '色' + it.colors.map(function (c, k) {
       return '<button type="button" class="sw' + (k === colorIndex(p) ? ' on' : '') + '" data-col="' + k + '" style="background:' + c + '" aria-label="色' + (k + 1) + '"></button>';
@@ -420,7 +427,7 @@ $('eDel').onclick = function () {
 };
 $('selState').addEventListener('click', function (e) {
   var b = e.target.closest('[data-st]'); if (!b) return;
-  var p = cur.top[sel]; p.state = b.getAttribute('data-st'); clampP(p); save(); renderEdit();
+  var p = cur.top[sel]; p.state = b.getAttribute('data-st'); if (p.state !== 'path') arrowEdit = false; else toPath(p); clampP(p); save(); renderEdit();
 });
 $('selSize').onclick = function () {
   var p = cur.top[sel], ks = Object.keys(ITEMS[p.item].sizes);
@@ -438,7 +445,71 @@ function setScale(p, s) { s = Math.round(Math.min(SCALE_MAX, Math.max(SCALE_MIN,
 $('selSmall').onclick = function () { var p = cur.top[sel]; setScale(p, scaleOf(p) / 1.25); };
 $('selBig').onclick = function () { var p = cur.top[sel]; setScale(p, scaleOf(p) * 1.25); };
 $('selReal').onclick = function () { setScale(cur.top[sel], 1); };
-$('selRot').onclick = function () { var p = cur.top[sel]; p.r = ((p.r || 0) + 90) % 360; clampP(p); save(); renderEdit(); };
+$('selRot').onclick = function () {
+  var p = cur.top[sel];
+  if (isPath(p)) p.pts = p.pts.map(function (v) { return [-v[1], v[0]]; });   // 折れ線の矢印は 交点を始点のまわりに90°回す
+  else p.r = ((p.r || 0) + 90) % 360;
+  clampP(p); save(); renderEdit();
+};
+
+/* ---- 矢印をのばす・曲げる ----
+   「矢印をのばす」を押すと、先と元の となりの交点（上下左右）に＋の印が出る。押すと そこまで のびる（同じ向き）か曲がる。
+   先・元の上の－を押すと 1目ちぢむ。交点の間隔は いま選んでいるグリッドの細かさ。 */
+var arrowEdit = false;
+function gridStep() { var g = gridLevel(S.prefs.grid); return { x: DESK.w / g.nx, y: DESK.d / g.ny }; }
+function toPath(p) {   // まっすぐ等の矢印を、向きと長さを保って 交点を結ぶ折れ線にする
+  if (isPath(p)) return;
+  var len = 3000 * scaleOf(p), a = (p.r || 0) * Math.PI / 180, ux = Math.sin(a), uy = -Math.cos(a), g = gridLevel(S.prefs.grid);
+  var s0 = snap(p.x - ux * len / 2, p.y - uy * len / 2, g), t0 = snap(p.x + ux * len / 2, p.y + uy * len / 2, g), st = gridStep();
+  if (s0.x === t0.x && s0.y === t0.y) t0 = { x: s0.x + Math.round(ux) * st.x, y: s0.y + Math.round(uy) * st.y };
+  p.x = s0.x; p.y = s0.y; p.r = 0; p.m = false; p.state = 'path'; p.pts = [[0, 0], [t0.x - s0.x, t0.y - s0.y]];
+}
+function near(a, b) { return Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6; }
+function arrowMarks(p) {
+  var st = gridStep(), r = Math.min(st.x, st.y) * 0.28, s = '';
+  [['tip', p.pts.length - 1, p.pts.length - 2], ['start', 0, 1]].forEach(function (e) {
+    var E = p.pts[e[1]], N = p.pts[e[2]];
+    [[st.x, 0], [-st.x, 0], [0, st.y], [0, -st.y]].forEach(function (d) {
+      var q = [E[0] + d[0], E[1] + d[1]]; if (near(q, N)) return;
+      s += '<g class="amark" data-ext="' + e[0] + '" data-x="' + q[0] + '" data-y="' + q[1] + '"><circle cx="' + (p.x + q[0]) + '" cy="' + (p.y + q[1]) + '" r="' + r + '" style="stroke-width:' + r * 0.18 + '"/>' +
+        '<path d="M' + (p.x + q[0] - r * 0.5) + ' ' + (p.y + q[1]) + 'h' + r + 'M' + (p.x + q[0]) + ' ' + (p.y + q[1] - r * 0.5) + 'v' + r + '" style="stroke-width:' + r * 0.22 + '"/></g>';
+    });
+    s += '<g class="amark shrink" data-ext="' + e[0] + '" data-shrink="1"><circle cx="' + (p.x + E[0]) + '" cy="' + (p.y + E[1]) + '" r="' + r * 0.8 + '" style="stroke-width:' + r * 0.18 + '"/>' +
+      '<path d="M' + (p.x + E[0] - r * 0.4) + ' ' + (p.y + E[1]) + 'h' + r * 0.8 + '" style="stroke-width:' + r * 0.22 + '"/></g>';
+  });
+  return '<g class="amarks">' + s + '</g>';
+}
+function arrowExtend(p, end, q, shrink) {
+  var P = p.pts, tip = end === 'tip', st = gridStep();
+  if (!tip) P.reverse();   // 元のほうも 先と同じ手順で扱う
+  var n = P.length, E = P[n - 1], B = P[n - 2];
+  if (shrink) {
+    var dx = E[0] - B[0], dy = E[1] - B[1], L = Math.hypot(dx, dy), stp = Math.abs(dx) > Math.abs(dy) ? st.x : st.y;
+    if (L > stp + 1e-6) P[n - 1] = [E[0] - dx / L * stp, E[1] - dy / L * stp];
+    else if (n > 2) P.pop();
+    else { toast('これより短くできません'); if (!tip) P.reverse(); return; }
+  } else {
+    var same = Math.abs((E[0] - B[0]) * (q[1] - E[1]) - (E[1] - B[1]) * (q[0] - E[0])) < 1e-6 && ((q[0] - E[0]) * (E[0] - B[0]) + (q[1] - E[1]) * (E[1] - B[1])) > 0;
+    if (same) P[n - 1] = q; else P.push(q);   // 同じ向きなら のばす、ちがう向きなら 曲がる
+  }
+  if (!tip) P.reverse();
+  save(); renderEdit();
+}
+/* 児童の並び：横・縦の人数を1人ずつ増減（合わせて36人まで） */
+$('selGrid').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-k]'); if (!b) return;
+  var p = cur.top[sel], n = kidsN(p), k = b.getAttribute('data-k'), d = +b.getAttribute('data-d');
+  var nx = n.nx + (k === 'x' ? d : 0), ny = n.ny + (k === 'y' ? d : 0);
+  if (nx < 1 || ny < 1) return;
+  if (nx * ny > 36) { toast('36人までです'); return; }
+  p.nx = nx; p.ny = ny; clampP(p); save(); renderEdit();
+});
+$('selPath').onclick = function () {
+  var p = cur.top[sel]; if (!p || p.item !== 'arrow') return;
+  arrowEdit = !arrowEdit;
+  if (arrowEdit) { toPath(p); save(); }
+  renderEdit();
+};
 $('selLabel').onclick = function () { var p = cur.top[sel]; p.label = !p.label; save(); renderEdit(); };
 $('selFront').onclick = function () { toFront(); save(); renderEdit(); };
 $('selDel').onclick = function () { cur.top.splice(sel, 1); sel = -1; save(); renderEdit(); };
@@ -561,6 +632,12 @@ function pinchMove() {
 function touchEnd(e) { delete touches[e.pointerId]; if (touchList().length < 2) pinch = null; }
 $('editSvg').addEventListener('pointerdown', function (e) {
   if (pinch) return;
+  var mk = e.target.closest('[data-ext]');
+  if (mk) {
+    e.stopPropagation();
+    arrowExtend(cur.top[sel], mk.getAttribute('data-ext'), [+mk.getAttribute('data-x'), +mk.getAttribute('data-y')], mk.hasAttribute('data-shrink'));
+    return;
+  }
   var g = e.target.closest('.it');
   if (!g) {
     // 空いた所：引きずれば見る範囲を動かし（拡大しているとき）、引きずらずに離せば下の「タップ」の動き
