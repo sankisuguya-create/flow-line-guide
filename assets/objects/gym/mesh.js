@@ -173,8 +173,8 @@ function drawFaces(objs,view){
   return {svg:s, pts:pts};
 }
 /* ===== 行事の物（利用者の写真 2026-10-11：折りたたみパイプいす CAL-XS01M・折りたたみ長机） ===== */
-SPEC.pipechair={ name:"パイプいす", note:"仮：幅460×奥行530×高さ790、座面の高さ450（製品の表示に近い値）。+Y が前（すわる人が向く側）",
-  W:460, seatD:420, seatZ:450, backZ:[600,790], tube:22 };
+SPEC.pipechair={ name:"パイプいす", note:"幅487×奥行470×高さ746mm（利用者が示した製品の寸法）。座面の高さ450は仮。+Y が前（すわる人が向く側）",
+  W:487, D:470, H:746, seatZ:450, backH:190, tube:22 };
 SPEC.longtable={ name:"長机", note:"仮：1800×450×高さ700（折りたたみ長机の標準）", W:1800, D:450, H:700, top:25 };
 // 太さ t の角棒を a→b に置く（パイプの脚・桟）
 function addBeam(F,a,b,t,col,edge){
@@ -191,15 +191,16 @@ function addBeam(F,a,b,t,col,edge){
 }
 function pipeChair(){
   var S=SPEC.pipechair, F=[], w=S.W/2, t=S.tube, met="#BFC4CA", blk="#2F3134";
+  var yb=-S.D/2+t/2, yf=S.D/2-t/2, yp=yb+35;                                     // うしろの床・前の床・背の柱の上
   [-1,1].forEach(function(s){
-    addBeam(F,[s*(w-10),-290,t/2],[s*(w-10),-250,S.backZ[1]-20],t,met);          // うしろの脚＝背の柱
-    addBeam(F,[s*(w-25),250,t/2],[s*(w-25),-170,S.seatZ-10],t,met);               // 前の脚（前の床から、座面の下を うしろへ）
+    addBeam(F,[s*(w-t/2),yb,t/2],[s*(w-t/2),yp,S.H-20],t,met);                     // うしろの脚＝背の柱
+    addBeam(F,[s*(w-t*1.5),yf,t/2],[s*(w-t*1.5),yb+70,S.seatZ-10],t,met);          // 前の脚（前の床から、座面の下を うしろへ）
   });
-  addBeam(F,[-(w-10),-290,t/2],[w-10,-290,t/2],t,met);                            // 床の桟（うしろ）
-  addBeam(F,[-(w-25),250,t/2],[w-25,250,t/2],t,met);                              // 床の桟（前）
-  var seat=[]; addBox(seat,-w+10,w-10,-200,220,S.seatZ-20,S.seatZ,{top:blk,side:blk,end:blk},"#151617"); outward(seat,[0,10,S.seatZ-10]);
-  var back=[]; addBox(back,-w,w,-275,-255,S.backZ[0],S.backZ[1],{top:blk,side:blk,end:blk},"#151617"); outward(back,[0,-265,(S.backZ[0]+S.backZ[1])/2]);
-  return {faces:F.concat(seat,back), foot:{W:S.W+20,L:600}};
+  addBeam(F,[-(w-t/2),yb,t/2],[w-t/2,yb,t/2],t,met);                               // 床の桟（うしろ）
+  addBeam(F,[-(w-t*1.5),yf,t/2],[w-t*1.5,yf,t/2],t,met);                           // 床の桟（前）
+  var seat=[]; addBox(seat,-w+t,w-t,yb+60,yf-20,S.seatZ-20,S.seatZ,{top:blk,side:blk,end:blk},"#151617"); outward(seat,[0,(yb+yf)/2,S.seatZ-10]);
+  var back=[]; addBox(back,-w,w,yp-10,yp+10,S.H-S.backH,S.H,{top:blk,side:blk,end:blk},"#151617"); outward(back,[0,yp,S.H-S.backH/2]);
+  return {faces:F.concat(seat,back), foot:{W:S.W,L:S.D}};
 }
 function longTable(){
   var S=SPEC.longtable, F=[], w=S.W/2, d=S.D/2, g="#2F3A30", t=30;
