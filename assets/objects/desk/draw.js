@@ -71,17 +71,37 @@ function colorOf(p) {
 function baseSize(p) {
   var it = ITEMS[p.item], st = stateOf(p);
   if (it.mesh) { var f = it.mesh(p).foot; return [f.W, f.L]; }
+  if (it.size) return it.size(p);   // 中身で大きさが変わる物（児童の並び）
   if (it.sizes) { var z = it.sizes[sizeOf(p)]; return [st === 'open' ? z.w * 2 : z.w, z.d]; }
   return [it.states[st].w, it.states[st].d];
 }
 /* 置いた物ごとの拡大・縮小（p.s。1＝実寸）。描く大きさ・選ぶ枠・吹き出しの位置はすべてこの大きさ */
 var SCALE_MIN = 0.25, SCALE_MAX = 4;
 function scaleOf(p) { var s = +p.s; return s > 0 ? Math.min(SCALE_MAX, Math.max(SCALE_MIN, s)) : 1; }
-function itemSize(p) { var b = baseSize(p), s = scaleOf(p); return [b[0] * s, b[1] * s]; }
+function itemSize(p) {
+  if (isPath(p)) { var b0 = pathBox(p); return [b0.x1 - b0.x0, b0.y1 - b0.y0]; }
+  var b = baseSize(p), s = scaleOf(p); return [b[0] * s, b[1] * s];
+}
+/* ---- 矢印の「じゆう」：交点を結ぶ折れ線 ---- */
+function isPath(p) { return p.item === 'arrow' && stateOf(p) === 'path' && Array.isArray(p.pts) && p.pts.length >= 2; }
+function pathBox(p) {   // p.x,p.y からのずれで、線の太さ・矢じりの分を足した範囲
+  var m = 500 * scaleOf(p), xs = p.pts.map(function (q) { return q[0]; }), ys = p.pts.map(function (q) { return q[1]; });
+  return { x0: Math.min.apply(null, xs) - m, x1: Math.max.apply(null, xs) + m, y0: Math.min.apply(null, ys) - m, y1: Math.max.apply(null, ys) + m };
+}
+function pathArrowSvg(p) {
+  var s = scaleOf(p), P = p.pts, n = P.length, T = P[n - 1], B = P[n - 2];
+  var dx = T[0] - B[0], dy = T[1] - B[1], L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+  var hl = Math.min(750 * s, L * 0.9), hw = 850 * s, bx = T[0] - ux * hl, by = T[1] - uy * hl;
+  var d = 'M ' + P.slice(0, n - 1).map(function (q) { return q[0] + ' ' + q[1]; }).join(' L ') + ' L ' + bx + ' ' + by;
+  var prev = ARROW; ARROW = colorOf(p) || ARROW;
+  var out = arrowShaft(d, 300 * s) + arrowHead([[bx - uy * hw / 2, by + ux * hw / 2], [T[0], T[1]], [bx + uy * hw / 2, by - ux * hw / 2]]);
+  ARROW = prev;
+  return out;
+}
 /* 物の置き方（位置・回転・鏡・拡大）。ドラッグ中の描き直し（app.js）も同じものを使う */
 function itemTransform(p) {
   var s = scaleOf(p);
-  if (ITEMS[p.item].mesh) return 'translate(' + p.x + ' ' + p.y + ')';   // 立体は立体のほうを回す（meshSvg）
+  if (ITEMS[p.item].mesh || isPath(p)) return 'translate(' + p.x + ' ' + p.y + ')';   // 立体は立体のほうを、折れ線の矢印は交点のほうを回す
   return 'translate(' + p.x + ' ' + p.y + ') rotate(' + (p.r || 0) + ')' + (p.m ? ' scale(-1 1)' : '') + (s !== 1 ? ' scale(' + s + ')' : '');
 }
 /* 回転したときの外接箱の幅・奥行き */
@@ -114,6 +134,11 @@ function outlineDefs() {
 }
 function olAttr() { return OUTLINE ? ' filter="url(#' + outlineId() + ')"' : ''; }
 function drawTopItem(p, i, cls) {
+  if (isPath(p)) {
+    var pb = pathBox(p);
+    return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="' + itemTransform(p) + '"><g' + olAttr() + '>' + pathArrowSvg(p) + '</g>' +
+      (cls === 'sel' ? '<rect class="selbox" x="' + pb.x0 + '" y="' + pb.y0 + '" width="' + (pb.x1 - pb.x0) + '" height="' + (pb.y1 - pb.y0) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>' : '') + '</g>';
+  }
   if (ITEMS[p.item].mesh) {
     var fw = itemSize(p), fb = rotBox(fw[0], fw[1], p.r || 0);
     var ms = scaleOf(p);
@@ -122,8 +147,9 @@ function drawTopItem(p, i, cls) {
   }
   var st = ITEMS[p.item].states[stateOf(p)], wd = baseSize(p), w = wd[0], d = wd[1], k = K / scaleOf(p);   // k：選ぶ枠の線は拡大しても同じ太さ
   MIRROR = p.m ? -1 : 1;
+  var arrowPrev = ARROW; if (p.item === 'arrow') ARROW = colorOf(p) || ARROW;   // 矢印の色
   var body = st.draw(w, d, colorOf(p), p);
-  MIRROR = 1;
+  MIRROR = 1; ARROW = arrowPrev;
   return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="' + itemTransform(p) + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')"><g' + olAttr() + '>' + body + '</g>' +
          (cls === 'sel' ? '<rect class="selbox" x="' + (-10 * k) + '" y="' + (-10 * k) + '" width="' + (w + 20 * k) + '" height="' + (d + 20 * k) + '" rx="' + 10 * k + '" style="stroke-width:' + 6 * k + ';stroke-dasharray:' + 18 * k + ' ' + 10 * k + '"/>' : '') + '</g></g>';
 }
@@ -147,6 +173,7 @@ function flipLayout(lay) {
   c.top = lay.top.map(function (p) {
     var q = Object.assign({}, p);
     q.x = DESK.w - p.x; q.r = p.r ? -p.r : 0; q.m = !p.m;
+    if (p.pts) q.pts = p.pts.map(function (v) { return [-v[0], v[1]]; });
     return q;
   });
   c.hooks = { left: (lay.hooks.right || []).slice(), right: (lay.hooks.left || []).slice() };

@@ -4,6 +4,11 @@
    EXTRA_SPACE_ITEMS を apps/haichi/src/scenes.js が足す。 */
 var CLASS_COLORS = ['#B3172B', '#F2C037', '#1E5FCC', '#46B97A'];   // 1〜4組（導線資料と同じ。名札を必ず重ねる）
 var EXTRA_SPACE_ITEMS = [];
+function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わせて36人まで）
+  var nx = Math.max(1, Math.min(36, (p && p.nx) | 0 || 1)), ny = Math.max(1, Math.min(36, (p && p.ny) | 0 || 1));
+  while (nx * ny > 36) { if (ny > 1) ny--; else nx--; }
+  return { nx: nx, ny: ny };
+}
 (function () {
   var W = '#F7F4EA';
   function add(id, scenes, it) {
@@ -87,6 +92,18 @@ var EXTRA_SPACE_ITEMS = [];
     var k = CLASS_COLORS.indexOf(col);
     return s + tag(w / 2, h / 2, (k >= 0 ? k + 1 : '') + '組', Math.min(w * 0.42, 420));
   }
+  /* 児童：横 nx 人 × 縦 ny 人（合わせて1〜36人）を 横60cm・縦70cm 間隔で並べる。人数は置いた物ごと（p.nx, p.ny） */
+  var KID = { dx: 600, dy: 700, max: 36 };
+  add('kids', ALL, { name: '{児童|じどう}', grid: KID, colors: ['#3A3F45'].concat(CLASS_COLORS), states: { closed: { w: KID.dx, d: KID.dy, draw: function (w, h, col, p) {
+    var nx = kidsN(p).nx, ny = kidsN(p).ny, s = '';
+    for (var j = 0; j < ny; j++) for (var i = 0; i < nx; i++) {
+      var x = i * KID.dx + (KID.dx - 400) / 2, y = j * KID.dy + (KID.dy - 500) / 2;
+      s += '<g transform="translate(' + x + ' ' + y + ')">' + ELL(200, 470, 168, 25, 'rgba(0,0,0,.16)') + C(200, 90, 96, col, 8) +
+        '<path d="' + roundPoly([[112, 200], [288, 200], [352, 475], [48, 475]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/></g>';
+    }
+    return s;
+  } } } });
+  ITEMS.kids.size = function (p) { var n = kidsN(p); return [n.nx * KID.dx, n.ny * KID.dy]; };
   add('teacher', ALL, { name: '{先生|せんせい}', states: one(450, 550, function (w, h) {   // 人の形＋「先」の名札
     return ELL(w / 2, h * 0.94, w * 0.42, h * 0.05, 'rgba(0,0,0,.16)') + C(w / 2, h * 0.18, w * 0.24, '#5B6B78', 8) +
       '<path d="' + roundPoly([[w * 0.26, h * 0.4], [w * 0.74, h * 0.4], [w * 0.9, h * 0.95], [w * 0.1, h * 0.95]], 40) + '" fill="#5B6B78" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>' +

@@ -84,6 +84,9 @@
         <button type="button" id="selSize"></button>
         <span id="selColors" class="swatches"></span>
         <span class="seg" role="group" aria-label="大きさ"><button type="button" id="selSmall" aria-label="小さく">－</button><button type="button" id="selReal">100%</button><button type="button" id="selBig" aria-label="大きく">＋</button></span>
+        <span id="selGrid" class="kgrid" hidden>横<span class="seg"><button type="button" data-k="x" data-d="-1" aria-label="横を1人へらす">－</button><b id="kNx">1</b><button type="button" data-k="x" data-d="1" aria-label="横を1人ふやす">＋</button></span>
+          縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人へらす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人ふやす">＋</button></span><span id="kSum"></span></span>
+        <button type="button" id="selPath" aria-pressed="false" hidden>矢印をのばす</button>
         <button type="button" id="selRot">回す ↻</button>
         <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：漢字①"></label>
         <button type="button" id="selLabel" aria-pressed="false">名前を出す</button>
