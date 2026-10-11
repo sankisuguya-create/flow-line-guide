@@ -16,7 +16,10 @@
 flow-line-guide/
 ├─ assets/                 素材（授業・行事に依らない）
 │   ├─ spaces/<場所>/      エリア（実寸mの区画・点・通路・動線の決まり）。pool-area＝プールエリア基礎
-│   └─ objects/<分類>/     用具（実寸mmの立体）。gym＝跳び箱・ロイター板・マット、desk＝机まわり（複製）
+│   ├─ objects/<分類>/     用具。gym＝体育館の用具の立体（mesh.js が正本）、desk＝机の上・教室・体育館・運動場の物（正本）
+│   ├─ icons/              アイコン（Lucide・Tabler 人物。homeroom-tools の複製、ライセンス同梱）
+│   └─ ui/                 共通の見た目（base.css。homeroom-tools の複製）
+├─ apps/haichi/            配置図：場所に物を手で置いて映すウェブアプリ（homeroom-tools の机の配置図から移した）
 ├─ engine/                 作る仕組み
 │   ├─ player/             再生画面（flow.js・flow.css・page.html）
 │   └─ tools/              build.mjs（生成・検査）／check.mjs（撮影）／align.html（間取り合わせ）
@@ -76,6 +79,11 @@ Classroomの資料としてHTMLファイルを添付する方法は、児童側�
 ### 水泳 4年 1回目の動き（`guides/suiei/dai1ji.html`、生成）
 
 `guides/suiei/plans/dai1ji.json` から生成。4クラスと見学者がプール周りを同時に動く。「だれを見る」で自分の組だけを追える。地図は**仮**（配置図・写真で `align.html` を使って確認済にする）。
+
+### 配置図（`apps/haichi/dist/Index.html`）
+
+机の上・教室・体育館・運動場、それに `assets/spaces/` の場所（プールエリアなど）に、用具や人・列・矢印を手で置いて、モニターに映す。
+体育館の用具（跳び箱・ロイター板・マット・厚いマット・コーン）は立体で描く。使い方は [apps/haichi/README.md](apps/haichi/README.md)。
 
 ### 体育館の用具の図（`assets/objects/gym/sampler.html`）
 

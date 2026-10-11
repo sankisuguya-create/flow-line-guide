@@ -70,6 +70,7 @@ function colorOf(p) {
 /* 描く大きさ。判型を選べる物は判型から（開くと幅2倍）、ほかは状態ごとの寸法 */
 function itemSize(p) {
   var it = ITEMS[p.item], st = stateOf(p);
+  if (it.mesh) { var f = it.mesh(p).foot; return [f.W, f.L]; }
   if (it.sizes) { var z = it.sizes[sizeOf(p)]; return [st === 'open' ? z.w * 2 : z.w, z.d]; }
   return [it.states[st].w, it.states[st].d];
 }
@@ -78,18 +79,53 @@ function rotBox(w, d, r) {
   var a = r * Math.PI / 180, c = Math.abs(Math.cos(a)), s = Math.abs(Math.sin(a));
   return [w * c + d * s, w * s + d * c];
 }
+/* 立体の物（../gym/items.js）。床の上で p.r だけ回し（鏡は左右反転）、地図用の見方で描く。
+   SVG の rotate で回すと高さの向きまで回ってしまうので、立体のほうを回す */
+function meshSvg(p) {
+  var m = ITEMS[p.item].mesh(p), a = (p.r || 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), mx = p.m ? -1 : 1;
+  var faces = m.faces.map(function (f) {
+    var q = Object.assign({}, f);
+    q.p = f.p.map(function (v) { var x = v[0] * mx; return [x * c - v[1] * s, x * s + v[1] * c, v[2]]; });
+    if (mx < 0 && !f.line) q.p.reverse();   // 鏡にすると面の表裏が入れ替わるので、頂点の順を戻す
+    if (f.side) q.side = f.side * mx; if (f.sideOf) q.sideOf = f.sideOf * mx;
+    return q;
+  });
+  return GYM.drawFaces([{ faces: faces, off: [0, 0, 0] }], GYM.plan(0.5, false)).svg;
+}
+/* 輪郭を太く：物の形（透明でない所）を外へ広げて濃い色で塗り、物の下に敷く。
+   中の線は変えないので、物の形はそのまま・外まわりだけが太く見える。広げる幅は床の広さに合わせる（K） */
+function outlineId() { return 'ol-' + SCENE.id; }
+function outlineDefs() {
+  if (!OUTLINE) return '';
+  return '<defs><filter id="' + outlineId() + '" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">' +
+    '<feMorphology in="SourceAlpha" operator="dilate" radius="' + (5 * K) + '" result="d"/>' +
+    '<feFlood flood-color="' + INK + '"/><feComposite in2="d" operator="in" result="o"/>' +
+    '<feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+}
+function olAttr() { return OUTLINE ? ' filter="url(#' + outlineId() + ')"' : ''; }
 function drawTopItem(p, i, cls) {
+  if (ITEMS[p.item].mesh) {
+    var fw = itemSize(p), fb = rotBox(fw[0], fw[1], p.r || 0);
+    return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ')"><g' + olAttr() + '>' + meshSvg(p) + '</g>' +
+      (cls === 'sel' ? '<rect class="selbox" x="' + (-fb[0] / 2 - 10 * K) + '" y="' + (-fb[1] / 2 - 10 * K) + '" width="' + (fb[0] + 20 * K) + '" height="' + (fb[1] + 20 * K) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>' : '') + '</g>';
+  }
   var st = ITEMS[p.item].states[stateOf(p)], wd = itemSize(p), w = wd[0], d = wd[1];
   MIRROR = p.m ? -1 : 1;
   var body = st.draw(w, d, colorOf(p), p);
   MIRROR = 1;
   return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ') rotate(' + (p.r || 0) + ')' +
-         (p.m ? ' scale(-1 1)' : '') + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')">' + body +
+         (p.m ? ' scale(-1 1)' : '') + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')"><g' + olAttr() + '>' + body + '</g>' +
          (cls === 'sel' ? '<rect class="selbox" x="' + (-10 * K) + '" y="' + (-10 * K) + '" width="' + (w + 20 * K) + '" height="' + (d + 20 * K) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>' : '') + '</g></g>';
 }
 function iconSvg(itemId, size) {   // しまう物・編集のパレット用の小さな絵
   var it = ITEMS[itemId], w, d, body;
   if (it.kind === 'hang') { w = it.side[0]; d = it.side[1] + 80; body = '<g transform="translate(' + w / 2 + ' 4)">' + hangFace(it) + '</g>'; }
+  else if (it.mesh) {
+    var mp = { item: itemId }, f = itemSize(mp), hz = 0;
+    it.mesh(mp).faces.forEach(function (fc) { fc.p.forEach(function (v) { hz = Math.max(hz, v[2]); }); });
+    w = f[0]; d = f[1] + hz / 2;
+    body = '<g transform="translate(' + w / 2 + ' ' + (f[1] / 2 + hz / 2) + ')">' + meshSvg(mp) + '</g>';
+  }
   else { var sk = Object.keys(it.states)[0], p = { item: itemId, state: sk }, wd = itemSize(p); w = wd[0]; d = wd[1]; body = it.states[sk].draw(w, d, colorOf(p)); }
   var pad = 8;
   return '<svg viewBox="' + (-pad) + ' ' + (-pad) + ' ' + (w + pad * 2) + ' ' + (d + pad * 2) + '" width="' + size + '" height="' + size + '" aria-hidden="true">' + body + '</svg>';
@@ -172,11 +208,12 @@ function labelsSvg(labels, ruby) {
 }
 
 /* 場所の床。机以外は平らな床に、その場所の目印の線を入れる */
-function floorTopSvg() {
+function floorTopSvg(bg) {
   var w = DESK.w, d = DESK.d;
+  if (SCENE.space) return spaceFloorSvg(SCENE.space, bg);   // 場（assets/spaces）の床。apps/haichi/src/scenes.js
   if (SCENE.id === 'class') {
     // 木の床＋前の壁と黒板（上）＋後ろの壁の帯（下）
-    return R(0, 0, w, d, '#EBDDBE', 0, 30 * K, '#B99F72') +
+    return R(0, 0, w, d, bg || '#EBDDBE', 0, 30 * K, '#B99F72') +
       R(0, 0, w, 60, 'rgba(0,0,0,.15)', 0, 0) +
       R(1700, 80, 3600, 160, '#3E5B4D', 20, 30) +              // 黒板
       R(1700, 240, 3600, 50, '#D8C9A8', 8, 0) +                // チョーク受け
@@ -184,14 +221,14 @@ function floorTopSvg() {
   }
   if (SCENE.id === 'gym') {
     // 木の床＋白いコート線（外周・中央線・センターサークル）
-    return R(0, 0, w, d, '#EFD9A8', 0, 30 * K, '#C4A671') +
+    return R(0, 0, w, d, bg || '#EFD9A8', 0, 30 * K, '#C4A671') +
       R(400, 400, w - 800, d - 800, 'none', 0, 90, '#F6F2E8') +
       L(400, d / 2, w - 400, d / 2, '#F6F2E8', 90) +
       '<circle cx="' + w / 2 + '" cy="' + d / 2 + '" r="1800" fill="none" stroke="#F6F2E8" stroke-width="90"/>';
   }
   if (SCENE.id === 'field') {
     // 土のグラウンド＋白い外周線
-    return R(0, 0, w, d, '#DCC9A2', 0, 30 * K, '#B49A6E') +
+    return R(0, 0, w, d, bg || '#DCC9A2', 0, 30 * K, '#B49A6E') +
       R(500, 500, w - 1000, d - 1000, 'none', 0, 150, '#F5F2E8');
   }
   return deskTopSvg();
@@ -202,7 +239,7 @@ function topView(lay, o) {
   var sides = o.sides || ['L', 'R', 'T'].concat(o.chair ? [] : ['B']);
   var bottom = DESK.d + (o.chair ? chairExtent() : 0);
   var lab = o.noLabels ? { labels: [], margin: { L: 0, R: 0, T: 0, B: 0 } } : layoutLabels(lay.top, sides, o.ruby, bottom);
-  var s = floorTopSvg() + (o.chair ? chairTopSvg() : '');
+  var s = floorTopSvg(SCENE.desk ? null : floorColor(lay.bg)) + (o.chair ? chairTopSvg() : '') + outlineDefs();
   var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
   lay.top.forEach(function (p, i) {
     s += drawTopItem(p, i, o.sel === i ? 'sel' : '');
@@ -213,6 +250,7 @@ function topView(lay, o) {
   if (o.grid) s += gridSvg(o.grid);
   s += labelsSvg(lab.labels, o.ruby);
   var m = lab.margin, E = 20 * K;
+  if (SCENE.space) m = { L: m.L, R: m.R, T: Math.max(m.T, 1300), B: m.B };   // 場の外の方位（scenes.js）の分だけ上をあける
   return { svg: s, labels: lab.labels, box: { x0: Math.min(-Math.max(m.L, E), ib.x0), y0: Math.min(-Math.max(m.T, E), ib.y0), x1: Math.max(DESK.w + Math.max(m.R, E), ib.x1), y1: Math.max(bottom + Math.max(m.B, E), ib.y1) } };
 }
 
