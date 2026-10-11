@@ -2635,7 +2635,7 @@ $('selRot').onclick = function () {
 };
 
 /* ---- 矢印をのばす・曲げる ----
-   「矢印をのばす」を押すと、先と元の となりの交点（上下左右）に＋の印が出る。押すと そこまで のびる（同じ向き）か曲がる。
+   「矢印をのばす」を押すと、先と元の となりの交点（上下左右と斜め）に＋の印が出る。押すと そこまで のびる（同じ向き）か曲がる。
    先・元の上の－を押すと 1目ちぢむ。交点の間隔は いま選んでいるグリッドの細かさ。 */
 var arrowEdit = false;
 function gridStep() { var g = gridLevel(S.prefs.grid); return { x: DESK.w / g.nx, y: DESK.d / g.ny }; }
@@ -2651,7 +2651,7 @@ function arrowMarks(p) {
   var st = gridStep(), r = Math.min(st.x, st.y) * 0.28, s = '';
   [['tip', p.pts.length - 1, p.pts.length - 2], ['start', 0, 1]].forEach(function (e) {
     var E = p.pts[e[1]], N = p.pts[e[2]];
-    [[st.x, 0], [-st.x, 0], [0, st.y], [0, -st.y]].forEach(function (d) {
+    [[st.x, 0], [-st.x, 0], [0, st.y], [0, -st.y], [st.x, st.y], [st.x, -st.y], [-st.x, st.y], [-st.x, -st.y]].forEach(function (d) {   // 上下左右と斜め
       var q = [E[0] + d[0], E[1] + d[1]]; if (near(q, N)) return;
       s += '<g class="amark" data-ext="' + e[0] + '" data-x="' + q[0] + '" data-y="' + q[1] + '"><circle cx="' + (p.x + q[0]) + '" cy="' + (p.y + q[1]) + '" r="' + r + '" style="stroke-width:' + r * 0.18 + '"/>' +
         '<path d="M' + (p.x + q[0] - r * 0.5) + ' ' + (p.y + q[1]) + 'h' + r + 'M' + (p.x + q[0]) + ' ' + (p.y + q[1] - r * 0.5) + 'v' + r + '" style="stroke-width:' + r * 0.22 + '"/></g>';
@@ -2666,8 +2666,8 @@ function arrowExtend(p, end, q, shrink) {
   if (!tip) P.reverse();   // 元のほうも 先と同じ手順で扱う
   var n = P.length, E = P[n - 1], B = P[n - 2];
   if (shrink) {
-    var dx = E[0] - B[0], dy = E[1] - B[1], L = Math.hypot(dx, dy), stp = Math.abs(dx) > Math.abs(dy) ? st.x : st.y;
-    if (L > stp + 1e-6) P[n - 1] = [E[0] - dx / L * stp, E[1] - dy / L * stp];
+    var dx = E[0] - B[0], dy = E[1] - B[1], sx = Math.sign(Math.round(dx)) * st.x, sy = Math.sign(Math.round(dy)) * st.y;   // 1目＝向きごとの交点1つ分（斜めは縦横1目ずつ）
+    if (Math.hypot(dx, dy) > Math.hypot(sx, sy) + 1e-6 && Math.abs(dx * sy - dy * sx) < 1e-3 * Math.hypot(dx, dy) * Math.hypot(sx, sy)) P[n - 1] = [E[0] - sx, E[1] - sy];
     else if (n > 2) P.pop();
     else { toast('これより短くできません'); if (!tip) P.reverse(); return; }
   } else {
