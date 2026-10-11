@@ -298,7 +298,7 @@ function topView(lay, o) {
   var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
   drawOrder(lay.top).forEach(function (i) {
     var p = lay.top[i];
-    s += drawTopItem(p, i, o.sel === i ? 'sel' : '');
+    s += drawTopItem(p, i, (Array.isArray(o.sel) ? o.sel.indexOf(i) >= 0 : o.sel === i) ? 'sel' : '');   // o.sel：番号 か 番号の並び（まとめて選んだとき）
     var bb = itemBounds(p);
     ib.x0 = Math.min(ib.x0, bb.x0); ib.x1 = Math.max(ib.x1, bb.x1);
     ib.y0 = Math.min(ib.y0, bb.y0); ib.y1 = Math.max(ib.y1, bb.y1);

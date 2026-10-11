@@ -205,3 +205,6 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 
 /* 名前の吹き出し・引き出し線は 押せない（下の物を選べるように） */
 #editSvg .labels{pointer-events:none}
+
+/* まとめて選ぶ：囲みの四角 */
+#editSvg .band{fill:rgba(44,92,158,.08);stroke:var(--accent);stroke-width:2px;stroke-dasharray:8 6;vector-effect:non-scaling-stroke}

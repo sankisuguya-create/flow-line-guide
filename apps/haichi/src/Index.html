@@ -85,6 +85,15 @@
   </header>
   <div class="ebody">
     <div class="ecanvas">
+      <div id="multiBar" class="selbar" hidden>
+        <strong id="mCount"></strong>
+        <span class="seg" role="group" aria-label="横をそろえる"><button type="button" data-al="left" title="左をそろえる">⇤ 左</button><button type="button" data-al="hcenter" title="横の真ん中をそろえる">↔ 真ん中</button><button type="button" data-al="right" title="右をそろえる">右 ⇥</button></span>
+        <span class="seg" role="group" aria-label="縦をそろえる"><button type="button" data-al="top" title="上をそろえる">⤒ 上</button><button type="button" data-al="vcenter" title="縦の真ん中をそろえる">↕ 真ん中</button><button type="button" data-al="bottom" title="下をそろえる">下 ⤓</button></span>
+        <span class="seg" role="group" aria-label="等間隔に並べる"><button type="button" data-al="hdist">横に等間隔</button><button type="button" data-al="vdist">縦に等間隔</button></span>
+        <button type="button" id="mDup">複製</button>
+        <button type="button" id="mDel" class="danger">けす</button>
+        <button type="button" id="mNone">選ぶのをやめる</button>
+      </div>
       <div id="selBar" class="selbar" hidden>
         <strong id="selName"></strong>
         <span id="selState" class="seg"></span>

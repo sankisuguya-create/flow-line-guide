@@ -263,6 +263,9 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 
 /* 名前の吹き出し・引き出し線は 押せない（下の物を選べるように） */
 #editSvg .labels{pointer-events:none}
+
+/* まとめて選ぶ：囲みの四角 */
+#editSvg .band{fill:rgba(44,92,158,.08);stroke:var(--accent);stroke-width:2px;stroke-dasharray:8 6;vector-effect:non-scaling-stroke}
 /* ▲ style.css ここまで ▲ */
 </style>
 </head>
@@ -342,6 +345,15 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
   </header>
   <div class="ebody">
     <div class="ecanvas">
+      <div id="multiBar" class="selbar" hidden>
+        <strong id="mCount"></strong>
+        <span class="seg" role="group" aria-label="横をそろえる"><button type="button" data-al="left" title="左をそろえる">⇤ 左</button><button type="button" data-al="hcenter" title="横の真ん中をそろえる">↔ 真ん中</button><button type="button" data-al="right" title="右をそろえる">右 ⇥</button></span>
+        <span class="seg" role="group" aria-label="縦をそろえる"><button type="button" data-al="top" title="上をそろえる">⤒ 上</button><button type="button" data-al="vcenter" title="縦の真ん中をそろえる">↕ 真ん中</button><button type="button" data-al="bottom" title="下をそろえる">下 ⤓</button></span>
+        <span class="seg" role="group" aria-label="等間隔に並べる"><button type="button" data-al="hdist">横に等間隔</button><button type="button" data-al="vdist">縦に等間隔</button></span>
+        <button type="button" id="mDup">複製</button>
+        <button type="button" id="mDel" class="danger">けす</button>
+        <button type="button" id="mNone">選ぶのをやめる</button>
+      </div>
       <div id="selBar" class="selbar" hidden>
         <strong id="selName"></strong>
         <span id="selState" class="seg"></span>
@@ -2054,7 +2066,7 @@ function topView(lay, o) {
   var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
   drawOrder(lay.top).forEach(function (i) {
     var p = lay.top[i];
-    s += drawTopItem(p, i, o.sel === i ? 'sel' : '');
+    s += drawTopItem(p, i, (Array.isArray(o.sel) ? o.sel.indexOf(i) >= 0 : o.sel === i) ? 'sel' : '');   // o.sel：番号 か 番号の並び（まとめて選んだとき）
     var bb = itemBounds(p);
     ib.x0 = Math.min(ib.x0, bb.x0); ib.x1 = Math.max(ib.x1, bb.x1);
     ib.y0 = Math.min(ib.y0, bb.y0); ib.y1 = Math.max(ib.y1, bb.y1);
@@ -2354,7 +2366,14 @@ SPACE_TEXT = S.prefs.spaceText !== false;   // 場の床の文字（端末に保
 var cur = null;          // 表示・編集中の配置
 var flip = false;
 var big = false;         // 大きく映す（全画面・真上からの図だけ・見出し）。その場かぎり        // 左右反転はその場かぎり（保存しない）
-var sel = -1;            // 編集で選んでいる机の上の物
+var sel = -1;            // 編集で選んでいる机の上の物（まとめて選んだときは 最後に選んだ物）
+var msel = [];           // まとめて選んだ物の番号（2つ以上のときだけ使う。1つなら sel だけ）
+function selected() { return msel.length > 1 ? msel.slice() : sel >= 0 ? [sel] : []; }
+function selectOnly(i) { sel = i; msel = []; }
+function removeItems(ix) {   // 番号の大きい順に消す（前の番号がずれないように）
+  ix.slice().sort(function (a, b) { return b - a; }).forEach(function (i) { cur.top.splice(i, 1); });
+  sel = -1; msel = [];
+}
 var tab = 'top', dest = { hang: 'left', away: 'tray' };
 
 function byId(id) { return S.layouts.filter(function (l) { return l.id === id; })[0]; }
@@ -2571,7 +2590,7 @@ document.addEventListener('keydown', function (e) {   // ← → で活動を切
 function openEdit(id) {
   cur = byId(id); if (!cur) return renderHome();
   useScene(scOf(cur));
-  sel = -1; EZ.k = 1; EZ.cx = null;
+  sel = -1; msel = []; EZ.k = 1; EZ.cx = null;
   hist = { undo: [], redo: [], last: JSON.stringify(cur) };
   histButtons();
   $('eOutline').checked = OUTLINE; $('eGridShow').checked = S.prefs.gridShow !== false;
@@ -2580,7 +2599,7 @@ function openEdit(id) {
   go('vEdit'); renderEdit(); renderPalette();
 }
 function renderEdit() {
-  var t = topView(cur, { ruby: S.prefs.ruby, sel: sel, grid: S.prefs.gridShow === false ? null : gridLevel(S.prefs.grid) });   // 線を消しても交点への吸着は続く
+  var t = topView(cur, { ruby: S.prefs.ruby, sel: msel.length > 1 ? msel : sel, grid: S.prefs.gridShow === false ? null : gridLevel(S.prefs.grid) });   // 線を消しても交点への吸着は続く
   var b = t.box, pad = 60 * K;
   var svg = $('editSvg');
   // 余白は広めに固定して、吹き出しが増えても床が跳ねないようにする（場所の広さに合わせて K 倍）
@@ -2590,7 +2609,10 @@ function renderEdit() {
   if (!ps || !hasCtl(ps.item, 'path') || !isPath(ps)) arrowEdit = false;
   svg.innerHTML = t.svg + (arrowEdit ? arrowMarks(ps) : '');
   applyZoom();
-  var p = cur.top[sel];
+  var multi = msel.length > 1;
+  $('multiBar').hidden = !multi;
+  if (multi) $('mCount').textContent = msel.length + '個';
+  var p = multi ? null : cur.top[sel];
   $('selBar').hidden = !p;
   if (p) {
     var it = ITEMS[p.item], keys = Object.keys(it.states);
@@ -2800,7 +2822,35 @@ $('selPath').onclick = function () {
 };
 $('selLabel').onclick = function () { var p = cur.top[sel]; p.label = !p.label; save(); renderEdit(); };
 $('selFront').onclick = function () { toFront(); save(); renderEdit(); };
-$('selDel').onclick = function () { cur.top.splice(sel, 1); sel = -1; save(); renderEdit(); };
+$('selDel').onclick = function () { removeItems(selected()); save(); renderEdit(); };
+/* まとめて選んだ物：そろえる・等間隔に並べる（物の外まわり itemBounds で測る。交点には合わせない） */
+function alignSel(how) {
+  var set = selected(); if (set.length < 2) return;
+  var bs = set.map(function (i) { return { p: cur.top[i], b: itemBounds(cur.top[i]) }; });
+  var mn = function (f) { return Math.min.apply(null, bs.map(f)); }, mx = function (f) { return Math.max.apply(null, bs.map(f)); };
+  var L = mn(function (o) { return o.b.x0; }), R = mx(function (o) { return o.b.x1; }), T = mn(function (o) { return o.b.y0; }), B = mx(function (o) { return o.b.y1; });
+  if (how === 'hdist' || how === 'vdist') {
+    var h = how === 'hdist', key = h ? 'x' : 'y';
+    bs.sort(function (a, b) { return a.p[key] - b.p[key]; });
+    var a0 = bs[0].p[key], a1 = bs[bs.length - 1].p[key];
+    bs.forEach(function (o, k) { o.p[key] = a0 + (a1 - a0) * k / (bs.length - 1); });
+  } else bs.forEach(function (o) {
+    var b = o.b, cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+    if (how === 'left') o.p.x += L - b.x0;
+    if (how === 'right') o.p.x += R - b.x1;
+    if (how === 'hcenter') o.p.x += (L + R) / 2 - cx;
+    if (how === 'top') o.p.y += T - b.y0;
+    if (how === 'bottom') o.p.y += B - b.y1;
+    if (how === 'vcenter') o.p.y += (T + B) / 2 - cy;
+  });
+  save(); renderEdit();
+}
+$('multiBar').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-al]'); if (b) { alignSel(b.getAttribute('data-al')); return; }
+  if (e.target.closest('#mDup')) { pasteN = 0; pasteItem(selected().map(function (i) { return clone(cur.top[i]); })); }
+  if (e.target.closest('#mDel')) { removeItems(selected()); save(); renderEdit(); }
+  if (e.target.closest('#mNone')) { selectOnly(-1); renderEdit(); }
+});
 function toFront() { var p = cur.top.splice(sel, 1)[0]; cur.top.push(p); sel = cur.top.length - 1; }
 
 /* 物の中心をいちばん近いグリッドの交点に合わせる。交点は机の外にも「あらい」1目分広がる
@@ -2831,6 +2881,7 @@ function restore(s) {   // cur は S.layouts の中の同じ物なので、中�
   Object.keys(cur).forEach(function (k) { delete cur[k]; }); Object.keys(o).forEach(function (k) { cur[k] = o[k]; });
   hist.last = s;
   if (sel >= cur.top.length) sel = -1;
+  msel = msel.filter(function (i) { return i < cur.top.length; }); if (msel.length < 2) msel = [];
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
   renderEdit(); renderPalette(); histButtons();
@@ -2844,11 +2895,17 @@ $('eUndo').onclick = undo; $('eRedo').onclick = redo;
    選んだ物を1つ写しておき、貼ると グリッド1目ずつ右下にずらして置く。別の配置にも貼れる（その場所に置ける物だけ）。 */
 var clip = null, pasteN = 0;
 function canPlace(id) { return SCENE.desk ? !(ITEMS[id].scenes || []).length : SCENE.items.indexOf(id) >= 0; }
-function pasteItem(src) {
-  if (!canPlace(src.item)) { toast('この場所には置けない物です'); return; }
-  var g = gridLevel(S.prefs.grid), q = clone(src);
-  pasteN++; q.x += pasteN * DESK.w / g.nx; q.y += pasteN * DESK.d / g.ny; clampP(q);
-  cur.top.push(q); sel = cur.top.length - 1; save(); renderEdit();
+function pasteItem(src) {   // src：1つの物 か 物の並び。並びは 形を保ったまま ずらして貼る
+  var list = (Array.isArray(src) ? src : [src]).filter(function (q) { return canPlace(q.item); });
+  if (!list.length) { toast('この場所には置けない物です'); return; }
+  var g = gridLevel(S.prefs.grid), added = [];
+  pasteN++;
+  list.forEach(function (s0) {
+    var q = clone(s0); q.x += pasteN * DESK.w / g.nx; q.y += pasteN * DESK.d / g.ny; if (list.length === 1) clampP(q);
+    cur.top.push(q); added.push(cur.top.length - 1);
+  });
+  msel = added.length > 1 ? added : []; sel = added[added.length - 1];
+  save(); renderEdit();
 }
 document.addEventListener('keydown', function (e) {
   if ($('vEdit').hidden || e.target.closest('input,textarea') || e.altKey) return;
@@ -2856,14 +2913,18 @@ document.addEventListener('keydown', function (e) {
   if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
   if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
   if (mod && k === 'v') { if (clip) { e.preventDefault(); pasteItem(clip); } return; }
-  if (sel < 0) return;
+  if (k === 'escape') { selectOnly(-1); renderEdit(); return; }
+  if (mod && k === 'a') { e.preventDefault(); msel = cur.top.map(function (_, i) { return i; }); sel = msel.length - 1; if (msel.length < 2) msel = []; renderEdit(); return; }
+  var set = selected();
+  if (!set.length) return;
+  var items = set.map(function (i) { return clone(cur.top[i]); });
   if (mod && (k === 'c' || k === 'x')) {
-    e.preventDefault(); clip = clone(cur.top[sel]); pasteN = 0;
-    if (k === 'x') { cur.top.splice(sel, 1); sel = -1; save(); renderEdit(); toast('切り取りました'); } else toast('写しました（Ctrl+V で貼る）');
+    e.preventDefault(); clip = items.length > 1 ? items : items[0]; pasteN = 0;
+    if (k === 'x') { removeItems(set); save(); renderEdit(); toast('切り取りました'); } else toast('写しました（Ctrl+V で貼る）');
     return;
   }
-  if (mod && k === 'd') { e.preventDefault(); pasteN = 0; pasteItem(cur.top[sel]); return; }
-  if (k === 'delete' || k === 'backspace') { e.preventDefault(); cur.top.splice(sel, 1); sel = -1; save(); renderEdit(); }
+  if (mod && k === 'd') { e.preventDefault(); pasteN = 0; pasteItem(items.length > 1 ? items : items[0]); return; }
+  if (k === 'delete' || k === 'backspace') { e.preventDefault(); removeItems(set); save(); renderEdit(); }
 });
 
 /* ---- 編集画面の拡大・縮小 ----
@@ -2936,27 +2997,54 @@ $('editSvg').addEventListener('pointerdown', function (e) {
   if (!g) {
     // 空いた所：引きずれば見る範囲を動かし（拡大しているとき）、引きずらずに離せば下の「タップ」の動き
     var inv = this.getScreenCTM().inverse();
-    pan = { sx: e.clientX, sy: e.clientY, inv: inv, cx: EZ.cx, cy: EZ.cy, moved: false, q: svgPoint(this, e) };
+    // 拡大していないとき（または Shift）：引きずると 囲んだ物をまとめて選ぶ。拡大しているとき：見る範囲を動かす
+    pan = { sx: e.clientX, sy: e.clientY, inv: inv, cx: EZ.cx, cy: EZ.cy, moved: false, q: svgPoint(this, e), band: e.shiftKey || EZ.k === 1, add: e.shiftKey || e.ctrlKey };
     this.setPointerCapture(e.pointerId);
     return;
   }
   var i = +g.getAttribute('data-i'), p = cur.top[i], pt = svgPoint(this, e);
-  if (sel !== i) { sel = i; renderEdit(); g = this.querySelector('.it[data-i="' + i + '"]'); }
-  drag = { el: g, p: p, dx: pt.x - p.x, dy: pt.y - p.y, moved: false };
+  if (e.shiftKey || e.ctrlKey || e.metaKey) {   // Shift／Ctrl＋押す：まとめて選ぶ に足す・外す
+    var set = selected(), at = set.indexOf(i);
+    if (at >= 0) set.splice(at, 1); else set.push(i);
+    msel = set.length > 1 ? set : []; sel = set.length ? set[set.length - 1] : -1;
+    renderEdit(); return;
+  }
+  if (selected().indexOf(i) < 0) { selectOnly(i); renderEdit(); }
+  else if (msel.length < 2 && sel !== i) { selectOnly(i); renderEdit(); }
+  sel = i;
+  var group = selected();
+  drag = { p: p, dx: pt.x - p.x, dy: pt.y - p.y, moved: false,
+           items: group.map(function (j) { var q = cur.top[j]; return { q: q, ox: q.x - p.x, oy: q.y - p.y, el: $('editSvg').querySelector('.it[data-i="' + j + '"]') }; }) };
   this.setPointerCapture(e.pointerId);
 });
+function drawBand(a, b) {
+  var svg = $('editSvg'), r = svg.querySelector('.band');
+  if (!r) { r = document.createElementNS('http://www.w3.org/2000/svg', 'rect'); r.setAttribute('class', 'band'); svg.appendChild(r); }
+  r.setAttribute('x', Math.min(a.x, b.x)); r.setAttribute('y', Math.min(a.y, b.y));
+  r.setAttribute('width', Math.abs(a.x - b.x)); r.setAttribute('height', Math.abs(a.y - b.y));
+}
+function bandSelect(a, b, add) {   // 囲みに少しでもかかった物を選ぶ
+  var x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x), y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+  var hit = [];
+  cur.top.forEach(function (p, i) { var bb = itemBounds(p); if (bb.x1 >= x0 && bb.x0 <= x1 && bb.y1 >= y0 && bb.y0 <= y1) hit.push(i); });
+  if (add) selected().forEach(function (i) { if (hit.indexOf(i) < 0) hit.push(i); });
+  msel = hit.length > 1 ? hit : []; sel = hit.length ? hit[hit.length - 1] : -1;
+  renderEdit();
+}
 function emptyTap(q) {
   // 物を選んでいるときに机の上の空いた所を押すと、そこへ移す（指で引きずらなくてよい）
   var gm = gridMargin();
+  if (msel.length > 1) { selectOnly(-1); renderEdit(); return; }
   if (sel >= 0 && q.x >= -gm.x && q.x <= DESK.w + gm.x && q.y >= -gm.y && q.y <= DESK.d + gm.y) {
     var sp = cur.top[sel]; sp.x = q.x; sp.y = q.y; clampP(sp); save(); renderEdit();
-  } else if (sel >= 0) { sel = -1; renderEdit(); }
+  } else if (sel >= 0) { selectOnly(-1); renderEdit(); }
 }
 $('editSvg').addEventListener('pointermove', function (e) {
   if (touches[e.pointerId]) touches[e.pointerId] = { x: e.clientX, y: e.clientY };
   if (pinch) { pinchMove(); return; }
   if (pan) {
     if (Math.hypot(e.clientX - pan.sx, e.clientY - pan.sy) > 6) pan.moved = true;
+    if (pan.moved && pan.band) { drawBand(pan.q, svgPoint(this, e)); return; }
     if (pan.moved && EZ.k > 1) {
       var m = pan.inv, dx = (e.clientX - pan.sx) * m.a + (e.clientY - pan.sy) * m.c, dy = (e.clientX - pan.sx) * m.b + (e.clientY - pan.sy) * m.d;
       EZ.cx = pan.cx - dx; EZ.cy = pan.cy - dy; applyZoom();
@@ -2966,9 +3054,9 @@ $('editSvg').addEventListener('pointermove', function (e) {
   if (!drag) return;
   var pt = svgPoint(this, e), p = drag.p;
   var nx = p.x, ny = p.y;
-  p.x = pt.x - drag.dx; p.y = pt.y - drag.dy; clampP(p);
+  p.x = pt.x - drag.dx; p.y = pt.y - drag.dy; clampP(p);   // つかんだ物を交点に合わせ、ほかの物は 同じだけ動かす（並びを保つ）
   if (p.x !== nx || p.y !== ny) drag.moved = true;
-  drag.el.setAttribute('transform', itemTransform(p));
+  drag.items.forEach(function (o) { o.q.x = p.x + o.ox; o.q.y = p.y + o.oy; if (o.el) o.el.setAttribute('transform', itemTransform(o.q)); });
 });
 function endDrag() {
   if (!drag) return;
@@ -2977,7 +3065,12 @@ function endDrag() {
 }
 $('editSvg').addEventListener('pointerup', function (e) {
   touchEnd(e);
-  if (pan) { var p0 = pan; pan = null; if (!p0.moved) emptyTap(p0.q); return; }
+  if (pan) {
+    var p0 = pan; pan = null;
+    if (!p0.moved) { emptyTap(p0.q); return; }
+    if (p0.band) bandSelect(p0.q, svgPoint(this, e), p0.add);
+    return;
+  }
   endDrag();
 });
 document.addEventListener('keydown', function (e) {   // 矢印キーでグリッド1目ずつ動かす
@@ -2985,8 +3078,9 @@ document.addEventListener('keydown', function (e) {   // 矢印キーでグリ�
   var d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
   if (!d) return;
   e.preventDefault();
-  var g = gridLevel(S.prefs.grid), p = cur.top[sel];
-  p.x += d[0] * DESK.w / g.nx; p.y += d[1] * DESK.d / g.ny; clampP(p); save(); renderEdit();
+  var g = gridLevel(S.prefs.grid);
+  selected().forEach(function (i) { var p = cur.top[i]; p.x += d[0] * DESK.w / g.nx; p.y += d[1] * DESK.d / g.ny; if (msel.length < 2) clampP(p); });
+  save(); renderEdit();
 });
 $('editSvg').addEventListener('pointercancel', function (e) { touchEnd(e); pan = null; endDrag(); });
 
