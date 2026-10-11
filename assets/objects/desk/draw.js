@@ -68,11 +68,21 @@ function colorOf(p) {
   return c ? c[colorIndex(p)] : null;
 }
 /* 描く大きさ。判型を選べる物は判型から（開くと幅2倍）、ほかは状態ごとの寸法 */
-function itemSize(p) {
+function baseSize(p) {
   var it = ITEMS[p.item], st = stateOf(p);
   if (it.mesh) { var f = it.mesh(p).foot; return [f.W, f.L]; }
   if (it.sizes) { var z = it.sizes[sizeOf(p)]; return [st === 'open' ? z.w * 2 : z.w, z.d]; }
   return [it.states[st].w, it.states[st].d];
+}
+/* 置いた物ごとの拡大・縮小（p.s。1＝実寸）。描く大きさ・選ぶ枠・吹き出しの位置はすべてこの大きさ */
+var SCALE_MIN = 0.25, SCALE_MAX = 4;
+function scaleOf(p) { var s = +p.s; return s > 0 ? Math.min(SCALE_MAX, Math.max(SCALE_MIN, s)) : 1; }
+function itemSize(p) { var b = baseSize(p), s = scaleOf(p); return [b[0] * s, b[1] * s]; }
+/* 物の置き方（位置・回転・鏡・拡大）。ドラッグ中の描き直し（app.js）も同じものを使う */
+function itemTransform(p) {
+  var s = scaleOf(p);
+  if (ITEMS[p.item].mesh) return 'translate(' + p.x + ' ' + p.y + ')';   // 立体は立体のほうを回す（meshSvg）
+  return 'translate(' + p.x + ' ' + p.y + ') rotate(' + (p.r || 0) + ')' + (p.m ? ' scale(-1 1)' : '') + (s !== 1 ? ' scale(' + s + ')' : '');
 }
 /* 回転したときの外接箱の幅・奥行き */
 function rotBox(w, d, r) {
@@ -106,16 +116,16 @@ function olAttr() { return OUTLINE ? ' filter="url(#' + outlineId() + ')"' : '';
 function drawTopItem(p, i, cls) {
   if (ITEMS[p.item].mesh) {
     var fw = itemSize(p), fb = rotBox(fw[0], fw[1], p.r || 0);
-    return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ')"><g' + olAttr() + '>' + meshSvg(p) + '</g>' +
+    var ms = scaleOf(p);
+    return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="' + itemTransform(p) + '"><g' + olAttr() + (ms !== 1 ? ' transform="scale(' + ms + ')"' : '') + '>' + meshSvg(p) + '</g>' +
       (cls === 'sel' ? '<rect class="selbox" x="' + (-fb[0] / 2 - 10 * K) + '" y="' + (-fb[1] / 2 - 10 * K) + '" width="' + (fb[0] + 20 * K) + '" height="' + (fb[1] + 20 * K) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>' : '') + '</g>';
   }
-  var st = ITEMS[p.item].states[stateOf(p)], wd = itemSize(p), w = wd[0], d = wd[1];
+  var st = ITEMS[p.item].states[stateOf(p)], wd = baseSize(p), w = wd[0], d = wd[1], k = K / scaleOf(p);   // k：選ぶ枠の線は拡大しても同じ太さ
   MIRROR = p.m ? -1 : 1;
   var body = st.draw(w, d, colorOf(p), p);
   MIRROR = 1;
-  return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ') rotate(' + (p.r || 0) + ')' +
-         (p.m ? ' scale(-1 1)' : '') + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')"><g' + olAttr() + '>' + body + '</g>' +
-         (cls === 'sel' ? '<rect class="selbox" x="' + (-10 * K) + '" y="' + (-10 * K) + '" width="' + (w + 20 * K) + '" height="' + (d + 20 * K) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>' : '') + '</g></g>';
+  return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="' + itemTransform(p) + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')"><g' + olAttr() + '>' + body + '</g>' +
+         (cls === 'sel' ? '<rect class="selbox" x="' + (-10 * k) + '" y="' + (-10 * k) + '" width="' + (w + 20 * k) + '" height="' + (d + 20 * k) + '" rx="' + 10 * k + '" style="stroke-width:' + 6 * k + ';stroke-dasharray:' + 18 * k + ' ' + 10 * k + '"/>' : '') + '</g></g>';
 }
 function iconSvg(itemId, size) {   // しまう物・編集のパレット用の小さな絵
   var it = ITEMS[itemId], w, d, body;
@@ -452,6 +462,6 @@ function gridSvg(level) {
   var s = '<g class="grid">';
   for (var i = -ki; i <= level.nx + ki; i++) s += '<line x1="' + i * DESK.w / level.nx + '" y1="' + (-m.y) + '" x2="' + i * DESK.w / level.nx + '" y2="' + (DESK.d + m.y) + '" style="stroke-width:' + sw + '"/>';
   for (var j = -kj; j <= level.ny + kj; j++) s += '<line x1="' + (-m.x) + '" y1="' + j * DESK.d / level.ny + '" x2="' + (DESK.w + m.x) + '" y2="' + j * DESK.d / level.ny + '" style="stroke-width:' + sw + '"/>';
-  gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 12 ? 4 : 6) * K + '" style="stroke-width:' + sw + '"/>'; });
+  gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 24 ? 2.5 : level.nx > 12 ? 4 : 6) * K + '" style="stroke-width:' + sw + '"/>'; });
   return s + '</g>';
 }

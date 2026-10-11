@@ -33,7 +33,7 @@ function sanitize(s) {
       top: l.top.filter(function (p) { return ok(p.item); }).map(function (p) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
-                 text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined };
+                 text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined, s: scaleOf(p) !== 1 ? scaleOf(p) : undefined };
       }),
       hooks: sc === 'desk' ? {
         left: ((l.hooks || {}).left || []).filter(isHang).map(function (h) { return { item: h.item, label: !!h.label }; }),
@@ -47,6 +47,7 @@ function sanitize(s) {
 }
 function isHang(h) { return h && ITEMS[h.item] && ITEMS[h.item].kind === 'hang'; }
 function save() {
+  record();
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('この端末には保存できません（書き出しで残してください）'); }
 }
 
@@ -208,6 +209,7 @@ function setBig(on) {
   renderShow();
 }
 $('sBig').onclick = function () { setBig(true); };
+$('sEdit').onclick = function () { openEdit(cur.id); };   // 映している配置をそのまま直す（標準の配置も、新しく作った配置も）
 
 /* ---- 印刷：1つの配置＝A4 1枚 ----
    見せる画面の「印刷」はいま映している形（左右反転・4人・いす・横から見た図）のまま。
@@ -280,19 +282,22 @@ document.addEventListener('keydown', function (e) {   // ← → で活動を切
 function openEdit(id) {
   cur = byId(id); if (!cur) return renderHome();
   useScene(scOf(cur));
-  sel = -1;
-  $('eOutline').checked = OUTLINE;
+  sel = -1; EZ.k = 1; EZ.cx = null;
+  hist = { undo: [], redo: [], last: JSON.stringify(cur) };
+  histButtons();
+  $('eOutline').checked = OUTLINE; $('eGridShow').checked = S.prefs.gridShow !== false;
   $('eTextBox').hidden = !SCENE.space; $('eText').checked = SPACE_TEXT;
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
   go('vEdit'); renderEdit(); renderPalette();
 }
 function renderEdit() {
-  var t = topView(cur, { ruby: S.prefs.ruby, sel: sel, grid: gridLevel(S.prefs.grid) });
+  var t = topView(cur, { ruby: S.prefs.ruby, sel: sel, grid: S.prefs.gridShow === false ? null : gridLevel(S.prefs.grid) });   // 線を消しても交点への吸着は続く
   var b = t.box, pad = 60 * K;
   var svg = $('editSvg');
   // 余白は広めに固定して、吹き出しが増えても床が跳ねないようにする（場所の広さに合わせて K 倍）
   var x0 = Math.min(b.x0, -300 * K) - pad, y0 = Math.min(b.y0, -130 * K) - pad, x1 = Math.max(b.x1, DESK.w + 300 * K) + pad, y1 = Math.max(b.y1, DESK.d + 130 * K) + pad;
-  svg.setAttribute('viewBox', x0 + ' ' + y0 + ' ' + (x1 - x0) + ' ' + (y1 - y0));
+  EZ.base = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  applyZoom();
   svg.innerHTML = t.svg;
   var p = cur.top[sel];
   $('selBar').hidden = !p;
@@ -304,6 +309,7 @@ function renderEdit() {
       return '<button type="button" data-st="' + k + '" class="' + (k === stateOf(p) ? 'on' : '') + '">' + (STATE_NAMES[k] || k) + '</button>';
     }).join('');
     $('selLabel').setAttribute('aria-pressed', String(!!p.label));
+    $('selReal').textContent = Math.round(scaleOf(p) * 100) + '%'; $('selReal').title = '実寸（100%）に戻す';
     $('selTextBox').hidden = !it.text;
     if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
     $('selSize').hidden = !it.sizes;
@@ -398,6 +404,7 @@ $('eBg').addEventListener('click', function (e) {
   var id = b.getAttribute('data-bg'); if (id) cur.bg = id; else delete cur.bg; save(); renderEdit();
 });
 $('eText').onchange = function () { SPACE_TEXT = S.prefs.spaceText = this.checked; save(); renderEdit(); };
+$('eGridShow').onchange = function () { S.prefs.gridShow = this.checked; save(); renderEdit(); };
 $('eOutline').onchange = function () { OUTLINE = S.prefs.outline = this.checked; save(); renderEdit(); };
 $('eBack').onclick = renderHome;
 $('eShow').onclick = function () { openShow(cur.id); };
@@ -427,6 +434,10 @@ $('selText').addEventListener('input', function () {
   var p = cur.top[sel]; if (!p) return;
   p.text = this.value; save(); renderEdit();
 });
+function setScale(p, s) { s = Math.round(Math.min(SCALE_MAX, Math.max(SCALE_MIN, s)) * 100) / 100; if (s === 1) delete p.s; else p.s = s; clampP(p); save(); renderEdit(); }
+$('selSmall').onclick = function () { var p = cur.top[sel]; setScale(p, scaleOf(p) / 1.25); };
+$('selBig').onclick = function () { var p = cur.top[sel]; setScale(p, scaleOf(p) * 1.25); };
+$('selReal').onclick = function () { setScale(cur.top[sel], 1); };
 $('selRot').onclick = function () { var p = cur.top[sel]; p.r = ((p.r || 0) + 90) % 360; clampP(p); save(); renderEdit(); };
 $('selLabel').onclick = function () { var p = cur.top[sel]; p.label = !p.label; save(); renderEdit(); };
 $('selFront').onclick = function () { toFront(); save(); renderEdit(); };
@@ -446,15 +457,116 @@ function svgPoint(svg, e) {
   var pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
   return pt.matrixTransform(svg.getScreenCTM().inverse());
 }
+/* ---- 取り消し・やり直し（Ctrl+Z／Ctrl+Y・Ctrl+Shift+Z）----
+   編集画面で保存するたびに、変える前の配置を積む。配置を開き直すと空になる（配置ごと・この画面の間だけ）。 */
+var hist = { undo: [], redo: [], last: null }, HIST_MAX = 100;
+function record() {
+  if (!cur || $('vEdit').hidden || hist.last == null) return;
+  var s = JSON.stringify(cur);
+  if (s === hist.last) return;
+  hist.undo.push(hist.last); if (hist.undo.length > HIST_MAX) hist.undo.shift();
+  hist.redo = []; hist.last = s; histButtons();
+}
+function restore(s) {   // cur は S.layouts の中の同じ物なので、中身だけを入れかえる
+  var o = JSON.parse(s);
+  Object.keys(cur).forEach(function (k) { delete cur[k]; }); Object.keys(o).forEach(function (k) { cur[k] = o[k]; });
+  hist.last = s;
+  if (sel >= cur.top.length) sel = -1;
+  $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+  renderEdit(); renderPalette(); histButtons();
+}
+function undo() { if (!hist.undo.length) return; hist.redo.push(hist.last); restore(hist.undo.pop()); }
+function redo() { if (!hist.redo.length) return; hist.undo.push(hist.last); restore(hist.redo.pop()); }
+function histButtons() { $('eUndo').disabled = !hist.undo.length; $('eRedo').disabled = !hist.redo.length; }
+$('eUndo').onclick = undo; $('eRedo').onclick = redo;
+
+/* ---- 写す・切り取る・貼る（Ctrl+C／Ctrl+X／Ctrl+V）、複製（Ctrl+D）、けす（Delete）----
+   選んだ物を1つ写しておき、貼ると グリッド1目ずつ右下にずらして置く。別の配置にも貼れる（その場所に置ける物だけ）。 */
+var clip = null, pasteN = 0;
+function canPlace(id) { return SCENE.desk ? !(ITEMS[id].scenes || []).length : SCENE.items.indexOf(id) >= 0; }
+function pasteItem(src) {
+  if (!canPlace(src.item)) { toast('この場所には置けない物です'); return; }
+  var g = gridLevel(S.prefs.grid), q = clone(src);
+  pasteN++; q.x += pasteN * DESK.w / g.nx; q.y += pasteN * DESK.d / g.ny; clampP(q);
+  cur.top.push(q); sel = cur.top.length - 1; save(); renderEdit();
+}
+document.addEventListener('keydown', function (e) {
+  if ($('vEdit').hidden || e.target.closest('input,textarea') || e.altKey) return;
+  var k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+  if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+  if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
+  if (mod && k === 'v') { if (clip) { e.preventDefault(); pasteItem(clip); } return; }
+  if (sel < 0) return;
+  if (mod && (k === 'c' || k === 'x')) {
+    e.preventDefault(); clip = clone(cur.top[sel]); pasteN = 0;
+    if (k === 'x') { cur.top.splice(sel, 1); sel = -1; save(); renderEdit(); toast('切り取りました'); } else toast('写しました（Ctrl+V で貼る）');
+    return;
+  }
+  if (mod && k === 'd') { e.preventDefault(); pasteN = 0; pasteItem(cur.top[sel]); return; }
+  if (k === 'delete' || k === 'backspace') { e.preventDefault(); cur.top.splice(sel, 1); sel = -1; save(); renderEdit(); }
+});
+
+/* ---- 編集画面の拡大・縮小 ----
+   ホイール（マウス・タッチパッド）：指している所を中心に拡大・縮小。2本指：つまんで拡大・縮小、そのまま動かすと移動。
+   空いた所を引きずる：拡大しているとき、見る範囲を動かす（引きずらずに離せば、これまでどおり「選んだ物をそこへ移す」）。
+   EZ.k：倍率（1＝全体）、EZ.cx/cy：見ている中心（図の座標）。描き直しても保つ。別の配置を開くと全体に戻す */
+var EZ = { k: 1, cx: null, cy: null, base: null }, EZ_MAX = 12;
+function applyZoom() {
+  var b = EZ.base, svg = $('editSvg'); if (!b) return;
+  if (EZ.k <= 1) { EZ.k = 1; EZ.cx = null; }
+  var w = b.w / EZ.k, h = b.h / EZ.k;
+  var cx = EZ.cx == null ? b.x + b.w / 2 : Math.min(b.x + b.w - w / 2, Math.max(b.x + w / 2, EZ.cx));
+  var cy = EZ.cy == null ? b.y + b.h / 2 : Math.min(b.y + b.h - h / 2, Math.max(b.y + h / 2, EZ.cy));
+  if (EZ.k > 1) { EZ.cx = cx; EZ.cy = cy; }
+  svg.setAttribute('viewBox', (cx - w / 2) + ' ' + (cy - h / 2) + ' ' + w + ' ' + h);
+  $('zReset').textContent = Math.round(EZ.k * 100) + '%';
+  $('zReset').disabled = EZ.k === 1;
+}
+function zoomAt(q, f) {   // 図の点 q を画面上で動かさずに 倍率を f 倍
+  var b = EZ.base, k = Math.min(EZ_MAX, Math.max(1, EZ.k * f)); if (!b) return;
+  var cx = EZ.cx == null ? b.x + b.w / 2 : EZ.cx, cy = EZ.cy == null ? b.y + b.h / 2 : EZ.cy;
+  EZ.cx = q.x - (q.x - cx) * EZ.k / k; EZ.cy = q.y - (q.y - cy) * EZ.k / k; EZ.k = k;
+  applyZoom();
+}
+function viewCenter() { var v = $('editSvg').viewBox.baseVal; return { x: v.x + v.width / 2, y: v.y + v.height / 2 }; }
+$('editSvg').addEventListener('wheel', function (e) {
+  e.preventDefault();
+  zoomAt(svgPoint(this, e), Math.pow(1.2, -Math.sign(e.deltaY) * Math.min(3, Math.abs(e.deltaY) / 60 || 1)));
+}, { passive: false });
+$('zIn').onclick = function () { zoomAt(viewCenter(), 1.5); };
+$('zOut').onclick = function () { zoomAt(viewCenter(), 1 / 1.5); };
+$('zReset').onclick = function () { EZ.k = 1; applyZoom(); };
+var touches = {}, pinch = null, pan = null;
+function touchList() { return Object.keys(touches).map(function (k) { return touches[k]; }); }
 $('editSvg').addEventListener('pointerdown', function (e) {
+  touches[e.pointerId] = { x: e.clientX, y: e.clientY };
+  var tl = touchList();
+  if (tl.length === 2) {   // 2本目の指：物の移動・範囲の移動をやめて、つまむ操作へ
+    if (drag) { drag = null; renderEdit(); }
+    pan = null;
+    pinch = { d: Math.hypot(tl[0].x - tl[1].x, tl[0].y - tl[1].y), m: { x: (tl[0].x + tl[1].x) / 2, y: (tl[0].y + tl[1].y) / 2 } };
+    return;
+  }
+}, true);
+function pinchMove() {
+  var tl = touchList(); if (tl.length < 2 || !pinch) return;
+  var d = Math.hypot(tl[0].x - tl[1].x, tl[0].y - tl[1].y), m = { x: (tl[0].x + tl[1].x) / 2, y: (tl[0].y + tl[1].y) / 2 };
+  var svg = $('editSvg'), inv = svg.getScreenCTM().inverse(), P = function (s) { var pt = svg.createSVGPoint(); pt.x = s.x; pt.y = s.y; return pt.matrixTransform(inv); };
+  var a = P(pinch.m), b2 = P(m);   // 2本指の真ん中が動いた分だけ見る範囲を動かす
+  if (EZ.k > 1) { EZ.cx -= b2.x - a.x; EZ.cy -= b2.y - a.y; }
+  zoomAt(P(m), d / pinch.d);
+  pinch = { d: d, m: m };
+}
+function touchEnd(e) { delete touches[e.pointerId]; if (touchList().length < 2) pinch = null; }
+$('editSvg').addEventListener('pointerdown', function (e) {
+  if (pinch) return;
   var g = e.target.closest('.it');
   if (!g) {
-    // 物を選んでいるときに机の上の空いた所を押すと、そこへ移す（指で引きずらなくてよい）
-    var q = svgPoint(this, e);
-    var gm = gridMargin();
-    if (sel >= 0 && q.x >= -gm.x && q.x <= DESK.w + gm.x && q.y >= -gm.y && q.y <= DESK.d + gm.y) {
-      var sp = cur.top[sel]; sp.x = q.x; sp.y = q.y; clampP(sp); save(); renderEdit();
-    } else if (sel >= 0) { sel = -1; renderEdit(); }
+    // 空いた所：引きずれば見る範囲を動かし（拡大しているとき）、引きずらずに離せば下の「タップ」の動き
+    var inv = this.getScreenCTM().inverse();
+    pan = { sx: e.clientX, sy: e.clientY, inv: inv, cx: EZ.cx, cy: EZ.cy, moved: false, q: svgPoint(this, e) };
+    this.setPointerCapture(e.pointerId);
     return;
   }
   var i = +g.getAttribute('data-i'), p = cur.top[i], pt = svgPoint(this, e);
@@ -462,20 +574,41 @@ $('editSvg').addEventListener('pointerdown', function (e) {
   drag = { el: g, p: p, dx: pt.x - p.x, dy: pt.y - p.y, moved: false };
   this.setPointerCapture(e.pointerId);
 });
+function emptyTap(q) {
+  // 物を選んでいるときに机の上の空いた所を押すと、そこへ移す（指で引きずらなくてよい）
+  var gm = gridMargin();
+  if (sel >= 0 && q.x >= -gm.x && q.x <= DESK.w + gm.x && q.y >= -gm.y && q.y <= DESK.d + gm.y) {
+    var sp = cur.top[sel]; sp.x = q.x; sp.y = q.y; clampP(sp); save(); renderEdit();
+  } else if (sel >= 0) { sel = -1; renderEdit(); }
+}
 $('editSvg').addEventListener('pointermove', function (e) {
+  if (touches[e.pointerId]) touches[e.pointerId] = { x: e.clientX, y: e.clientY };
+  if (pinch) { pinchMove(); return; }
+  if (pan) {
+    if (Math.hypot(e.clientX - pan.sx, e.clientY - pan.sy) > 6) pan.moved = true;
+    if (pan.moved && EZ.k > 1) {
+      var m = pan.inv, dx = (e.clientX - pan.sx) * m.a + (e.clientY - pan.sy) * m.c, dy = (e.clientX - pan.sx) * m.b + (e.clientY - pan.sy) * m.d;
+      EZ.cx = pan.cx - dx; EZ.cy = pan.cy - dy; applyZoom();
+    }
+    return;
+  }
   if (!drag) return;
   var pt = svgPoint(this, e), p = drag.p;
   var nx = p.x, ny = p.y;
   p.x = pt.x - drag.dx; p.y = pt.y - drag.dy; clampP(p);
   if (p.x !== nx || p.y !== ny) drag.moved = true;
-  drag.el.setAttribute('transform', 'translate(' + p.x + ' ' + p.y + ')' + (ITEMS[p.item].mesh ? '' : ' rotate(' + (p.r || 0) + ')'));   // 立体の物は立体のほうを回してある
+  drag.el.setAttribute('transform', itemTransform(p));
 });
 function endDrag() {
   if (!drag) return;
   var moved = drag.moved; drag = null;
   if (moved) { save(); renderEdit(); }
 }
-$('editSvg').addEventListener('pointerup', endDrag);
+$('editSvg').addEventListener('pointerup', function (e) {
+  touchEnd(e);
+  if (pan) { var p0 = pan; pan = null; if (!p0.moved) emptyTap(p0.q); return; }
+  endDrag();
+});
 document.addEventListener('keydown', function (e) {   // 矢印キーでグリッド1目ずつ動かす
   if ($('vEdit').hidden || sel < 0 || e.target.closest('input')) return;
   var d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
@@ -484,6 +617,6 @@ document.addEventListener('keydown', function (e) {   // 矢印キーでグリ�
   var g = gridLevel(S.prefs.grid), p = cur.top[sel];
   p.x += d[0] * DESK.w / g.nx; p.y += d[1] * DESK.d / g.ny; clampP(p); save(); renderEdit();
 });
-$('editSvg').addEventListener('pointercancel', endDrag);
+$('editSvg').addEventListener('pointercancel', function (e) { touchEnd(e); pan = null; endDrag(); });
 
 renderHome();

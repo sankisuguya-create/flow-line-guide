@@ -83,3 +83,10 @@ function zoneEdges(b, zs) {
   });
   return out;
 }
+
+/* グリッドの4段目「とても細かい」：どの場所も「こまかい」をさらに2倍に割る（段を変えても交点がずれない） */
+Object.keys(SCENES).forEach(function (id) {
+  var g = SCENES[id].grid, f = g[g.length - 1];
+  if (f.id !== 'xfine') g.push({ id: 'xfine', name: 'とても細かい', nx: f.nx * 2, ny: f.ny * 2 });
+});
+if (SCENE) GRID_LEVELS = SCENE.grid;

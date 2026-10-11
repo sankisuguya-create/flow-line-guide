@@ -175,5 +175,9 @@ vm.runInContext('SPACE_TEXT=true',ctx);
 for(const id of ['hurdle','highjump','hoop','longrope','scoreboard','ballbasket','bibs','matcart','startline','goalline','tape','nummark','flag','classgroup','teacher','kengaku','island','ushape','monitor','worktable','board','locker','longtable','pipechairs','tent','broadcast','podium','hinadan'])
   for(const st of Object.keys(ITEMS[id].states)){ const s=vm.runInContext(`drawTopItem({item:'${id}',state:'${st}',x:0,y:0,r:0,color:1},0,'')`,ctx); assert.ok(!/NaN|undefined/.test(s),id+':'+st); }
 assert.ok(vm.runInContext(`drawTopItem({item:'classgroup',state:'r2',x:0,y:0,r:0,color:2},0,'')`,ctx).includes('3組'));
-g.useScene('desk');
+// 拡大・縮小
+assert.equal(vm.runInContext("itemSize({item:'notebook',state:'closed',s:2}).join()",ctx),'358,504');
+assert.equal(vm.runInContext("itemSize({item:'notebook',state:'closed',s:99})[0]",ctx),179*4,'上限');
+assert.ok(vm.runInContext("drawTopItem({item:'notebook',state:'closed',x:0,y:0,r:0,s:1.5},0,'')",ctx).includes('scale(1.5)'));
+g.useScene('gym'); assert.equal(vm.runInContext("itemSize({item:'pipechairs',state:'c1',s:2}).join()",ctx),'974,940'); g.useScene('desk');
 console.log('ok');

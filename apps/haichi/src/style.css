@@ -170,3 +170,9 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 /* 床の色の見本。色だけで伝えないよう名前も書く */
 .sw.bg{min-width:44px;min-height:34px;padding:2px 8px;font-size:13px;border:1px solid var(--rule);color:#1D2126;background:var(--sheet)}
 .sw.bg.on{outline:3px solid var(--accent);outline-offset:1px;font-weight:700}
+
+/* 編集画面の拡大・縮小（ホイール・2本指・ボタン）。ボタンは図の右上に重ねる */
+.ewrap{position:relative}
+.zoombar{position:absolute;top:8px;right:8px;display:flex;background:var(--sheet);border:1px solid var(--rule);border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.zoombar button{border:none;border-radius:0;min-width:44px;min-height:40px;font-weight:700}
+.zoombar #zReset{min-width:64px;font-variant-numeric:tabular-nums;border-left:1px solid var(--rule-soft);border-right:1px solid var(--rule-soft)}
