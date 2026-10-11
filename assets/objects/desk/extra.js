@@ -84,13 +84,14 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
 
   /* ---- 人と組 ---- */
   add('classgroup', ALL, { name: '{組|くみ}のまとまり', colors: CLASS_COLORS, states: {   // 2列×16人（0.5m間隔）＋組の名札
-    r2: { w: 1000, d: 8000, draw: function (w, h, col) { return dots(2, 16, w, h, col); } },
-    r4: { w: 2000, d: 4000, draw: function (w, h, col) { return dots(4, 8, w, h, col); } } } });
-  function dots(nx, ny, w, h, col) {
+    r2: { w: 1000, d: 8000, draw: function (w, h, col, p) { return dots(2, 16, w, h, col, p); } },
+    r4: { w: 2000, d: 4000, draw: function (w, h, col, p) { return dots(4, 8, w, h, col, p); } } } });
+  function dots(nx, ny, w, h, col, p) {
     var s = R(0, 0, w, h, 'rgba(255,255,255,.35)', 120, 8, 'rgba(58,53,46,.3)'), r = Math.min(w / nx, h / ny) * 0.36;
     for (var i = 0; i < nx; i++) for (var j = 0; j < ny; j++) s += C((i + 0.5) * w / nx, (j + 0.5) * h / ny, r, col, 6);
     var k = CLASS_COLORS.indexOf(col);
-    return s + tag(w / 2, h / 2, (k >= 0 ? k + 1 : '') + '組', Math.min(w * 0.42, 420));
+    var r = (p && p.r) || 0;   // 名札は回しても立てたまま（読める向き）
+    return s + '<g transform="rotate(' + (-r) + ' ' + w / 2 + ' ' + h / 2 + ')">' + tag(w / 2, h / 2, (k >= 0 ? k + 1 : '') + '組', Math.min(w * 0.42, 420)) + '</g>';
   }
   /* 児童：横 nx 人 × 縦 ny 人（合わせて1〜36人）を 横60cm・縦70cm 間隔で並べる。人数は置いた物ごと（p.nx, p.ny） */
   var KID = { dx: 600, dy: 700, max: 36 };
@@ -103,6 +104,7 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
     }
     return s;
   } } } });
+  ITEMS.kids.controls = ['grid'];   // 編集画面に「横・縦の人数」を出す（app.js）
   ITEMS.kids.size = function (p) { var n = kidsN(p); return [n.nx * KID.dx, n.ny * KID.dy]; };
   add('teacher', ALL, { name: '{先生|せんせい}', states: one(450, 550, function (w, h) {   // 人の形＋「先」の名札
     return ELL(w / 2, h * 0.94, w * 0.42, h * 0.05, 'rgba(0,0,0,.16)') + C(w / 2, h * 0.18, w * 0.24, '#5B6B78', 8) +
@@ -165,4 +167,32 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
   add('hinadan', ['gym'], { name: 'ひな{壇|だん}', states: one(5400, 1800, function (w, h) {   // 3段（奥ほど高い：上ほど濃い）
     return R(0, 0, w, h / 3, '#9A6B3F', 10, 10) + R(0, h / 3, w, h / 3, '#B8895A', 10, 10) + R(0, 2 * h / 3, w, h / 3, '#D3AE84', 10, 10);
   }) });
+  /* 文字（床に置く ことば：「ここで待つ」「1班」など）。大きさは 文字数と場所の倍率 K で決まる。拡大・縮小もできる */
+  add('words', ['class', 'gym', 'field'], { name: '{文字|もじ}', text: true, colors: ['#FFFFFF', '#F6EDCF', '#DCE8F5', '#FBEEEC'], states: { closed: { w: 600, d: 300, draw: function (w, h, col, p) {
+    var t = (p && p.text) || '文字', fs = h * 0.62;
+    return R(0, 0, w, h, col, h * 0.25, h * 0.06) + T(w / 2, h / 2, t, fs);
+  } } } });
+  ITEMS.words.size = function (p) { var t = (p && p.text) || '文字', fs = 30 * K; return [Math.max(fs * 2, textW(t, fs) + fs), fs * 1.6]; };
+  /* 床に描く物：ほかの物より いつも下に描く（draw.js の drawOrder） */
+  ['startline', 'goalline', 'tape', 'nummark', 'gline', 'fmark'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].floor = true; });
+  /* パレットの分け方（group）：thing＝用具・設備（既定）、mark＝矢印・目印、people＝人 */
+  ['arrow', 'gline', 'tape', 'startline', 'goalline', 'nummark', 'fmark', 'flag', 'words'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].group = 'mark'; });
+  ['person', 'kids', 'classgroup', 'teacher', 'rowdot', 'rowline', 'rowseno'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].group = 'people'; });
 })();
+
+/* ---- 矢印の「じゆう」：交点を結ぶ折れ線 ---- */
+function isPath(p) { return p.item === 'arrow' && stateOf(p) === 'path' && Array.isArray(p.pts) && p.pts.length >= 2; }
+function pathBox(p) {   // p.x,p.y からのずれで、線の太さ・矢じりの分を足した範囲
+  var m = 500 * scaleOf(p), xs = p.pts.map(function (q) { return q[0]; }), ys = p.pts.map(function (q) { return q[1]; });
+  return { x0: Math.min.apply(null, xs) - m, x1: Math.max.apply(null, xs) + m, y0: Math.min.apply(null, ys) - m, y1: Math.max.apply(null, ys) + m };
+}
+function pathArrowSvg(p) {
+  var s = scaleOf(p), P = p.pts, n = P.length, T = P[n - 1], B = P[n - 2];
+  var dx = T[0] - B[0], dy = T[1] - B[1], L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+  var hl = Math.min(750 * s, L * 0.9), hw = 850 * s, bx = T[0] - ux * hl, by = T[1] - uy * hl;
+  var d = 'M ' + P.slice(0, n - 1).map(function (q) { return q[0] + ' ' + q[1]; }).join(' L ') + ' L ' + bx + ' ' + by;
+  var col = colorOf(p);
+  return arrowShaft(d, 300 * s, col) + arrowHead([[bx - uy * hw / 2, by + ux * hw / 2], [T[0], T[1]], [bx + uy * hw / 2, by - ux * hw / 2]], col);
+}
+ITEMS.arrow.custom = function (p) { return isPath(p) ? { box: pathBox(p), draw: function () { return pathArrowSvg(p); } } : null; };
+ITEMS.arrow.controls = ['path'];   // 編集画面に「矢印をのばす」を出す（app.js）

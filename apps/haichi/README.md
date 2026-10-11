@@ -2,7 +2,22 @@
 
 授業や活動の前に、**場所のどこに何を置くか**を教室の大画面モニターに映して見せる道具。
 homeroom-tools の「机の配置図」（apps/desk-layout）をそのまま移し、場所を足した。
-`dist/Index.html` をブラウザで開くだけで動く。サーバも名簿も使わない。外部通信なし。
+2つの版がある。中身は同じ1ファイルで、置き場所で動き方が変わる。
+
+| 版 | 置き方 | 保存 |
+|---|---|---|
+| HTML単体版 | `dist/Index.html` をブラウザで開く | この端末のブラウザだけ。別の端末へは書き出したファイルで移す |
+| GAS版 | `gas/` の3つ（Index.html・Code.gs・appsscript.json）を GAS に置き、ウェブアプリとして配る | 学校のみんなで共有。**同時に直してもまざる** |
+
+どちらも名簿は使わない。HTML単体版は外部通信なし。
+
+### GAS版の置き方
+1. 新しい GAS のプロジェクトを作り、`gas/Code.gs` と `gas/appsscript.json`（エディタの設定で「appsscript.json を表示」）を貼る。
+2. HTML ファイル `Index` を作り、`gas/Index.html` の中身を貼る。
+3. 「デプロイ → 新しいデプロイ → ウェブアプリ」。実行は「自分」、アクセスは「同じ組織のユーザー」。
+4. 初めて開いたとき、作った人のドライブにスプレッドシート「配置図データ」ができる（1行＝1つの配置）。消さない。
+
+同時に直すしくみ：直すたびに少し待って、変わった配置だけを送る。ほかの人が先に書いていたら、物ごとに3方向でまぜる（自分が変えた所は自分、相手が変えた所は相手。両方が同じ物を変えたら 後から送った人）。4秒ごとにほかの人の変更を取りに行き、同じ配置を開いている人の名前を上に出す。ほかの人の変更を取り込むと、取り消し（Ctrl+Z）はそこから数え直す。共有では「標準の配置に戻す」は出さない（みんなの配置が消えるため）。
 
 ## 場所
 
@@ -25,6 +40,16 @@ homeroom-tools の「机の配置図」（apps/desk-layout）をそのまま移�
 
 表示の切り替え：床の色（配置ごと）、輪郭を太く、場所の名前（場の区画名などの文字。方位は残る）。後の2つは端末に保存。
 
+## 編集画面の並び
+
+- 上の帯：配置名・読み ／ 場所を回転・グリッド▾（粗い・標準・細かい・極細・**自由配置**、グリッド線の表示）・表示▾（床の色・輪郭・エリア名・映す画面での反転） ／ 取り消し・映す・⋯（複製・削除）
+- 選んだ物の帯：種類（状態・判型・色・文字） ／ 形（大きさ・回転・人数・矢印を編集） ／ 名称を表示・最前面へ・削除
+- まとめて選ぶ：空いた所をクリック＆ドラッグすると青い枠が出て、かかった物をすべて選ぶ（拡大中は Shift＋ドラッグ）。Shift／Ctrl＋クリックで足す・外す、Ctrl+A ですべて。選んだ物はまとめて 引きずる・矢印キー・Ctrl+C／V（形を保って貼る）・Ctrl+D・Delete・大きさ（－ ％ ＋）
+- 揃える▾：**基準の物**（橙の枠。囲んだときは引きずり始めた所にいちばん近い物、クリックで選んだときは最後の物。「基準を変える」で切り替え）に合わせて 縦一列（x）／横一列（y）。ほかに 横・縦に等間隔、端を揃える（左・左右中央・右・上・上下中央・下）
+- 右のパレット：**用具・設備／矢印・目印／人** に分けて並べる（ITEMS の group）
+- 場所を回転：場所ごと時計回りに90°。置いた物の位置と向きも一緒に回る。方位の印も回る（配置ごとの rot）
+- 言葉は先生向け。**ふりがなは「映す」画面（児童が見る）だけ**に付ける
+
 ## 使い方
 
 1. 上の「場所」を選ぶ → 活動カードを押す → 全画面の配置図
@@ -35,6 +60,14 @@ homeroom-tools の「机の配置図」（apps/desk-layout）をそのまま移�
    紙は A4。向きは図が大きく刷れるほうを自動で選ぶ。上に活動名（ふりがなの設定に従う）と日付の記入欄（　月　日（　））
 6. 保存はこの端末のブラウザ（`haichi.v1`）。別の端末へは「データの書き出し・読み込み」のJSONで移す。机の配置図で書き出したJSONも読み込める
 
+## 物の足し方（作りの約束）
+
+- ふつうの物は `states` の `draw(w, h, 色, p)` で「回す前・拡大前の絵」を返すだけ。回転・鏡・拡大・選ぶ枠は本体がかける。
+- それで描けない物は `custom(p)` で `{ box, draw }` を返す（矢印の「じゆう」）。立体は `mesh` を持てば本体が同じ形で扱う。
+- 編集画面に専用の操作が要る物は `controls` に名前を書く（`'grid'`＝横・縦の人数、`'path'`＝矢印をのばす）。
+- 床に描く物（ライン・テープ）は `floor: true`。いつも ほかの物の下に描く。
+- 保存の形を変えたら `src/app/state.js` の `SAVE_VER` を上げ、`migrate` に読み替えを1つ足す。
+
 ## 部品と正本
 
 `src/Index.html` の `/* @include 名前 */` を `scripts/build.mjs` が差し込んで1ファイルにする。名前と正本の対応は `scripts/parts.mjs`。
@@ -44,12 +77,14 @@ homeroom-tools の「机の配置図」（apps/desk-layout）をそのまま移�
 | 物（机・教室・体育館・運動場） | `assets/objects/desk/data.js`・`draw.js` |
 | 体育館の用具の立体・置く物 | `assets/objects/gym/mesh.js`・`items.js` |
 | 場の床 | `assets/spaces/*/space.json`（`extends` を持つ行事用の上乗せは出さない）。描き方は `src/scenes.js` |
-| 画面・見た目 | `src/app.js`・`src/style.css`・`src/tokens.css`（中立の色は `assets/ui/base.css`） |
+| 画面・見た目 | `src/app/`（state 保存と状態／home えらぶ／show 見せる・印刷／edit なおす／history 取り消し・写す／pointer 指とマウス／boot 起動）・`src/store.js`（保存のしかた：端末／共有）・`src/style.css`・`src/tokens.css`（中立の色は `assets/ui/base.css`） |
 
 ```bash
-node apps/haichi/scripts/build.mjs           # src → dist
+node apps/haichi/scripts/build.mjs           # src → dist と gas（同じ1ファイル）
 node apps/haichi/scripts/build.mjs --check   # dist が古いと止まる
 node apps/haichi/tests/test-app.mjs          # 不変条件
+node apps/haichi/tests/e2e.mjs               # 画面の操作（playwright が要る。Chromium の場所は PW_CHROMIUM）
+node apps/haichi/tests/gas.mjs               # GAS版：Code.gs の中身と、画面2つで同時に直す
 node apps/haichi/scripts/screenshot.mjs <出力先>   # 画面を撮る（playwright が要る）
 ```
 

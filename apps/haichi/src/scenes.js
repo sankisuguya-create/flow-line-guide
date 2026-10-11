@@ -18,7 +18,7 @@ SPACES.forEach(function (sp) {
   var c = lv(5000), n = { nx: c.nx * 2, ny: c.ny * 2 }, f = { nx: c.nx * 4, ny: c.ny * 4 };   // 2倍ずつ（段を変えても交点がずれない）
   SCENES[id] = { id: id, name: name, title: name + 'の配置図', space: sp, w: w, d: d, k: 30,   // 文字・余白の倍率は体育館（幅20m）と同じ。用具の大きさがそろって見える
    
-    grid: [{ id: 'coarse', name: 'あらい', nx: c.nx, ny: c.ny }, { id: 'normal', name: 'ふつう', nx: n.nx, ny: n.ny }, { id: 'fine', name: 'こまかい', nx: f.nx, ny: f.ny }],
+    grid: [{ id: 'coarse', name: '粗い', nx: c.nx, ny: c.ny }, { id: 'normal', name: '標準', nx: n.nx, ny: n.ny }, { id: 'fine', name: '細かい', nx: f.nx, ny: f.ny }],
     items: SPACE_ITEMS.slice(),
     msg: 'この<ruby>形<rt>かたち</rt></ruby>にしてね' };
   SCENE_ORDER.push(id);
@@ -26,11 +26,11 @@ SPACES.forEach(function (sp) {
 });
 
 var SPACE_FILL = { deck: '#E4ECF1', water: '#A9D8EC', room: '#EFE9DC', box: '#FFFFFF', stairs: '#FFFFFF' };
-function spaceFloorSvg(sp, bg) {   // bg：床の色（部屋・通路・場の外）。水・舞台・階段の色は変えない
+function spaceFloorSvg(sp, bg, rot) {   // rot：場所を回したときの角度。文字だけ逆に回して読める向きに保つ   // bg：床の色（部屋・通路・場の外）。水・舞台・階段の色は変えない
   var s = '', lab = '', defs = '', WALL = 0.16, INKW = '#3B4650';
   function rc(a, fill, extra) { return '<rect x="' + a.rect[0] + '" y="' + a.rect[1] + '" width="' + a.rect[2] + '" height="' + a.rect[3] + '" fill="' + fill + '"' + (extra || '') + '/>'; }
   function ln(x1, y1, x2, y2, st, sw, extra) { return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + st + '" stroke-width="' + sw + '"' + (extra || '') + '/>'; }
-  function tx(x, y, t, fs, fill, anchor) { return '<text x="' + x + '" y="' + y + '" font-size="' + fs + '" font-weight="800" fill="' + (fill || '#5B6B78') + '" text-anchor="' + (anchor || 'middle') + '" dominant-baseline="middle">' + esc(t) + '</text>'; }
+  function tx(x, y, t, fs, fill, anchor) { return '<text' + (rot ? ' transform="rotate(' + (-rot) + ' ' + x + ' ' + y + ')"' : '') + ' x="' + x + '" y="' + y + '" font-size="' + fs + '" font-weight="800" fill="' + (fill || '#5B6B78') + '" text-anchor="' + (anchor || 'middle') + '" dominant-baseline="middle">' + esc(t) + '</text>'; }
   s += '<rect x="0" y="0" width="' + sp.size[0] + '" height="' + sp.size[1] + '" fill="' + (bg || '#F6F4EE') + '"/>';
   var fillOf = function (k) { return bg && (k === 'room' || k === 'deck') ? bg : SPACE_FILL[k] || '#fff'; };
   var walled = sp.areas.filter(function (a) { return a.kind !== 'mark'; }), done = {};
@@ -65,7 +65,7 @@ function spaceFloorSvg(sp, bg) {   // bg：床の色（部屋・通路・場の�
     if (dr.kind !== 'open') [a, b].forEach(function (p) { s += v ? ln(p[0] - k, p[1], p[0] + k, p[1], INKW, WALL) : ln(p[0], p[1] - k, p[0], p[1] + k, INKW, WALL); });
   });
   if (!SPACE_TEXT) lab = '';
-  if (sp.up) lab += tx(sp.size[0], -0.6, '▲ ' + sp.up, 0.8, '#3B4650', 'end');   // 方位は場の外（右上の外がわ）
+  if (sp.up && !rot) lab += tx(sp.size[0], -0.6, '▲ ' + sp.up, 0.8, '#3B4650', 'end');   // 方位は場の外（右上の外がわ）。回したときは topView が描く
   if (SPACE_TEXT && sp.status !== '確認済') lab += tx(0.3, sp.size[1] - 0.6, '※ 仮の地図', 0.7, '#B0392B', 'start');
   return '<g transform="scale(1000)">' + (defs ? '<defs>' + defs + '</defs>' : '') + s + lab + '</g>';
 }
@@ -87,6 +87,6 @@ function zoneEdges(b, zs) {
 /* グリッドの4段目「とても細かい」：どの場所も「こまかい」をさらに2倍に割る（段を変えても交点がずれない） */
 Object.keys(SCENES).forEach(function (id) {
   var g = SCENES[id].grid, f = g[g.length - 1];
-  if (f.id !== 'xfine') g.push({ id: 'xfine', name: 'とても細かい', nx: f.nx * 2, ny: f.ny * 2 });
+  if (f.id !== 'xfine') g.push({ id: 'xfine', name: '極細', nx: f.nx * 2, ny: f.ny * 2 });
 });
 if (SCENE) GRID_LEVELS = SCENE.grid;

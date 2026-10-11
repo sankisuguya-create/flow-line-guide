@@ -246,6 +246,54 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 .kgrid{display:inline-flex;align-items:center;gap:6px;font-weight:700}
 .kgrid .seg{display:inline-flex;align-items:center}
 .kgrid b{min-width:2em;text-align:center;font-variant-numeric:tabular-nums}
+
+/* 表示の設定（編集画面の上の帯から開く小さな板） */
+.dispmenu{position:relative}
+.dispmenu summary{list-style:none;cursor:pointer;min-height:40px;display:flex;align-items:center;padding:6px 14px;border:1px solid var(--rule);border-radius:8px;background:var(--sheet);font-weight:700}
+.dispmenu summary::-webkit-details-marker{display:none}
+.dispmenu summary::after{content:"▾";margin-left:6px;color:var(--ink-soft)}
+.dispmenu[open] summary{background:var(--a-bg);border-color:var(--a-line);color:var(--a-ink)}
+.dpanel{position:absolute;z-index:5;top:calc(100% + 6px);right:0;display:flex;flex-direction:column;gap:10px;padding:12px 14px;background:var(--sheet);border:1px solid var(--rule);border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.12);white-space:nowrap}
+
+/* 1366px で上の帯を1段に収める：名前・よみの欄を詰め、間を狭く */
+.ebar{gap:6px 8px}
+.ebar .fld input{width:7.5em}
+.ebar #eYomi{width:6.5em}
+.ebar #eUndo,.ebar #eRedo{min-width:44px;font-size:20px;padding:4px 10px}
+
+/* 名前の吹き出し・引き出し線は 押せない（下の物を選べるように） */
+#editSvg .labels{pointer-events:none}
+
+/* まとめて選ぶ：囲みの四角 */
+#editSvg .band{fill:rgba(44,92,158,.08);stroke:var(--accent);stroke-width:2px;stroke-dasharray:8 6;vector-effect:non-scaling-stroke}
+.peers{font-size:13px;font-weight:700;color:var(--a-ink);background:var(--a-bg);border:1px solid var(--a-line);border-radius:999px;padding:4px 12px}
+
+/* 上の帯と選んだ物の帯：まとまりごとに区切る */
+.egroup,.bgroup{display:inline-flex;align-items:center;gap:6px;padding-left:10px;border-left:1px solid var(--rule)}
+.selbar>.bgroup:first-of-type{border-left:none;padding-left:0}
+#eMore summary{font-size:20px;padding:4px 14px}
+#eMore summary::after{content:none}
+#eMore .dpanel button{width:100%}
+/* パレット：用具・設備／矢印・目印／人 に分けて見出し */
+.pgroup{grid-column:1/-1;margin:8px 0 2px;font-size:13px;font-weight:800;color:var(--ink-soft);border-bottom:1px solid var(--rule-soft);padding-bottom:2px}
+.pgroup:first-child{margin-top:0}
+
+/* まとめて選んだとき：基準の物は橙の実線の枠 */
+#editSvg .it.ref .selbox{stroke:#E07A1F;stroke-dasharray:none!important}
+.mref{font-size:13px;font-weight:700;color:#A4520C}
+.mhead{font-size:12px;font-weight:800;color:var(--ink-soft);margin-top:4px}
+#mAlign .dpanel{left:0;right:auto}
+
+/* パレットのチップ：横長以外は 絵を左に大きく */
+.tiles button.side{flex-direction:row;justify-content:flex-start;gap:6px;padding:2px 6px 2px 2px;min-height:64px;text-align:left}
+.tiles button.side svg{flex:0 0 auto;width:60px;height:60px}
+.tiles button.side span{flex:1;min-width:0}
+/* 選んだ物：点線の枠ではなく 薄い半透明の青を重ねる（基準の物は 薄い橙） */
+#editSvg .selbox{fill:rgba(44,92,158,.22)!important;stroke:none!important}
+#editSvg .it.ref .selbox{fill:rgba(224,122,31,.26)!important;stroke:none!important}
+/* 絵を左に置くので 2列（名前が1行〜2行で読める幅） */
+.tiles{grid-template-columns:repeat(2,1fr)}
+.tiles button.side span{font-size:13px}
 /* ▲ style.css ここまで ▲ */
 </style>
 </head>
@@ -257,8 +305,8 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
     <h1 id="hTitle">机の配置図</h1>
     <div id="hScenes" class="seg hscenes" role="group" aria-label="場所"></div>
     <span class="sp"></span>
-    <button type="button" id="hPrint" class="ghost">まとめて印刷</button>
-    <button type="button" id="hNew" class="ghost">＋ 新しい配置</button>
+    <button type="button" id="hPrint" class="ghost">一括印刷</button>
+    <button type="button" id="hNew" class="ghost">＋ 新規作成</button>
   </header>
   <div id="cards" class="cards"></div>
   <details class="data">
@@ -266,33 +314,33 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
     <div class="row">
       <button type="button" id="dExport">書き出す（JSON）</button>
       <label class="filebtn">読み込む<input type="file" id="dImport" accept="application/json,.json" hidden></label>
-      <button type="button" id="dReset" class="danger">標準の配置に戻す</button>
+      <button type="button" id="dReset" class="danger">初期配置に戻す</button>
     </div>
-    <p class="hint">配置はこの端末のブラウザに保存されます。別の端末へは書き出したファイルで移します。</p>
+    <p class="hint" id="dHint">配置はこの端末のブラウザに保存されます。別の端末へは書き出したファイルで移行します。</p>
   </details>
 </main>
 
 <!-- ② 見せる：モニターに映す -->
 <section id="vShow" class="show" hidden>
   <div class="tools">
-    <button type="button" id="sBack" class="tb" aria-label="もどる">←</button>
+    <button type="button" id="sBack" class="tb" aria-label="戻る">←</button>
     <h2 id="sTitle" class="stitle"></h2>
     <span class="sp"></span>
     <div class="seg" id="sGroup" role="group" aria-label="机の数">
       <button type="button" id="sOne" class="tb">1人</button><button type="button" id="sFour" class="tb">4人</button>
     </div>
     <button type="button" id="sFlip" class="tb" aria-pressed="false">左右反転</button>
-    <button type="button" id="sSides" class="tb" aria-pressed="true">横から見た図</button>
-    <button type="button" id="sChair" class="tb" aria-pressed="false">いす</button>
+    <button type="button" id="sSides" class="tb" aria-pressed="true">側面図</button>
+    <button type="button" id="sChair" class="tb" aria-pressed="false">椅子</button>
     <button type="button" id="sRuby" class="tb" aria-pressed="true">ふりがな</button>
-    <button type="button" id="sText" class="tb" aria-pressed="true" hidden>場所の名前</button>
-    <button type="button" id="sOutline" class="tb" aria-pressed="false">輪郭を太く</button>
-    <button type="button" id="sEdit" class="tb">なおす</button>
+    <button type="button" id="sText" class="tb" aria-pressed="true" hidden>エリア名</button>
+    <button type="button" id="sOutline" class="tb" aria-pressed="false">輪郭を強調</button>
+    <button type="button" id="sEdit" class="tb">編集</button>
     <button type="button" id="sPrint" class="tb">印刷</button>
-    <button type="button" id="sBig" class="primary">大きく映す</button>
+    <button type="button" id="sBig" class="primary">全画面で映す</button>
   </div>
   <p id="bigMsg" class="bigmsg" hidden><ruby>机<rt>つくえ</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね</p>
-  <button type="button" id="bigExit" class="bigexit" hidden aria-label="大きく映すのをやめる">×</button>
+  <button type="button" id="bigExit" class="bigexit" hidden aria-label="全画面を終了">×</button>
   <div class="stage">
     <svg id="stageSvg" preserveAspectRatio="xMidYMid meet" role="img"></svg>
     <aside id="away" class="away"></aside>
@@ -301,37 +349,95 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 
 <!-- ③ つくる・なおす -->
 <section id="vEdit" class="edit" hidden>
+  <!-- 上の帯：①配置そのもの（名前・読み・反転）②場所とグリッド ③見え方 ／ 右：取り消し・映す・その他。毎回は触らない物は ▾ の中 -->
   <header class="ebar">
-    <button type="button" id="eBack">← もどる</button>
-    <label class="fld">活動の名前<input id="eName" maxlength="20"></label>
-    <label class="fld">よみ<input id="eYomi" maxlength="30" placeholder="ひらがな"></label>
-    <label class="chk"><input type="checkbox" id="eFlip">左右反転してよい</label>
-    <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
-    <label class="chk"><input type="checkbox" id="eOutline">輪郭を太く</label>
-    <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">場所の名前</label>
-    <div class="gridsel">グリッド<div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div><label class="chk"><input type="checkbox" id="eGridShow" checked>線を出す</label></div>
+    <button type="button" id="eBack">← 戻る</button>
+    <div class="egroup">
+      <label class="fld">配置名<input id="eName" maxlength="20"></label>
+      <label class="fld">読み<input id="eYomi" maxlength="30" placeholder="ふりがな"></label>
+    </div>
+    <div class="egroup">
+      <button type="button" id="eTurn" title="場所を時計回りに90°回転（置いた物も一緒に回ります）">↻ 場所を回転</button>
+      <details class="dispmenu" id="eGridMenu">
+        <summary>グリッド：<span id="eGridName">標準</span></summary>
+        <div class="dpanel">
+          <div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div>
+          <label class="chk"><input type="checkbox" id="eGridShow" checked>グリッド線を表示</label>
+        </div>
+      </details>
+      <details class="dispmenu" id="eDisp">
+        <summary>表示</summary>
+        <div class="dpanel">
+          <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
+          <label class="chk"><input type="checkbox" id="eOutline">輪郭を強調</label>
+          <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">エリア名</label>
+          <label class="chk" title="映す画面で左右反転してよい"><input type="checkbox" id="eFlip">映す画面で反転を許可</label>
+        </div>
+      </details>
+    </div>
+    <span id="ePeers" class="peers" hidden></span>
     <span class="sp"></span>
-    <span class="seg" role="group" aria-label="取り消し"><button type="button" id="eUndo" title="取り消す（Ctrl+Z）" disabled>↶ 取り消す</button><button type="button" id="eRedo" title="やり直す（Ctrl+Y）" disabled>↷ やり直す</button></span>
+    <span class="seg" role="group" aria-label="取り消し"><button type="button" id="eUndo" title="取り消す（Ctrl+Z）" aria-label="取り消す" disabled>↶</button><button type="button" id="eRedo" title="やり直す（Ctrl+Y）" aria-label="やり直す" disabled>↷</button></span>
     <button type="button" id="eShow" class="primary">映す</button>
-    <button type="button" id="eCopy">複製</button>
-    <button type="button" id="eDel" class="danger">削除</button>
+    <details class="dispmenu" id="eMore">
+      <summary aria-label="その他">⋯</summary>
+      <div class="dpanel">
+        <button type="button" id="eCopy">この配置を複製</button>
+        <button type="button" id="eDel" class="danger">この配置を削除</button>
+      </div>
+    </details>
   </header>
   <div class="ebody">
     <div class="ecanvas">
+      <!-- まとめて選んだとき：①何個・基準 ②揃える▾・大きさ ③複製・削除・解除 -->
+      <div id="multiBar" class="selbar" hidden>
+        <strong id="mCount"></strong>
+        <span class="bgroup">
+          <span id="mRef" class="mref"></span>
+          <button type="button" id="mRefNext" title="揃えるときの基準（橙の枠）を 選んだ物の中で切り替える">基準を変える</button>
+        </span>
+        <span class="bgroup">
+          <details class="dispmenu" id="mAlign">
+            <summary>揃える</summary>
+            <div class="dpanel">
+              <div class="mhead">基準の物に合わせる</div>
+              <div class="seg"><button type="button" data-ref="x" title="基準と同じ x（縦一列）に並べる">縦一列（x を合わせる）</button><button type="button" data-ref="y" title="基準と同じ y（横一列）に並べる">横一列（y を合わせる）</button></div>
+              <div class="mhead">等間隔に並べる</div>
+              <div class="seg"><button type="button" data-al="hdist">横に等間隔</button><button type="button" data-al="vdist">縦に等間隔</button></div>
+              <div class="mhead">端を揃える</div>
+              <div class="seg"><button type="button" data-al="left">左</button><button type="button" data-al="hcenter">左右中央</button><button type="button" data-al="right">右</button></div>
+              <div class="seg"><button type="button" data-al="top">上</button><button type="button" data-al="vcenter">上下中央</button><button type="button" data-al="bottom">下</button></div>
+            </div>
+          </details>
+          <span class="seg" role="group" aria-label="大きさ（まとめて）"><button type="button" id="mSmall" aria-label="まとめて縮小">－</button><button type="button" id="mReal" title="実寸（100%）に戻す">100%</button><button type="button" id="mBig" aria-label="まとめて拡大">＋</button></span>
+        </span>
+        <span class="bgroup">
+          <button type="button" id="mDup">複製</button>
+          <button type="button" id="mDel" class="danger">削除</button>
+          <button type="button" id="mNone">選択を解除</button>
+        </span>
+      </div>
+      <!-- 選んだ物の操作：①種類（状態・判型・色・文字）②形（大きさ・回転・人数・矢印）③そのほか -->
       <div id="selBar" class="selbar" hidden>
         <strong id="selName"></strong>
-        <span id="selState" class="seg"></span>
-        <button type="button" id="selSize"></button>
-        <span id="selColors" class="swatches"></span>
-        <span class="seg" role="group" aria-label="大きさ"><button type="button" id="selSmall" aria-label="小さく">－</button><button type="button" id="selReal">100%</button><button type="button" id="selBig" aria-label="大きく">＋</button></span>
-        <span id="selGrid" class="kgrid" hidden>横<span class="seg"><button type="button" data-k="x" data-d="-1" aria-label="横を1人へらす">－</button><b id="kNx">1</b><button type="button" data-k="x" data-d="1" aria-label="横を1人ふやす">＋</button></span>
-          縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人へらす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人ふやす">＋</button></span><span id="kSum"></span></span>
-        <button type="button" id="selPath" aria-pressed="false" hidden>矢印をのばす</button>
-        <button type="button" id="selRot">回す ↻</button>
-        <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：漢字①"></label>
-        <button type="button" id="selLabel" aria-pressed="false">名前を出す</button>
-        <button type="button" id="selFront">いちばん上へ</button>
-        <button type="button" id="selDel" class="danger">けす</button>
+        <span class="bgroup">
+          <span id="selState" class="seg"></span>
+          <button type="button" id="selSize"></button>
+          <span id="selColors" class="swatches"></span>
+          <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：待機場所"></label>
+        </span>
+        <span class="bgroup">
+          <span class="seg" role="group" aria-label="大きさ"><button type="button" id="selSmall" aria-label="縮小">－</button><button type="button" id="selReal">100%</button><button type="button" id="selBig" aria-label="拡大">＋</button></span>
+          <button type="button" id="selRot">回転 ↻</button>
+          <span id="selGrid" class="kgrid" hidden>横<span class="seg"><button type="button" data-k="x" data-d="-1" aria-label="横を1人減らす">－</button><b id="kNx">1</b><button type="button" data-k="x" data-d="1" aria-label="横を1人増やす">＋</button></span>
+            縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人減らす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人増やす">＋</button></span><span id="kSum"></span></span>
+          <button type="button" id="selPath" aria-pressed="false" hidden>矢印を編集</button>
+        </span>
+        <span class="bgroup">
+          <button type="button" id="selLabel" aria-pressed="false">名称を表示</button>
+          <button type="button" id="selFront">最前面へ</button>
+          <button type="button" id="selDel" class="danger">削除</button>
+        </span>
       </div>
       <div class="ewrap">
         <svg id="editSvg" preserveAspectRatio="xMidYMid meet"></svg>
@@ -340,14 +446,14 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
       <div class="lists" id="eLists">
         <div><h3>左のフック</h3><div id="lHookL" class="chips"></div></div>
         <div><h3>右のフック</h3><div id="lHookR" class="chips"></div></div>
-        <div class="wide"><h3>しまう物</h3><div id="lAway" class="chips"></div></div>
+        <div class="wide"><h3>収納物</h3><div id="lAway" class="chips"></div></div>
       </div>
     </div>
     <div class="palette">
       <div class="tabs" role="tablist">
-        <button type="button" role="tab" data-tab="top" aria-selected="true">机の上</button>
+        <button type="button" role="tab" data-tab="top" aria-selected="true">机上</button>
         <button type="button" role="tab" data-tab="hang" aria-selected="false">フック</button>
-        <button type="button" role="tab" data-tab="away" aria-selected="false">しまう</button>
+        <button type="button" role="tab" data-tab="away" aria-selected="false">収納</button>
       </div>
       <div id="pDest" class="seg dest"></div>
       <div id="pItems" class="tiles"></div>
@@ -357,11 +463,11 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 
 <!-- 印刷：まとめて印刷で刷る配置を選ぶ -->
 <dialog id="pDlg" class="pdlg" aria-labelledby="pDlgT">
-  <h2 id="pDlgT">まとめて印刷</h2>
-  <p class="hint">1つの配置を A4 1枚に刷ります。紙の向きは図の形に合わせて変わります。</p>
-  <div class="row"><button type="button" id="pAll">すべて選ぶ</button><button type="button" id="pNone">すべて外す</button></div>
+  <h2 id="pDlgT">一括印刷</h2>
+  <p class="hint">1つの配置を A4 1枚に印刷します。用紙の向きは図の形に合わせて自動で決まります。</p>
+  <div class="row"><button type="button" id="pAll">すべて選択</button><button type="button" id="pNone">すべて解除</button></div>
   <div id="pList" class="plist"></div>
-  <div class="row end"><button type="button" id="pCancel">やめる</button><button type="button" id="pGo" class="primary">印刷する</button></div>
+  <div class="row end"><button type="button" id="pCancel">キャンセル</button><button type="button" id="pGo" class="primary">印刷する</button></div>
 </dialog>
 <!-- 印刷するページ（印刷の間だけ中身が入る） -->
 <div id="printArea" class="printarea" aria-hidden="true"></div>
@@ -394,18 +500,18 @@ var SCENES = {
     legInset: 28,
     crop: 560,               // 横から見た図は上から 560mm までを描き、脚の下は切る
     grid: [
-      { id: 'coarse', name: 'あらい',   nx: 6,  ny: 4 },    // 約108×113mm
-      { id: 'normal', name: 'ふつう',   nx: 12, ny: 8 },    // 約54×56mm
-      { id: 'fine',   name: 'こまかい', nx: 24, ny: 16 }    // 約27×28mm
+      { id: 'coarse', name: '粗い',   nx: 6,  ny: 4 },    // 約108×113mm
+      { id: 'normal', name: '標準',   nx: 12, ny: 8 },    // 約54×56mm
+      { id: 'fine',   name: '細かい', nx: 24, ny: 16 }    // 約27×28mm
     ],
     msg: '<ruby>机<rt>つくえ</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
   },
   class: {   // 普通教室 7m×9m（利用者指定。標準的な63㎡級）
     id: 'class', name: '教室', title: '教室の配置図', w: 7000, d: 9000,
     grid: [
-      { id: 'coarse', name: 'あらい',   nx: 7,  ny: 9 },    // 1000mm
-      { id: 'normal', name: 'ふつう',   nx: 14, ny: 18 },   // 500mm
-      { id: 'fine',   name: 'こまかい', nx: 28, ny: 36 }    // 250mm
+      { id: 'coarse', name: '粗い',   nx: 7,  ny: 9 },    // 1000mm
+      { id: 'normal', name: '標準',   nx: 14, ny: 18 },   // 500mm
+      { id: 'fine',   name: '細かい', nx: 28, ny: 36 }    // 250mm
     ],
     items: ['cdesk', 'ctable', 'cshelf', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'],
     msg: '<ruby>教室<rt>きょうしつ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
@@ -413,9 +519,9 @@ var SCENES = {
   gym: {     // 体育館 20m×30m（利用者指定）
     id: 'gym', name: '体育館', title: '体育館の配置図', w: 20000, d: 30000,
     grid: [
-      { id: 'coarse', name: 'あらい',   nx: 4,  ny: 6 },    // 5000mm
-      { id: 'normal', name: 'ふつう',   nx: 8,  ny: 12 },   // 2500mm
-      { id: 'fine',   name: 'こまかい', nx: 16, ny: 24 }    // 1250mm
+      { id: 'coarse', name: '粗い',   nx: 4,  ny: 6 },    // 5000mm
+      { id: 'normal', name: '標準',   nx: 8,  ny: 12 },   // 2500mm
+      { id: 'fine',   name: '細かい', nx: 16, ny: 24 }    // 1250mm
     ],
     items: ['gbox', 'gboard', 'gmat', 'gbeam', 'gbar', 'gtora', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'],
     msg: '<ruby>体育館<rt>たいいくかん</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
@@ -423,9 +529,9 @@ var SCENES = {
   field: {   // 運動場 40m×60m（利用者指定）
     id: 'field', name: '運動場', title: '運動場の配置図', w: 40000, d: 60000,
     grid: [
-      { id: 'coarse', name: 'あらい',   nx: 8,  ny: 12 },   // 5000mm
-      { id: 'normal', name: 'ふつう',   nx: 16, ny: 24 },   // 2500mm
-      { id: 'fine',   name: 'こまかい', nx: 32, ny: 48 }    // 1250mm
+      { id: 'coarse', name: '粗い',   nx: 8,  ny: 12 },   // 5000mm
+      { id: 'normal', name: '標準',   nx: 16, ny: 24 },   // 2500mm
+      { id: 'fine',   name: '細かい', nx: 32, ny: 48 }    // 1250mm
     ],
     items: ['gbar', 'funten', 'fsand', 'ftire', 'fgoal', 'fcone', 'fmark', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'],
     msg: '<ruby>運動場<rt>うんどうじょう</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
@@ -436,9 +542,23 @@ var SCENE = SCENES.desk;
 var DESK = SCENE;                 // いまの床（机モードでは机そのもの）
 var GRID_LEVELS = SCENE.grid;
 var K = 1;                       // 文字・線・余白の倍率（床の幅÷机の幅650）
-function useScene(id) {
+function useScene(id, rot) {
   SCENE = SCENES[id] || SCENES.desk;
-  DESK = SCENE; GRID_LEVELS = SCENE.grid; K = SCENE.k || DESK.w / 650;   // k：倍率を幅から決めない場所（広い場の余白が広がりすぎないように）
+  rot = SCENE.desk ? 0 : ((rot | 0) % 360 + 360) % 360;
+  if (rot) SCENE = turnedScene(SCENE, rot);
+  DESK = SCENE; GRID_LEVELS = SCENE.grid; K = SCENE.k || SCENES[SCENE.id].w / 650;   // k：倍率を幅から決めない場所（広い場の余白が広がりすぎないように）
+}
+/* 場所を90°ずつ回した姿（配置ごとの rot）。幅と奥行き・グリッドの縦横を入れかえ、床は描くときに回す（draw.js の floorTopSvg）。
+   置いた物は 回したときに座標と向きを変える（app の turnLayout）。元の場所は SCENE.base */
+var TURN_CACHE = {};
+function turnedScene(sc, rot) {
+  var key = sc.id + '@' + rot;
+  if (TURN_CACHE[key]) return TURN_CACHE[key];
+  var odd = rot % 180 !== 0, t = Object.create(sc);
+  t.base = sc; t.rot = rot;
+  t.w = odd ? sc.d : sc.w; t.d = odd ? sc.w : sc.d;
+  t.grid = sc.grid.map(function (g) { return odd ? { id: g.id, name: g.name, nx: g.ny, ny: g.nx } : g; });
+  return (TURN_CACHE[key] = t);
 }
 /* 椅子：新JIS 3号（座面幅360・座面高340）。机3号（高さ580）と組むので座面は天板の 240 下 */
 var CHAIR = { w: 360, d: 340, gap: 40, seatV: 240, backV: 20 };
@@ -502,6 +622,7 @@ var FLOOR_COLORS = [
 ];
 function floorColor(id) { var f = FLOOR_COLORS.filter(function (x) { return x.id === id; })[0]; return f ? f.c : null; }
 var OUTLINE = false;
+var GRID_ZOOM = 1;   // 編集画面の拡大率（app.js が入れる）。グリッドの線を細く保つのに使う
 var SPACE_TEXT = true;   // 場の床の文字（「北の袖」など区画の名前・階段の行き先・仮の地図）を出すか。方位はいつも出す
 function T(cx, cy, text, fs, fill) {
   return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + MIRROR + ' 1)"><text x="0" y="' + (fs * 0.36) + '" font-size="' + fs +
@@ -535,9 +656,9 @@ function roundTrap(x0, y0, x1, y1, insetTop, insetBot, r, fill, stroke) {   // �
          (stroke ? ' stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"' : '') + '/>';
 }
 /* 状態の呼び名（編集画面のボタン） */
-var STATE_NAMES = { closed: 'とじる', open: 'ひらく', open360: '360°', open360r: '360°右', tablet: 'タブレット', tent: '山がた',
-                    go: 'まっすぐ', zag: 'つづら', flow: 'ながれる', path: 'じゆう',
-                    normal: 'ふつう', hat: 'ぼうし', bib: 'ゼッケン', r1: '1列', r2: '2列', r4: '4列' };
+var STATE_NAMES = { closed: '閉じた状態', open: '開いた状態', open360: '360°', open360r: '360°右', tablet: 'タブレット', tent: '山形',
+                    go: '直線', zag: 'ジグザグ', flow: '流れ', path: '自由',
+                    normal: '通常', hat: '紅白帽', bib: 'ゼッケン', r1: '1列', r2: '2列', r4: '4列' };
 
 var CLEAR = 'rgba(214,236,247,.85)', CLEAR_LINE = 'rgba(58,53,46,.35)';   // 透明なプラスチック
 function ticks(y0, y1, x) {   // 縦の目盛り（1cm＝10mm ごと、5cm ごとに長く）
@@ -559,12 +680,12 @@ function roll360(w, h, right) {
 /* 矢印（動きの説明用）：軸はインクの縁＋色の太線、矢じりは角丸の多角形。
    「ながれる」は SMIL で破線が進行方向に流れる。 */
 var ARROW = '#F2994A';
-function arrowShaft(d, sw) {
+function arrowShaft(d, sw, col) {   // col：矢印の色（省くと ARROW）
   return '<path d="' + d + '" fill="none" stroke="' + INK + '" stroke-width="' + (sw + 80) + '" stroke-linecap="round" stroke-linejoin="round"/>' +
-         '<path d="' + d + '" fill="none" stroke="' + ARROW + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>';
+         '<path d="' + d + '" fill="none" stroke="' + (col || ARROW) + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>';
 }
-function arrowHead(pts) {
-  return '<path d="' + roundPoly(pts, 40) + '" fill="' + ARROW + '" stroke="' + INK + '" stroke-width="60" stroke-linejoin="round"/>';
+function arrowHead(pts, col) {
+  return '<path d="' + roundPoly(pts, 40) + '" fill="' + (col || ARROW) + '" stroke="' + INK + '" stroke-width="60" stroke-linejoin="round"/>';
 }
 function tireRing(r) {   // 中が透けるドーナツ（描く場所の床色にかかわらず正しく見える）
   var ri = r * 0.55;
@@ -923,20 +1044,20 @@ var ITEMS = {
      編集画面の「矢印をのばす」で 先と元に となりの交点を足して のばす・曲げる（draw.js の pathArrowSvg） */
   arrow: { name: '{矢印|やじるし}', kind: 'top', scenes: ['class', 'gym', 'field'],
     colors: ['#F2994A', '#E5484D', '#2F80ED', '#46B97A', '#F2C94C', '#FFFFFF'], states: {
-    go: { w: 800, d: 3000, draw: function (w, h) {
-      return arrowHead([[w * 0.32, h], [w * 0.32, h * 0.44], [0, h * 0.44], [w / 2, 0], [w, h * 0.44], [w * 0.68, h * 0.44], [w * 0.68, h]]);
+    go: { w: 800, d: 3000, draw: function (w, h, col) {
+      return arrowHead([[w * 0.32, h], [w * 0.32, h * 0.44], [0, h * 0.44], [w / 2, 0], [w, h * 0.44], [w * 0.68, h * 0.44], [w * 0.68, h]], col);
     } },
-    zag: { w: 1800, d: 2600, draw: function (w, h) {   // つづら折れ（ジグザグに進む）
-      return arrowShaft('M ' + (w * 0.5) + ' ' + h + ' L ' + (w * 0.85) + ' ' + (h * 0.66) + ' L ' + (w * 0.15) + ' ' + (h * 0.38) + ' L ' + (w * 0.5) + ' ' + (h * 0.17), w * 0.2) +
-             arrowHead([[w * 0.2, h * 0.26], [w * 0.5, 0], [w * 0.8, h * 0.26]]);
+    zag: { w: 1800, d: 2600, draw: function (w, h, col) {   // つづら折れ（ジグザグに進む）
+      return arrowShaft('M ' + (w * 0.5) + ' ' + h + ' L ' + (w * 0.85) + ' ' + (h * 0.66) + ' L ' + (w * 0.15) + ' ' + (h * 0.38) + ' L ' + (w * 0.5) + ' ' + (h * 0.17), w * 0.2, col) +
+             arrowHead([[w * 0.2, h * 0.26], [w * 0.5, 0], [w * 0.8, h * 0.26]], col);
     } },
-    flow: { w: 900, d: 3200, draw: function (w, h) {   // 太い矢印の中を白い破線が進行方向に流れる
-      return '<path d="' + roundPoly([[w * 0.18, h], [w * 0.18, h * 0.4], [0, h * 0.4], [w / 2, 0], [w, h * 0.4], [w * 0.82, h * 0.4], [w * 0.82, h]], 50) + '" fill="' + ARROW + '" stroke="' + INK + '" stroke-width="50" stroke-linejoin="round"/>' +
+    flow: { w: 900, d: 3200, draw: function (w, h, col) {   // 太い矢印の中を白い破線が進行方向に流れる
+      return '<path d="' + roundPoly([[w * 0.18, h], [w * 0.18, h * 0.4], [0, h * 0.4], [w / 2, 0], [w, h * 0.4], [w * 0.82, h * 0.4], [w * 0.82, h]], 50) + '" fill="' + (col || ARROW) + '" stroke="' + INK + '" stroke-width="50" stroke-linejoin="round"/>' +
              '<line x1="' + (w / 2) + '" y1="' + (h * 0.93) + '" x2="' + (w / 2) + '" y2="' + (h * 0.16) + '" stroke="#FFF" stroke-width="' + (w * 0.14) + '" stroke-dasharray="' + (w * 0.22) + ' ' + (w * 0.16) + '" stroke-linecap="round">' +
              '<animate attributeName="stroke-dashoffset" from="' + (w * 0.38) + '" to="0" dur="0.9s" repeatCount="indefinite"/></line>';
     } },
-    path: { w: 800, d: 3000, draw: function (w, h) {   // 交点がまだ無いとき（アイコン）は まっすぐの形
-      return arrowHead([[w * 0.32, h], [w * 0.32, h * 0.44], [0, h * 0.44], [w / 2, 0], [w, h * 0.44], [w * 0.68, h * 0.44], [w * 0.68, h]]);
+    path: { w: 800, d: 3000, draw: function (w, h, col) {   // 交点がまだ無いとき（アイコン）は まっすぐの形
+      return arrowHead([[w * 0.32, h], [w * 0.32, h * 0.44], [0, h * 0.44], [w / 2, 0], [w, h * 0.44], [w * 0.68, h * 0.44], [w * 0.68, h]], col);
     } } } },
 
   kyushoku: { name: '{給食袋|きゅうしょくぶくろ}', kind: 'hang', side: [200, 260], t: 40, color: '#F2B8B5', style: 'string' },
@@ -1075,15 +1196,33 @@ var DEFAULT_LAYOUTS = [
       return t;
     })(),
     hooks: { left: [], right: [] }, away: [] },
-  { id: 'g_tobibako', scene: 'gym', name: '跳び箱の準備', yomi: 'とびばこのじゅんび', flip: true,
+  /* 体育館（場「体育館」の床。フロアは x 6.3〜36.3m・y 0〜25m、東が舞台）。座標は「こまかい」の交点（1.25m） */
+  { id: 'g_tobibako3', scene: 'gym', name: '跳び箱（3コース）', yomi: 'とびばこ', flip: true,
+    top: (function () {
+      var t = [];
+      [15000, 21250, 27500].forEach(function (x, k) {   // 南から北へ助走：待つ列→スタートライン→ロイター板→跳び箱→マット
+        t.push({ item: 'gmat', state: 'hide', x: x, y: 6250, r: 0, size: 'l' });
+        t.push({ item: 'gbox', state: ['dan4', 'dan5', 'dan6'][k], x: x, y: 8750, r: 0, label: k === 0 });
+        t.push({ item: 'gboard', state: 'closed', x: x, y: 10000, r: 0 });
+        t.push({ item: 'arrow', state: 'go', x: x, y: 15000, r: 0 });
+        t.push({ item: 'startline', state: 'closed', x: x, y: 18750, r: 0 });
+        t.push({ item: 'kids', state: 'closed', x: x, y: 22500, r: 0, nx: 2, ny: 4 });
+      });
+      t.push({ item: 'teacher', state: 'closed', x: 10000, y: 10000, r: 0 });
+      return t;
+    })(),
+    hooks: { left: [], right: [] }, away: [] },
+  { id: 'g_shukai', scene: 'gym', name: '体育館の集会', yomi: 'たいいくかんのしゅうかい', flip: false,
     top: [
-      { item: 'gbox',   state: 'dan6', x: 21250, y: 8750,  r: 0 },
-      { item: 'gmat',   state: 'hide', x: 21250, y: 6250,  r: 0, size: 'l' },
-      { item: 'gmat',   state: 'hide', x: 17500, y: 8750,  r: 90 },
-      { item: 'gmat',   state: 'hide', x: 25000, y: 8750,  r: 90 },
-      { item: 'gboard', state: 'closed', x: 21250, y: 10000, r: 0 },
-      { item: 'arrow',  state: 'go',     x: 21250, y: 16250, r: 0, label: true },
-      { item: 'person', state: 'normal', x: 22500, y: 17500, r: 0 }
+      { item: 'podium',     state: 'closed', x: 38750, y: 12500, r: 270 },   // 舞台の上、フロアを向く
+      { item: 'classgroup', state: 'r2', x: 22500, y: 6250,  r: 90, color: 0 },
+      { item: 'classgroup', state: 'r2', x: 22500, y: 10000, r: 90, color: 1 },
+      { item: 'classgroup', state: 'r2', x: 22500, y: 13750, r: 90, color: 2 },
+      { item: 'classgroup', state: 'r2', x: 22500, y: 17500, r: 90, color: 3 },
+      { item: 'teacher',    state: 'closed', x: 31250, y: 12500, r: 0 },
+      { item: 'broadcast',  state: 'closed', x: 32500, y: 2500, r: 0 },
+      { item: 'pipechairs', state: 'c5', x: 11250, y: 5000, r: 270 },    // 来賓席：舞台（東）を向く
+      { item: 'pipechairs', state: 'c5', x: 11250, y: 20000, r: 270 }
     ],
     hooks: { left: [], right: [] }, away: [] },
   { id: 'f_undoukai', scene: 'field', name: 'うんどうかい', yomi: 'うんどうかい', flip: true,
@@ -1194,13 +1333,14 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
 
   /* ---- 人と組 ---- */
   add('classgroup', ALL, { name: '{組|くみ}のまとまり', colors: CLASS_COLORS, states: {   // 2列×16人（0.5m間隔）＋組の名札
-    r2: { w: 1000, d: 8000, draw: function (w, h, col) { return dots(2, 16, w, h, col); } },
-    r4: { w: 2000, d: 4000, draw: function (w, h, col) { return dots(4, 8, w, h, col); } } } });
-  function dots(nx, ny, w, h, col) {
+    r2: { w: 1000, d: 8000, draw: function (w, h, col, p) { return dots(2, 16, w, h, col, p); } },
+    r4: { w: 2000, d: 4000, draw: function (w, h, col, p) { return dots(4, 8, w, h, col, p); } } } });
+  function dots(nx, ny, w, h, col, p) {
     var s = R(0, 0, w, h, 'rgba(255,255,255,.35)', 120, 8, 'rgba(58,53,46,.3)'), r = Math.min(w / nx, h / ny) * 0.36;
     for (var i = 0; i < nx; i++) for (var j = 0; j < ny; j++) s += C((i + 0.5) * w / nx, (j + 0.5) * h / ny, r, col, 6);
     var k = CLASS_COLORS.indexOf(col);
-    return s + tag(w / 2, h / 2, (k >= 0 ? k + 1 : '') + '組', Math.min(w * 0.42, 420));
+    var r = (p && p.r) || 0;   // 名札は回しても立てたまま（読める向き）
+    return s + '<g transform="rotate(' + (-r) + ' ' + w / 2 + ' ' + h / 2 + ')">' + tag(w / 2, h / 2, (k >= 0 ? k + 1 : '') + '組', Math.min(w * 0.42, 420)) + '</g>';
   }
   /* 児童：横 nx 人 × 縦 ny 人（合わせて1〜36人）を 横60cm・縦70cm 間隔で並べる。人数は置いた物ごと（p.nx, p.ny） */
   var KID = { dx: 600, dy: 700, max: 36 };
@@ -1213,6 +1353,7 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
     }
     return s;
   } } } });
+  ITEMS.kids.controls = ['grid'];   // 編集画面に「横・縦の人数」を出す（app.js）
   ITEMS.kids.size = function (p) { var n = kidsN(p); return [n.nx * KID.dx, n.ny * KID.dy]; };
   add('teacher', ALL, { name: '{先生|せんせい}', states: one(450, 550, function (w, h) {   // 人の形＋「先」の名札
     return ELL(w / 2, h * 0.94, w * 0.42, h * 0.05, 'rgba(0,0,0,.16)') + C(w / 2, h * 0.18, w * 0.24, '#5B6B78', 8) +
@@ -1275,7 +1416,35 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
   add('hinadan', ['gym'], { name: 'ひな{壇|だん}', states: one(5400, 1800, function (w, h) {   // 3段（奥ほど高い：上ほど濃い）
     return R(0, 0, w, h / 3, '#9A6B3F', 10, 10) + R(0, h / 3, w, h / 3, '#B8895A', 10, 10) + R(0, 2 * h / 3, w, h / 3, '#D3AE84', 10, 10);
   }) });
+  /* 文字（床に置く ことば：「ここで待つ」「1班」など）。大きさは 文字数と場所の倍率 K で決まる。拡大・縮小もできる */
+  add('words', ['class', 'gym', 'field'], { name: '{文字|もじ}', text: true, colors: ['#FFFFFF', '#F6EDCF', '#DCE8F5', '#FBEEEC'], states: { closed: { w: 600, d: 300, draw: function (w, h, col, p) {
+    var t = (p && p.text) || '文字', fs = h * 0.62;
+    return R(0, 0, w, h, col, h * 0.25, h * 0.06) + T(w / 2, h / 2, t, fs);
+  } } } });
+  ITEMS.words.size = function (p) { var t = (p && p.text) || '文字', fs = 30 * K; return [Math.max(fs * 2, textW(t, fs) + fs), fs * 1.6]; };
+  /* 床に描く物：ほかの物より いつも下に描く（draw.js の drawOrder） */
+  ['startline', 'goalline', 'tape', 'nummark', 'gline', 'fmark'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].floor = true; });
+  /* パレットの分け方（group）：thing＝用具・設備（既定）、mark＝矢印・目印、people＝人 */
+  ['arrow', 'gline', 'tape', 'startline', 'goalline', 'nummark', 'fmark', 'flag', 'words'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].group = 'mark'; });
+  ['person', 'kids', 'classgroup', 'teacher', 'rowdot', 'rowline', 'rowseno'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].group = 'people'; });
 })();
+
+/* ---- 矢印の「じゆう」：交点を結ぶ折れ線 ---- */
+function isPath(p) { return p.item === 'arrow' && stateOf(p) === 'path' && Array.isArray(p.pts) && p.pts.length >= 2; }
+function pathBox(p) {   // p.x,p.y からのずれで、線の太さ・矢じりの分を足した範囲
+  var m = 500 * scaleOf(p), xs = p.pts.map(function (q) { return q[0]; }), ys = p.pts.map(function (q) { return q[1]; });
+  return { x0: Math.min.apply(null, xs) - m, x1: Math.max.apply(null, xs) + m, y0: Math.min.apply(null, ys) - m, y1: Math.max.apply(null, ys) + m };
+}
+function pathArrowSvg(p) {
+  var s = scaleOf(p), P = p.pts, n = P.length, T = P[n - 1], B = P[n - 2];
+  var dx = T[0] - B[0], dy = T[1] - B[1], L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+  var hl = Math.min(750 * s, L * 0.9), hw = 850 * s, bx = T[0] - ux * hl, by = T[1] - uy * hl;
+  var d = 'M ' + P.slice(0, n - 1).map(function (q) { return q[0] + ' ' + q[1]; }).join(' L ') + ' L ' + bx + ' ' + by;
+  var col = colorOf(p);
+  return arrowShaft(d, 300 * s, col) + arrowHead([[bx - uy * hw / 2, by + ux * hw / 2], [T[0], T[1]], [bx + uy * hw / 2, by - ux * hw / 2]], col);
+}
+ITEMS.arrow.custom = function (p) { return isPath(p) ? { box: pathBox(p), draw: function () { return pathArrowSvg(p); } } : null; };
+ITEMS.arrow.controls = ['path'];   // 編集画面に「矢印をのばす」を出す（app.js）
 /* ▲ extra.js ここまで ▲ */
 /* ▼ mesh.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
 /* 体育館の用具の立体（正本）。実寸 mm。
@@ -1610,7 +1779,7 @@ SPACES.forEach(function (sp) {
   var c = lv(5000), n = { nx: c.nx * 2, ny: c.ny * 2 }, f = { nx: c.nx * 4, ny: c.ny * 4 };   // 2倍ずつ（段を変えても交点がずれない）
   SCENES[id] = { id: id, name: name, title: name + 'の配置図', space: sp, w: w, d: d, k: 30,   // 文字・余白の倍率は体育館（幅20m）と同じ。用具の大きさがそろって見える
    
-    grid: [{ id: 'coarse', name: 'あらい', nx: c.nx, ny: c.ny }, { id: 'normal', name: 'ふつう', nx: n.nx, ny: n.ny }, { id: 'fine', name: 'こまかい', nx: f.nx, ny: f.ny }],
+    grid: [{ id: 'coarse', name: '粗い', nx: c.nx, ny: c.ny }, { id: 'normal', name: '標準', nx: n.nx, ny: n.ny }, { id: 'fine', name: '細かい', nx: f.nx, ny: f.ny }],
     items: SPACE_ITEMS.slice(),
     msg: 'この<ruby>形<rt>かたち</rt></ruby>にしてね' };
   SCENE_ORDER.push(id);
@@ -1618,11 +1787,11 @@ SPACES.forEach(function (sp) {
 });
 
 var SPACE_FILL = { deck: '#E4ECF1', water: '#A9D8EC', room: '#EFE9DC', box: '#FFFFFF', stairs: '#FFFFFF' };
-function spaceFloorSvg(sp, bg) {   // bg：床の色（部屋・通路・場の外）。水・舞台・階段の色は変えない
+function spaceFloorSvg(sp, bg, rot) {   // rot：場所を回したときの角度。文字だけ逆に回して読める向きに保つ   // bg：床の色（部屋・通路・場の外）。水・舞台・階段の色は変えない
   var s = '', lab = '', defs = '', WALL = 0.16, INKW = '#3B4650';
   function rc(a, fill, extra) { return '<rect x="' + a.rect[0] + '" y="' + a.rect[1] + '" width="' + a.rect[2] + '" height="' + a.rect[3] + '" fill="' + fill + '"' + (extra || '') + '/>'; }
   function ln(x1, y1, x2, y2, st, sw, extra) { return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + st + '" stroke-width="' + sw + '"' + (extra || '') + '/>'; }
-  function tx(x, y, t, fs, fill, anchor) { return '<text x="' + x + '" y="' + y + '" font-size="' + fs + '" font-weight="800" fill="' + (fill || '#5B6B78') + '" text-anchor="' + (anchor || 'middle') + '" dominant-baseline="middle">' + esc(t) + '</text>'; }
+  function tx(x, y, t, fs, fill, anchor) { return '<text' + (rot ? ' transform="rotate(' + (-rot) + ' ' + x + ' ' + y + ')"' : '') + ' x="' + x + '" y="' + y + '" font-size="' + fs + '" font-weight="800" fill="' + (fill || '#5B6B78') + '" text-anchor="' + (anchor || 'middle') + '" dominant-baseline="middle">' + esc(t) + '</text>'; }
   s += '<rect x="0" y="0" width="' + sp.size[0] + '" height="' + sp.size[1] + '" fill="' + (bg || '#F6F4EE') + '"/>';
   var fillOf = function (k) { return bg && (k === 'room' || k === 'deck') ? bg : SPACE_FILL[k] || '#fff'; };
   var walled = sp.areas.filter(function (a) { return a.kind !== 'mark'; }), done = {};
@@ -1657,7 +1826,7 @@ function spaceFloorSvg(sp, bg) {   // bg：床の色（部屋・通路・場の�
     if (dr.kind !== 'open') [a, b].forEach(function (p) { s += v ? ln(p[0] - k, p[1], p[0] + k, p[1], INKW, WALL) : ln(p[0], p[1] - k, p[0], p[1] + k, INKW, WALL); });
   });
   if (!SPACE_TEXT) lab = '';
-  if (sp.up) lab += tx(sp.size[0], -0.6, '▲ ' + sp.up, 0.8, '#3B4650', 'end');   // 方位は場の外（右上の外がわ）
+  if (sp.up && !rot) lab += tx(sp.size[0], -0.6, '▲ ' + sp.up, 0.8, '#3B4650', 'end');   // 方位は場の外（右上の外がわ）。回したときは topView が描く
   if (SPACE_TEXT && sp.status !== '確認済') lab += tx(0.3, sp.size[1] - 0.6, '※ 仮の地図', 0.7, '#B0392B', 'start');
   return '<g transform="scale(1000)">' + (defs ? '<defs>' + defs + '</defs>' : '') + s + lab + '</g>';
 }
@@ -1679,7 +1848,7 @@ function zoneEdges(b, zs) {
 /* グリッドの4段目「とても細かい」：どの場所も「こまかい」をさらに2倍に割る（段を変えても交点がずれない） */
 Object.keys(SCENES).forEach(function (id) {
   var g = SCENES[id].grid, f = g[g.length - 1];
-  if (f.id !== 'xfine') g.push({ id: 'xfine', name: 'とても細かい', nx: f.nx * 2, ny: f.ny * 2 });
+  if (f.id !== 'xfine') g.push({ id: 'xfine', name: '極細', nx: f.nx * 2, ny: f.ny * 2 });
 });
 if (SCENE) GRID_LEVELS = SCENE.grid;
 /* ▲ scenes.js ここまで ▲ */
@@ -1765,29 +1934,32 @@ function baseSize(p) {
 var SCALE_MIN = 0.25, SCALE_MAX = 4;
 function scaleOf(p) { var s = +p.s; return s > 0 ? Math.min(SCALE_MAX, Math.max(SCALE_MIN, s)) : 1; }
 function itemSize(p) {
-  if (isPath(p)) { var b0 = pathBox(p); return [b0.x1 - b0.x0, b0.y1 - b0.y0]; }
+  var c = ITEMS[p.item].custom && ITEMS[p.item].custom(p);
+  if (c) return [c.box.x1 - c.box.x0, c.box.y1 - c.box.y0];
   var b = baseSize(p), s = scaleOf(p); return [b[0] * s, b[1] * s];
 }
-/* ---- 矢印の「じゆう」：交点を結ぶ折れ線 ---- */
-function isPath(p) { return p.item === 'arrow' && stateOf(p) === 'path' && Array.isArray(p.pts) && p.pts.length >= 2; }
-function pathBox(p) {   // p.x,p.y からのずれで、線の太さ・矢じりの分を足した範囲
-  var m = 500 * scaleOf(p), xs = p.pts.map(function (q) { return q[0]; }), ys = p.pts.map(function (q) { return q[1]; });
-  return { x0: Math.min.apply(null, xs) - m, x1: Math.max.apply(null, xs) + m, y0: Math.min.apply(null, ys) - m, y1: Math.max.apply(null, ys) + m };
+/* ---- 自分で描く物 ----
+   ふつうの物は states の draw(w,h) で「回す前・拡大前の絵」を返し、ここが回転・鏡・拡大をかける。
+   それでは描けない物（立体＝立体のほうを回す、矢印の「じゆう」＝交点を結ぶ）は custom(p) を持ち、
+   { box: p.x,p.y から見た描く範囲（回転・拡大ずみ）, draw: function () { svg } } を返す（null ならふつうに描く）。
+   本体（このファイル・app.js）は custom の中身を知らない。立体は items.js の mesh を持つ物すべてに meshCustom を使う */
+function customOf(p) { var it = ITEMS[p.item]; return it.mesh ? meshCustom(p) : it.custom ? it.custom(p) : null; }
+function meshCustom(p) {
+  var s = scaleOf(p), f = ITEMS[p.item].mesh(p).foot, fb = rotBox(f.W * s, f.L * s, p.r || 0);
+  return { box: { x0: -fb[0] / 2, y0: -fb[1] / 2, x1: fb[0] / 2, y1: fb[1] / 2 },
+           draw: function () { return s !== 1 ? '<g transform="scale(' + s + ')">' + meshSvg(p) + '</g>' : meshSvg(p); } };
 }
-function pathArrowSvg(p) {
-  var s = scaleOf(p), P = p.pts, n = P.length, T = P[n - 1], B = P[n - 2];
-  var dx = T[0] - B[0], dy = T[1] - B[1], L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
-  var hl = Math.min(750 * s, L * 0.9), hw = 850 * s, bx = T[0] - ux * hl, by = T[1] - uy * hl;
-  var d = 'M ' + P.slice(0, n - 1).map(function (q) { return q[0] + ' ' + q[1]; }).join(' L ') + ' L ' + bx + ' ' + by;
-  var prev = ARROW; ARROW = colorOf(p) || ARROW;
-  var out = arrowShaft(d, 300 * s) + arrowHead([[bx - uy * hw / 2, by + ux * hw / 2], [T[0], T[1]], [bx + uy * hw / 2, by - ux * hw / 2]]);
-  ARROW = prev;
-  return out;
+/* 床の上で物が占める範囲（絶対座標） */
+function itemBounds(p) {
+  var c = customOf(p);
+  if (c) return { x0: p.x + c.box.x0, y0: p.y + c.box.y0, x1: p.x + c.box.x1, y1: p.y + c.box.y1 };
+  var wd = itemSize(p), bb = rotBox(wd[0], wd[1], p.r || 0);
+  return { x0: p.x - bb[0] / 2, y0: p.y - bb[1] / 2, x1: p.x + bb[0] / 2, y1: p.y + bb[1] / 2 };
 }
 /* 物の置き方（位置・回転・鏡・拡大）。ドラッグ中の描き直し（app.js）も同じものを使う */
 function itemTransform(p) {
   var s = scaleOf(p);
-  if (ITEMS[p.item].mesh || isPath(p)) return 'translate(' + p.x + ' ' + p.y + ')';   // 立体は立体のほうを、折れ線の矢印は交点のほうを回す
+  if (customOf(p)) return 'translate(' + p.x + ' ' + p.y + ')';   // 自分で描く物は 回転・拡大を自分でかける
   return 'translate(' + p.x + ' ' + p.y + ') rotate(' + (p.r || 0) + ')' + (p.m ? ' scale(-1 1)' : '') + (s !== 1 ? ' scale(' + s + ')' : '');
 }
 /* 回転したときの外接箱の幅・奥行き */
@@ -1797,7 +1969,16 @@ function rotBox(w, d, r) {
 }
 /* 立体の物（../gym/items.js）。床の上で p.r だけ回し（鏡は左右反転）、地図用の見方で描く。
    SVG の rotate で回すと高さの向きまで回ってしまうので、立体のほうを回す */
+/* 立体の絵は 物・状態・判型・向き・鏡 が同じなら同じ。作った絵を覚えておき、同じ物は計算しなおさない
+   （パイプいすを何十脚も並べたときの重さ対策。拡大・縮小は外側の transform でかけるので鍵に入れない） */
+var MESH_CACHE = {}, MESH_CACHE_N = 0;
 function meshSvg(p) {
+  var key = [p.item, stateOf(p), sizeOf(p), p.r || 0, p.m ? 1 : 0].join('|');
+  if (MESH_CACHE[key]) return MESH_CACHE[key];
+  if (++MESH_CACHE_N > 400) { MESH_CACHE = {}; MESH_CACHE_N = 1; }
+  return (MESH_CACHE[key] = meshSvgRaw(p));
+}
+function meshSvgRaw(p) {
   var m = ITEMS[p.item].mesh(p), a = (p.r || 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), mx = p.m ? -1 : 1;
   var faces = m.faces.map(function (f) {
     var q = Object.assign({}, f);
@@ -1819,25 +2000,19 @@ function outlineDefs() {
     '<feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
 }
 function olAttr() { return OUTLINE ? ' filter="url(#' + outlineId() + ')"' : ''; }
+function selBox(b) {
+  return '<rect class="selbox" x="' + (b.x0 - 10 * K) + '" y="' + (b.y0 - 10 * K) + '" width="' + (b.x1 - b.x0 + 20 * K) + '" height="' + (b.y1 - b.y0 + 20 * K) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>';
+}
 function drawTopItem(p, i, cls) {
-  if (isPath(p)) {
-    var pb = pathBox(p);
-    return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="' + itemTransform(p) + '"><g' + olAttr() + '>' + pathArrowSvg(p) + '</g>' +
-      (cls === 'sel' ? '<rect class="selbox" x="' + pb.x0 + '" y="' + pb.y0 + '" width="' + (pb.x1 - pb.x0) + '" height="' + (pb.y1 - pb.y0) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>' : '') + '</g>';
-  }
-  if (ITEMS[p.item].mesh) {
-    var fw = itemSize(p), fb = rotBox(fw[0], fw[1], p.r || 0);
-    var ms = scaleOf(p);
-    return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="' + itemTransform(p) + '"><g' + olAttr() + (ms !== 1 ? ' transform="scale(' + ms + ')"' : '') + '>' + meshSvg(p) + '</g>' +
-      (cls === 'sel' ? '<rect class="selbox" x="' + (-fb[0] / 2 - 10 * K) + '" y="' + (-fb[1] / 2 - 10 * K) + '" width="' + (fb[0] + 20 * K) + '" height="' + (fb[1] + 20 * K) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>' : '') + '</g>';
-  }
+  var head = '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="' + itemTransform(p) + '">';
+  var c = customOf(p);
+  if (c) return head + '<g' + olAttr() + '>' + c.draw() + '</g>' + (/\bsel\b/.test(cls) ? selBox(c.box) : '') + '</g>';
   var st = ITEMS[p.item].states[stateOf(p)], wd = baseSize(p), w = wd[0], d = wd[1], k = K / scaleOf(p);   // k：選ぶ枠の線は拡大しても同じ太さ
   MIRROR = p.m ? -1 : 1;
-  var arrowPrev = ARROW; if (p.item === 'arrow') ARROW = colorOf(p) || ARROW;   // 矢印の色
   var body = st.draw(w, d, colorOf(p), p);
-  MIRROR = 1; ARROW = arrowPrev;
-  return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="' + itemTransform(p) + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')"><g' + olAttr() + '>' + body + '</g>' +
-         (cls === 'sel' ? '<rect class="selbox" x="' + (-10 * k) + '" y="' + (-10 * k) + '" width="' + (w + 20 * k) + '" height="' + (d + 20 * k) + '" rx="' + 10 * k + '" style="stroke-width:' + 6 * k + ';stroke-dasharray:' + 18 * k + ' ' + 10 * k + '"/>' : '') + '</g></g>';
+  MIRROR = 1;
+  return head + '<g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')"><g' + olAttr() + '>' + body + '</g>' +
+         (/\bsel\b/.test(cls) ? '<rect class="selbox" x="' + (-10 * k) + '" y="' + (-10 * k) + '" width="' + (w + 20 * k) + '" height="' + (d + 20 * k) + '" rx="' + 10 * k + '" style="stroke-width:' + 6 * k + ';stroke-dasharray:' + 18 * k + ' ' + 10 * k + '"/>' : '') + '</g></g>';
 }
 function iconSvg(itemId, size) {   // しまう物・編集のパレット用の小さな絵
   var it = ITEMS[itemId], w, d, body;
@@ -1932,8 +2107,17 @@ function labelsSvg(labels, ruby) {
 
 /* 場所の床。机以外は平らな床に、その場所の目印の線を入れる */
 function floorTopSvg(bg) {
+  if (SCENE.rot) {   // 回した場所：元の向きで描いて 回す。文字は読める向きに戻す（spaceFloorSvg の rot）
+    var b = SCENE.base, r = SCENE.rot, keep = SCENE;
+    var tf = r === 90 ? 'translate(' + b.d + ' 0) rotate(90)' : r === 180 ? 'translate(' + b.w + ' ' + b.d + ') rotate(180)' : 'translate(0 ' + b.w + ') rotate(270)';
+    SCENE = DESK = b;
+    try { return '<g transform="' + tf + '">' + floorTopSvgIn(bg, r) + '</g>'; } finally { SCENE = DESK = keep; }
+  }
+  return floorTopSvgIn(bg, 0);
+}
+function floorTopSvgIn(bg, rot) {
   var w = DESK.w, d = DESK.d;
-  if (SCENE.space) return spaceFloorSvg(SCENE.space, bg);   // 場（assets/spaces）の床。apps/haichi/src/scenes.js
+  if (SCENE.space) return spaceFloorSvg(SCENE.space, bg, rot);   // 場（assets/spaces）の床。apps/haichi/src/scenes.js
   if (SCENE.id === 'class') {
     // 木の床＋前の壁と黒板（上）＋後ろの壁の帯（下）
     return R(0, 0, w, d, bg || '#EBDDBE', 0, 30 * K, '#B99F72') +
@@ -1957,6 +2141,18 @@ function floorTopSvg(bg) {
   return deskTopSvg();
 }
 
+/* 描く順：① 床に描く物（ライン・テープなど ITEMS の floor）→ ② 立体（奥＝上から順。手前の物が上に重なる）→ ③ そのほか。
+   ①③の中は置いた順（「いちばん上へ」で後ろへ回す）。data-i は置いた順の番号のまま */
+function drawOrder(top) {
+  var idx = top.map(function (_, i) { return i; });
+  var layer = function (p) { var it = ITEMS[p.item]; return it.floor ? 0 : it.mesh ? 1 : 2; };
+  return idx.sort(function (a, b) {
+    var pa = top[a], pb = top[b], la = layer(pa), lb = layer(pb);
+    if (la !== lb) return la - lb;
+    if (la === 1 && pa.y !== pb.y) return pa.y - pb.y;
+    return a - b;
+  });
+}
 /* 上から見た机1台（場所では床一面）。返す box は描いた範囲（ラベル込み） */
 function topView(lay, o) {
   var sides = o.sides || ['L', 'R', 'T'].concat(o.chair ? [] : ['B']);
@@ -1964,12 +2160,17 @@ function topView(lay, o) {
   var lab = o.noLabels ? { labels: [], margin: { L: 0, R: 0, T: 0, B: 0 } } : layoutLabels(lay.top, sides, o.ruby, bottom);
   var s = floorTopSvg(SCENE.desk ? null : floorColor(lay.bg)) + (o.chair ? chairTopSvg() : '') + outlineDefs();
   var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
-  lay.top.forEach(function (p, i) {
-    s += drawTopItem(p, i, o.sel === i ? 'sel' : '');
-    var wd = itemSize(p), bb = rotBox(wd[0], wd[1], p.r || 0);
-    ib.x0 = Math.min(ib.x0, p.x - bb[0] / 2); ib.x1 = Math.max(ib.x1, p.x + bb[0] / 2);
-    ib.y0 = Math.min(ib.y0, p.y - bb[1] / 2); ib.y1 = Math.max(ib.y1, p.y + bb[1] / 2);
+  drawOrder(lay.top).forEach(function (i) {
+    var p = lay.top[i];
+    s += drawTopItem(p, i, ((Array.isArray(o.sel) ? o.sel.indexOf(i) >= 0 : o.sel === i) ? 'sel' : '') + (o.ref === i ? ' ref' : ''));   // ref：揃えるときの基準の物   // o.sel：番号 か 番号の並び（まとめて選んだとき）
+    var bb = itemBounds(p);
+    ib.x0 = Math.min(ib.x0, bb.x0); ib.x1 = Math.max(ib.x1, bb.x1);
+    ib.y0 = Math.min(ib.y0, bb.y0); ib.y1 = Math.max(ib.y1, bb.y1);
   });
+  if (SCENE.rot && SCENE.space && SCENE.space.up) {   // 回した場所の方位：もとの「上」が いまどちらを向くか
+    var arrows = ['▲', '▶', '▼', '◀'][SCENE.rot / 90];
+    s += '<text x="' + DESK.w + '" y="' + (-600) + '" font-size="800" font-weight="800" fill="#3B4650" text-anchor="end" dominant-baseline="middle">' + arrows + ' ' + esc(SCENE.space.up) + '</text>';
+  }
   if (o.grid) s += gridSvg(o.grid);
   s += labelsSvg(lab.labels, o.ruby);
   var m = lab.margin, E = 20 * K;
@@ -2171,15 +2372,189 @@ function snap(x, y, level) {
   return { x: i * sx, y: j * sy };
 }
 function gridSvg(level) {
-  var m = gridMargin(), ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny, sw = 2 * K;
-  var s = '<g class="grid">';
+  var m = gridMargin(), ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny, z = GRID_ZOOM, sw = 2 * K / z;
+  var s = '<g class="grid" data-sw="' + 2 * K + '">';   // 線の太さ・丸の大きさは 編集画面の拡大率（GRID_ZOOM）で割る：拡大しても画面上は同じ太さ
   for (var i = -ki; i <= level.nx + ki; i++) s += '<line x1="' + i * DESK.w / level.nx + '" y1="' + (-m.y) + '" x2="' + i * DESK.w / level.nx + '" y2="' + (DESK.d + m.y) + '" style="stroke-width:' + sw + '"/>';
   for (var j = -kj; j <= level.ny + kj; j++) s += '<line x1="' + (-m.x) + '" y1="' + j * DESK.d / level.ny + '" x2="' + (DESK.w + m.x) + '" y2="' + j * DESK.d / level.ny + '" style="stroke-width:' + sw + '"/>';
-  gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 24 ? 2.5 : level.nx > 12 ? 4 : 6) * K + '" style="stroke-width:' + sw + '"/>'; });
+  gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 24 ? 2.5 : level.nx > 12 ? 4 : 6) * K / z + '" data-r="' + (level.nx > 24 ? 2.5 : level.nx > 12 ? 4 : 6) * K + '" style="stroke-width:' + sw + '"/>'; });
   return s + '</g>';
 }
 /* ▲ draw.js ここまで ▲ */
-/* ▼ app.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* ▼ store.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* ===== 保存のしかた（2通り）=====
+   同じ1ファイルが どちらでも動く。GAS（google.script.run がある）なら「共有」、ないなら「この端末だけ」。
+   ・この端末だけ（HTML単体版）：localStorage に まるごと保存。
+   ・共有（GAS版）：配置は スプレッドシートの1行＝1つの配置（gas/Code.gs）。表示の設定・最近使った順は 端末ごと。
+     複数人が同時に直してもよい：
+       - 直すたびに少し待って（SYNC_WAIT）変わった配置だけを送る。送るときは「もとにした版（ver）」を添える。
+       - だれかが先に書いていたら（版がちがう）、3方向でまぜる（merge3）：もと・自分・相手 を物（u）ごとにくらべ、
+         自分が変えた所は自分、相手が変えた所は相手、両方が変えた物は自分を優先する。
+       - 数秒ごと（POLL_MS）に ほかの人の変更を取りに行き、同じようにまぜて画面を描き直す。
+       - だれが同じ配置を開いているかも このときに受け取る（編集中の名前を出す）。 */
+var SYNC_WAIT = 700, POLL_MS = 4000;
+
+/* 物の名前札 u：まぜるときに「同じ物」を見分けるための短い id。無い物・重なった物には つけ直す */
+function newUid() { return Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3); }
+function ensureUids(l) {
+  var seen = {};
+  (l.top || []).forEach(function (p) { if (!p.u || seen[p.u]) p.u = newUid(); seen[p.u] = 1; });
+  return l;
+}
+
+/* 3方向でまぜる。base：自分と相手が もとにした版、mine：自分、theirs：相手（いまの保存）。どれも配置（JSON の物） */
+function merge3(base, mine, theirs) {
+  var js = JSON.stringify, out = {};
+  var keys = {};
+  [base, mine, theirs].forEach(function (o) { Object.keys(o || {}).forEach(function (k) { if (k !== 'top') keys[k] = 1; }); });
+  Object.keys(keys).forEach(function (k) {   // 配置そのものの項目（名前・床の色・フック…）：自分が変えていれば自分
+    var b = base ? base[k] : undefined, m = mine[k], t = theirs[k];
+    var v = js(m) !== js(b) ? m : t;
+    if (v !== undefined) out[k] = v;
+  });
+  var byU = function (l) { var o = {}; ((l && l.top) || []).forEach(function (p) { o[p.u] = p; }); return o; };
+  var B = byU(base), M = byU(mine), T = byU(theirs), top = [];
+  (theirs.top || []).forEach(function (t) {   // 相手の並び順を土台に
+    var u = t.u, b = B[u], m = M[u];
+    if (b && !m) { if (js(t) !== js(b)) top.push(t); return; }   // 自分が消した：相手も変えていなければ消す
+    top.push(m && js(m) !== js(b) ? m : t);
+  });
+  (mine.top || []).forEach(function (m) {
+    var u = m.u;
+    if (T[u]) return;
+    if (!B[u]) { top.push(m); return; }                          // 自分が足した
+    if (js(m) !== js(B[u])) top.push(m);                          // 相手が消したが 自分が変えていた：残す
+  });
+  out.top = top;
+  return out;
+}
+
+var Store = (function () {
+  var gas = typeof google !== 'undefined' && google.script && google.script.run;
+  if (!gas) return {   // ===== この端末だけ =====
+    kind: 'local',
+    load: function () { try { return localStorage.getItem(KEY); } catch (e) { return null; } },
+    save: function (s) { localStorage.setItem(KEY, JSON.stringify(s)); },
+    start: function () {}
+  };
+
+  /* ===== 共有（GAS）===== */
+  var base = {}, timer = null, busy = false, again = false, since = 0, editors = {}, me = '', onRemote = null, ready = false;
+  function LOCAL() { return KEY + '.mine'; }   // 端末ごとの物（表示の設定・最近使った順）と、すぐ開くための写し（KEY は app/state.js）
+  // この端末の印（メールが取れない設定のとき、だれかを区別するのに使う）
+  var CID = (function () { try { var c = localStorage.getItem(KEY + '.cid'); if (!c) { c = Math.random().toString(36).slice(2, 6); localStorage.setItem(KEY + '.cid', c); } return c; } catch (e) { return Math.random().toString(36).slice(2, 6); } })();
+  function call(name, args, ok, ng) {
+    args = args.concat([CID]);
+    var r = google.script.run.withSuccessHandler(ok).withFailureHandler(ng || function (e) { toast('共有の保存に失敗しました：' + (e && e.message || e)); });
+    r[name].apply(r, args);
+  }
+  function pending() {   // 送っていない変更：版つきの配置ごと
+    var out = [], now = {};
+    S.layouts.forEach(function (l) { ensureUids(l); now[l.id] = 1; var j = JSON.stringify(l); if (!base[l.id] || base[l.id].json !== j) out.push({ id: l.id, json: j, ver: base[l.id] ? base[l.id].ver : 0 }); });
+    Object.keys(base).forEach(function (id) { if (!now[id]) out.push({ id: id, del: true, ver: base[id].ver }); });
+    return out;
+  }
+  function sync() {
+    timer = null;
+    if (!ready) return;
+    if (busy) { again = true; return; }
+    var list = pending(); if (!list.length) return;
+    busy = true;
+    call('haichiPut', [list], function (res) {
+      busy = false;
+      var merged = false;
+      res.forEach(function (r, k) {
+        var sent = list[k];
+        if (r.ok) { if (r.del) delete base[sent.id]; else base[sent.id] = { json: sent.json, ver: r.ver }; return; }
+        // 先にだれかが書いていた：まぜて もう一度送る
+        merged = take(r.row, true) || merged;
+        if (uiBusy()) merged = true;   // 取っておいた：あとで送り直す
+      });
+      if (merged || again) { again = false; schedule(); }
+      saveMine();
+    }, function (e) { busy = false; toast('共有の保存に失敗しました（あとで送り直します）'); schedule(3000); });
+  }
+  function schedule(ms) { if (timer) clearTimeout(timer); timer = setTimeout(sync, ms || SYNC_WAIT); }
+  /* 相手の版 row（{id, json, ver, by, del}）を取り込む。自分に送っていない変更があれば まぜる。描き直しが要れば true */
+  function applyRemote(row, conflict) {
+    if (Store.before) Store.before();
+    var i = S.layouts.findIndex(function (l) { return l.id === row.id; }), local = i >= 0 ? S.layouts[i] : null;
+    var b = base[row.id], localJ = local ? JSON.stringify(local) : null, dirty = b ? localJ !== b.json : !!local;
+    if (row.del) {
+      if (local && !dirty) S.layouts.splice(i, 1);
+      if (local && dirty) { delete base[row.id]; return true; }   // 自分が直している途中：自分の分を新しく送る
+      delete base[row.id];
+      return !!local;
+    }
+    // 相手の版は 読み替え（sanitize）をかけた形で基準にする。生の JSON のままだと 形のちがいだけで「変わった」と見て
+    // 送り合いが止まらなくなる
+    var theirs = sanitize({ layouts: [JSON.parse(row.json)] }).layouts[0];
+    if (!theirs) return false;
+    var next = local && dirty ? merge3(b ? JSON.parse(b.json) : null, local, theirs) : theirs;
+    base[row.id] = { json: JSON.stringify(theirs), ver: row.ver };
+    var clean = next === theirs ? theirs : sanitize({ layouts: [next] }).layouts[0];
+    if (!clean) return false;
+    if (local) {   // 同じ物（配置の入れ物）を書きかえる：cur がこれを指していても そのまま使える
+      Object.keys(local).forEach(function (k) { delete local[k]; });
+      Object.keys(clean).forEach(function (k) { local[k] = clean[k]; });
+    } else {
+      S.layouts.push(clean);
+      if (conflict) toast('「' + clean.name + '」は他の先生が編集していたため、削除せずに残しました');
+    }
+    if (onRemote) onRemote(row.id, row.by, conflict);
+    return true;
+  }
+  /* 引きずっている間に届いた相手の版は 取っておき、離したときにまとめて取り込む（動かした分が消えないように） */
+  var held = [];
+  function uiBusy() { return (typeof drag !== 'undefined' && drag) || (typeof pan !== 'undefined' && pan); }
+  function take(row, conflict) {
+    if (uiBusy()) { held.push([row, conflict]); return false; }
+    return applyRemote(row, conflict);
+  }
+  function flushHeld() {
+    if (!held.length || uiBusy()) return;
+    var h = held; held = []; var any = false;
+    h.forEach(function (x) { if (x[0].del || !base[x[0].id] || base[x[0].id].ver < x[0].ver || x[1]) any = applyRemote(x[0], x[1]) || any; });
+    if (any) { saveMine(); schedule(); }
+  }
+  function poll() {
+    if (!ready || document.hidden || busy || (typeof drag !== 'undefined' && drag) || (typeof pan !== 'undefined' && pan)) return;   // 引きずっている間は取りに行かない
+    call('haichiChanges', [since, (typeof cur !== 'undefined' && cur && !$('vEdit').hidden) ? cur.id : ''], function (res) {
+      since = res.now - 15000; editors = res.editors || {}; me = res.me || me;   // 少し前から取り直す：書き込みの途中に読んだ行を取りこぼさない（重なりは版で捨てる）
+      var any = false;
+      res.rows.forEach(function (row) { if (!base[row.id] || base[row.id].ver < row.ver || (row.del && base[row.id])) any = take(row, false) || any; });
+      if (any) { saveMine(); schedule(); }
+      if (Store.onPresence) Store.onPresence(editors);
+    }, function () {});
+  }
+  function saveMine() { try { localStorage.setItem(LOCAL(), JSON.stringify({ prefs: S.prefs, recent: S.recent, layouts: S.layouts })); } catch (e) {} }
+  return {
+    kind: 'gas',
+    load: function () { try { return localStorage.getItem(LOCAL()); } catch (e) { return null; } },   // まず端末の写しで すぐ開く
+    save: function (s) { saveMine(); schedule(); },
+    flush: flushHeld,   // 引きずり終わり（pointer.js）に呼ぶ
+    editors: function (id) { return (editors[id] || []).filter(function (n) { return n !== me; }); },
+    /* 起動：共有の配置をすべて受け取り、写しと入れかえる。初めて（空）なら 標準の配置を送る */
+    start: function (done, remote) {
+      onRemote = remote;
+      call('haichiList', [], function (res) {
+        since = res.now - 15000; me = res.me || '';
+        if (!res.rows.length) {
+          S.layouts.forEach(ensureUids);
+          ready = true; schedule(10); done(); setInterval(poll, POLL_MS); return;
+        }
+        base = {};
+        var layouts = [];
+        res.rows.forEach(function (r) { if (r.del) return; base[r.id] = { json: r.json, ver: r.ver }; layouts.push(JSON.parse(r.json)); });
+        S.layouts = sanitize({ layouts: layouts }).layouts;
+        S.layouts.forEach(function (l) { if (base[l.id]) base[l.id].json = JSON.stringify(l); });   // 読み替え（sanitize）の結果を基準にする
+        ready = true; saveMine(); done();
+        setInterval(poll, POLL_MS);
+      }, function (e) { toast('共有の配置を読めません：' + (e && e.message || e)); done(); });
+    }
+  };
+})();
+/* ▲ store.js ここまで ▲ */
+/* ▼ state.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
 /* ===== 画面と保存 ===== */
 var KEY = 'haichi.v1';   // homeroom-tools の机の配置図（desk-layout.v1）とは別の保存。移すときは書き出し→読み込み
 var $ = function (id) { return document.getElementById(id); };
@@ -2187,14 +2562,31 @@ var $ = function (id) { return document.getElementById(id); };
 /* ---- 保存：この端末のブラウザだけ。読めない環境では標準の配置で動く ---- */
 function clone(x) { return JSON.parse(JSON.stringify(x)); }
 function freshState() {
-  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk', outline: false, spaceText: true } };
+  return { ver: SAVE_VER, layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk', outline: false, spaceText: true } };
+}
+/* 保存の版。ver が古ければ ここで読み替える（版を上げたら手順を1つ足す）
+   2：体育館の標準配置「跳び箱の準備」（古い床に合わせたもの）を捨て、新しい標準配置を足す */
+var SAVE_VER = 2;
+function migrate(s) {
+  var v = s.ver || 1;
+  if (v < 2) {
+    s.layouts = s.layouts.filter(function (l) { return l.id !== 'g_tobibako'; });
+    s.recent = (s.recent || []).filter(function (id) { return id !== 'g_tobibako'; });
+    DEFAULT_LAYOUTS.forEach(function (l) { if (/^g_(tobibako3|shukai)$/.test(l.id) && !s.layouts.some(function (x) { return x.id === l.id; })) s.layouts.push(clone(l)); });
+  }
+  s.ver = SAVE_VER;
+  return s;
 }
 function load() {
   try {
-    var raw = localStorage.getItem(KEY);
+    var raw = Store.load();
     if (raw) {
       var s = JSON.parse(raw);
-      if (s && Array.isArray(s.layouts)) return sanitize(s);
+      if (s && Array.isArray(s.layouts)) {
+        var old = s.ver || 1, out = sanitize(migrate(s));
+        if (old < SAVE_VER && Store.kind === 'local') try { Store.save(out); } catch (e2) {}   // 読み替えた結果をすぐ残す
+        return out;
+      }
     }
   } catch (e) { /* 読めなければ標準へ */ }
   return freshState();
@@ -2212,12 +2604,14 @@ function sanitize(s) {
     return {
       id: String(l.id), name: String(l.name || '無題'), yomi: String(l.yomi || ''), flip: l.flip !== false, scene: sc,
       bg: sc !== 'desk' && floorColor(l.bg) ? l.bg : undefined,
+      rot: sc !== 'desk' && [90, 180, 270].indexOf(+l.rot) >= 0 ? +l.rot : undefined,   // 場所の向き（90°ずつ）
       top: l.top.filter(function (p) { return ok(p.item); }).map(function (p) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
                  text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined,
-                 nx: ITEMS[p.item].grid ? kidsN(p).nx : undefined, ny: ITEMS[p.item].grid ? kidsN(p).ny : undefined,
-                 pts: p.item === 'arrow' && Array.isArray(p.pts) ? p.pts.filter(function (q) { return Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]); }).map(function (q) { return [+q[0], +q[1]]; }) : undefined, s: scaleOf(p) !== 1 ? scaleOf(p) : undefined };
+                 u: p.u ? String(p.u) : undefined,
+                 nx: hasCtl(p.item, 'grid') ? kidsN(p).nx : undefined, ny: hasCtl(p.item, 'grid') ? kidsN(p).ny : undefined,
+                 pts: hasCtl(p.item, 'path') && Array.isArray(p.pts) ? p.pts.filter(function (q) { return Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]); }).map(function (q) { return [+q[0], +q[1]]; }) : undefined, s: scaleOf(p) !== 1 ? scaleOf(p) : undefined };
       }),
       hooks: sc === 'desk' ? {
         left: ((l.hooks || {}).left || []).filter(isHang).map(function (h) { return { item: h.item, label: !!h.label }; }),
@@ -2227,12 +2621,18 @@ function sanitize(s) {
         .map(function (a) { return { item: a.item, place: a.place, label: !!a.label }; }) : []
     };
   });
-  return { layouts: layouts, recent: Array.isArray(s.recent) ? s.recent.map(String) : [], prefs: Object.assign(base.prefs, s.prefs || {}) };
+  return { ver: SAVE_VER, layouts: layouts, recent: Array.isArray(s.recent) ? s.recent.map(String) : [], prefs: Object.assign(base.prefs, s.prefs || {}) };
 }
+/* 物が持つ 編集画面の追加の操作（ITEMS の controls）：'grid'＝横・縦の人数、'path'＝矢印をのばす */
+function hasCtl(id, c) { return ((ITEMS[id] || {}).controls || []).indexOf(c) >= 0; }
+/* 場所を一時的に切り替えて描く（終わったら 元の場所に戻す。戻し忘れを防ぐ） */
+function inScene(id, fn, rot) { var keep = SCENE.id, kr = SCENE.rot || 0; useScene(id, rot); try { return fn(); } finally { useScene(keep, kr); } }
+function inLayout(l, fn) { return inScene(scOf(l), fn, l.rot); }   // 配置の場所（回した向きも）で描く
+function useLayout(l) { useScene(scOf(l), l && l.rot); }
 function isHang(h) { return h && ITEMS[h.item] && ITEMS[h.item].kind === 'hang'; }
 function save() {
   record();
-  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('この端末には保存できません（書き出しで残してください）'); }
+  try { Store.save(S); } catch (e) { toast('この端末に保存できません（書き出しで保存してください）'); }
 }
 
 var S = load();
@@ -2244,16 +2644,25 @@ SPACE_TEXT = S.prefs.spaceText !== false;   // 場の床の文字（端末に保
 var cur = null;          // 表示・編集中の配置
 var flip = false;
 var big = false;         // 大きく映す（全画面・真上からの図だけ・見出し）。その場かぎり        // 左右反転はその場かぎり（保存しない）
-var sel = -1;            // 編集で選んでいる机の上の物
+var sel = -1;            // 編集で選んでいる机の上の物（まとめて選んだときは 最後に選んだ物）
+var msel = [];           // まとめて選んだ物の番号（2つ以上のときだけ使う。1つなら sel だけ）
+function selected() { return msel.length > 1 ? msel.slice() : sel >= 0 ? [sel] : []; }
+function selectOnly(i) { sel = i; msel = []; }
+function removeItems(ix) {   // 番号の大きい順に消す（前の番号がずれないように）
+  ix.slice().sort(function (a, b) { return b - a; }).forEach(function (i) { cur.top.splice(i, 1); });
+  sel = -1; msel = [];
+}
 var tab = 'top', dest = { hang: 'left', away: 'tray' };
 
 function byId(id) { return S.layouts.filter(function (l) { return l.id === id; })[0]; }
+/* ふりがなは「映す」画面（児童が見る）だけ。ほかの画面（先生が使う）は付けない。RUBY は renderShow の間だけ真 */
+var RUBY = false;
 function rubyHtml(name, yomi) {
-  return yomi && S.prefs.ruby ? '<ruby>' + esc(name) + '<rt>' + esc(yomi) + '</rt></ruby>' : esc(name);
+  return yomi && RUBY && S.prefs.ruby ? '<ruby>' + esc(name) + '<rt>' + esc(yomi) + '</rt></ruby>' : esc(name);
 }
 function itemNameHtml(name) {
   return parseName(name).map(function (s) {
-    return s.r && S.prefs.ruby ? '<ruby>' + esc(s.b) + '<rt>' + esc(s.r) + '</rt></ruby>' : esc(s.b);
+    return s.r && RUBY && S.prefs.ruby ? '<ruby>' + esc(s.b) + '<rt>' + esc(s.r) + '</rt></ruby>' : esc(s.b);
   }).join('');
 }
 var toastTimer;
@@ -2265,7 +2674,9 @@ function go(view) {
   ['vHome', 'vShow', 'vEdit'].forEach(function (v) { $(v).hidden = v !== view; });
   window.scrollTo(0, 0);
 }
-
+/* ▲ state.js ここまで ▲ */
+/* ▼ home.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* 配置図の画面 ①：えらぶ（活動カード・場所・データの書き出し） */
 /* ---- ① えらぶ ---- */
 function orderedLayouts() {
   var rank = function (l) { var i = S.recent.indexOf(l.id); return i < 0 ? 1e6 + S.layouts.indexOf(l) : i; };
@@ -2280,16 +2691,14 @@ function renderHome() {
   var html = '';
   orderedLayouts().forEach(function (l) {
     if (scOf(l) !== scene) return;
-    useScene(scOf(l));
-    var t = topView(l, { noLabels: true });
+    var t = inLayout(l, function () { return topView(l, { noLabels: true }); });
     var b = t.box;
     html += '<div class="card"><button type="button" class="go" data-id="' + esc(l.id) + '">' +
       '<svg viewBox="' + (b.x0) + ' ' + (b.y0) + ' ' + (b.x1 - b.x0) + ' ' + (b.y1 - b.y0) + '" aria-hidden="true">' + t.svg + '</svg>' +
       '<span class="nm">' + rubyHtml(l.name, l.yomi) + '</span></button>' +
-      '<button type="button" class="fix" data-fix="' + esc(l.id) + '">なおす</button></div>';
+      '<button type="button" class="fix" data-fix="' + esc(l.id) + '">編集</button></div>';
   });
-  useScene(scene);
-  $('cards').innerHTML = html || '<p class="hint">この場所の配置はまだありません。「＋ 新しい配置」で作れます。</p>';
+  $('cards').innerHTML = html || '<p class="hint">この場所の配置はまだありません。「＋ 新規作成」で作成できます。</p>';
   go('vHome');
 }
 $('hScenes').addEventListener('click', function (e) {
@@ -2323,18 +2732,20 @@ $('dImport').onchange = function (e) {
       n++;
     });
     save(); renderHome(); toast(n + '件の配置を読み込みました');
-  }).catch(function () { toast('このファイルは読み込めません'); });
+  }).catch(function () { toast('このファイルは読み込めません（形式が違います）'); });
   e.target.value = '';
 };
 $('dReset').onclick = function () {
   if (!confirm('つくった配置と直した内容をすべて消して、標準の配置に戻します。よろしいですか？')) return;
-  var prefs = S.prefs; S = freshState(); S.prefs = prefs; save(); renderHome(); toast('標準の配置に戻しました');
+  var prefs = S.prefs; S = freshState(); S.prefs = prefs; save(); renderHome(); toast('初期配置に戻しました');
 };
-
+/* ▲ home.js ここまで ▲ */
+/* ▼ show.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* 配置図の画面 ②：見せる（大きく映す・印刷） */
 /* ---- ② 見せる ---- */
 function openShow(id) {
   cur = byId(id); if (!cur) return renderHome();
-  useScene(scOf(cur));
+  useLayout(cur);
   flip = false;
   $('bigMsg').innerHTML = SCENE.msg;
   var deskMode = !!SCENE.desk;   // 机だけの機能：4人・いす・横から見た図・しまう物
@@ -2342,7 +2753,8 @@ function openShow(id) {
   S.recent = [id].concat(S.recent.filter(function (x) { return x !== id; })).slice(0, 30); save();
   go('vShow'); renderShow();
 }
-function renderShow() {
+function renderShow() { RUBY = true; try { renderShowIn(); } finally { RUBY = false; } }   // 児童が見る画面だけ ふりがな
+function renderShowIn() {
   var deskMode = !!SCENE.desk;
   var o = { ruby: S.prefs.ruby, chair: deskMode && S.prefs.chair, flip: flip && cur.flip };
   o.topOnly = S.prefs.topOnly || big;
@@ -2399,8 +2811,8 @@ $('sEdit').onclick = function () { openEdit(cur.id); };   // 映している配�
    見せる画面の「印刷」はいま映している形（左右反転・4人・いす・横から見た図）のまま。
    まとめて印刷は、各配置を反転なしで、見せる画面の設定（4人・いす・横から見た図・ふりがな）で刷る */
 var DATE_BLANK = '　　月　　日（　　）';
-function printPage(l, o) {
-  useScene(scOf(l));
+function printPage(l, o) { return inLayout(l, function () { return printPageIn(l, o); }); }
+function printPageIn(l, o) {
   var deskMode = !!SCENE.desk;
   var c = deskMode && S.prefs.group ? composeGroup(l, o) : composeSingle(l, o);
   var vb = c.viewBox.split(' ').map(Number);
@@ -2415,23 +2827,21 @@ function printPage(l, o) {
 }
 function printOpts(l, fl) {
   var deskMode = !!SCENES[scOf(l)].desk;
-  return { ruby: S.prefs.ruby, chair: deskMode && S.prefs.chair, flip: !!(fl && l.flip), topOnly: S.prefs.topOnly };
+  return { ruby: false, chair: deskMode && S.prefs.chair, flip: !!(fl && l.flip), topOnly: S.prefs.topOnly };   // 印刷は先生向け：ふりがなは付けない
 }
 function doPrint(pages) {
-  var keep = SCENE.id;
   $('printArea').innerHTML = pages.join('');
-  useScene(keep);
   window.print();   // 印刷ダイアログを閉じるまで止まる（Chrome）。閉じたら中身を消す
   $('printArea').innerHTML = '';
 }
 // ブラウザの印刷（Ctrl+P）でも、見せる画面ならいま映している1枚を刷る。ほかの画面では何も刷らない
 window.addEventListener('beforeprint', function () {
   if ($('printArea').innerHTML || $('vShow').hidden) return;
-  $('printArea').innerHTML = printPage(cur, printOpts(cur, flip)); useScene(scOf(cur)); autoPrint = true;
+  $('printArea').innerHTML = printPage(cur, printOpts(cur, flip)); autoPrint = true;
 });
 var autoPrint = false;
 window.addEventListener('afterprint', function () { if (autoPrint) { $('printArea').innerHTML = ''; autoPrint = false; } });
-$('sPrint').onclick = function () { doPrint([printPage(cur, printOpts(cur, flip))]); useScene(scOf(cur)); };
+$('sPrint').onclick = function () { doPrint([printPage(cur, printOpts(cur, flip))]); };
 $('hPrint').onclick = function () {
   var list = orderedLayouts().filter(function (l) { return scOf(l) === scene; });
   if (!list.length) { toast('この場所の配置はまだありません'); return; }
@@ -2449,7 +2859,6 @@ $('pGo').onclick = function () {
   if (!ids.length) { toast('印刷する配置を選んでください'); return; }
   $('pDlg').close();
   doPrint(ids.map(function (id) { var l = byId(id); return printPage(l, printOpts(l, false)); }));
-  useScene(scene);
 };
 $('bigExit').onclick = function () { setBig(false); };
 document.addEventListener('fullscreenchange', function () { if (!document.fullscreenElement && big) setBig(false); });
@@ -2457,16 +2866,18 @@ document.addEventListener('keydown', function (e) { if (big && e.key === 'Escape
 document.addEventListener('keydown', function (e) {   // ← → で活動を切り替える
   if ($('vShow').hidden || e.target.closest('input')) return;
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-  var list = orderedLayouts(), i = list.indexOf(cur);
+  var list = orderedLayouts().filter(function (l) { return scOf(l) === scOf(cur); }), i = list.indexOf(cur);   // 同じ場所の配置の中で回る
   var n = list[(i + (e.key === 'ArrowRight' ? 1 : -1) + list.length) % list.length];
-  cur = n; flip = false; renderShow();
+  if (n && n !== cur) { cur = n; flip = false; renderShow(); }   // 並び（最近使った順）は変えない
 });
-
+/* ▲ show.js ここまで ▲ */
+/* ▼ edit.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* 配置図の画面 ③：つくる・なおす（選んだ物の操作・まとめて選ぶ・矢印をのばす） */
 /* ---- ③ つくる・なおす ---- */
 function openEdit(id) {
   cur = byId(id); if (!cur) return renderHome();
-  useScene(scOf(cur));
-  sel = -1; EZ.k = 1; EZ.cx = null;
+  useLayout(cur);
+  sel = -1; msel = []; EZ.k = 1; EZ.cx = null;
   hist = { undo: [], redo: [], last: JSON.stringify(cur) };
   histButtons();
   $('eOutline').checked = OUTLINE; $('eGridShow').checked = S.prefs.gridShow !== false;
@@ -2475,17 +2886,25 @@ function openEdit(id) {
   go('vEdit'); renderEdit(); renderPalette();
 }
 function renderEdit() {
-  var t = topView(cur, { ruby: S.prefs.ruby, sel: sel, grid: S.prefs.gridShow === false ? null : gridLevel(S.prefs.grid) });   // 線を消しても交点への吸着は続く
+  var t = topView(cur, { ruby: false, sel: msel.length > 1 ? msel : sel, ref: msel.length > 1 ? sel : -1, grid: S.prefs.gridShow === false ? null : gridLevel(S.prefs.grid) });   // 線を消しても交点への吸着は続く
   var b = t.box, pad = 60 * K;
   var svg = $('editSvg');
   // 余白は広めに固定して、吹き出しが増えても床が跳ねないようにする（場所の広さに合わせて K 倍）
   var x0 = Math.min(b.x0, -300 * K) - pad, y0 = Math.min(b.y0, -130 * K) - pad, x1 = Math.max(b.x1, DESK.w + 300 * K) + pad, y1 = Math.max(b.y1, DESK.d + 130 * K) + pad;
   EZ.base = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
-  applyZoom();
   var ps = cur.top[sel];
-  if (!ps || ps.item !== 'arrow' || !isPath(ps)) arrowEdit = false;
+  if (!ps || !hasCtl(ps.item, 'path') || !isPath(ps)) arrowEdit = false;
   svg.innerHTML = t.svg + (arrowEdit ? arrowMarks(ps) : '');
-  var p = cur.top[sel];
+  applyZoom();
+  var multi = msel.length > 1;
+  $('multiBar').hidden = !multi;
+  if (multi) {
+    $('mCount').textContent = msel.length + '個';
+    $('mRef').textContent = '基準：' + plainName(ITEMS[cur.top[sel].item].name);   // 揃えるときに動かさない物（最後に選んだ物・橙の枠）
+    var ss = msel.map(function (i) { return scaleOf(cur.top[i]); });
+    $('mReal').textContent = ss.every(function (v) { return v === ss[0]; }) ? Math.round(ss[0] * 100) + '%' : '混在';
+  }
+  var p = multi ? null : cur.top[sel];
   $('selBar').hidden = !p;
   if (p) {
     var it = ITEMS[p.item], keys = Object.keys(it.states);
@@ -2500,23 +2919,25 @@ function renderEdit() {
     if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
     $('selSize').hidden = !it.sizes;
     if (it.sizes) $('selSize').textContent = Object.keys(it.sizes).map(function (k) { return (k === sizeOf(p) ? '●' : '○') + it.sizes[k].name; }).join(' ');
-    $('selGrid').hidden = !it.grid;
-    if (it.grid) { var kn = kidsN(p); $('kNx').textContent = kn.nx; $('kNy').textContent = kn.ny; $('kSum').textContent = '（' + kn.nx * kn.ny + '人）'; }
-    $('selPath').hidden = p.item !== 'arrow'; $('selPath').setAttribute('aria-pressed', String(arrowEdit && p.item === 'arrow'));
+    $('selGrid').hidden = !hasCtl(p.item, 'grid');
+    if (hasCtl(p.item, 'grid')) { var kn = kidsN(p); $('kNx').textContent = kn.nx; $('kNy').textContent = kn.ny; $('kSum').textContent = '（' + kn.nx * kn.ny + '人）'; }
+    $('selPath').hidden = !hasCtl(p.item, 'path'); $('selPath').setAttribute('aria-pressed', String(arrowEdit && hasCtl(p.item, 'path')));
     $('selColors').hidden = !it.colors;
     if (it.colors) $('selColors').innerHTML = '色' + it.colors.map(function (c, k) {
       return '<button type="button" class="sw' + (k === colorIndex(p) ? ' on' : '') + '" data-col="' + k + '" style="background:' + c + '" aria-label="色' + (k + 1) + '"></button>';
     }).join('');
   }
   renderChips();
-  $('eBgBox').hidden = !!SCENE.desk;   // 床の色は場所だけ（机の天板は木の色のまま）
+  $('eBgBox').hidden = !!SCENE.desk; $('eTurn').hidden = !!SCENE.desk;   // 床の色は場所だけ（机の天板は木の色のまま）
   $('eBg').innerHTML = FLOOR_COLORS.map(function (f) {
     var on = (cur.bg || '') === f.id;
     return '<button type="button" class="sw bg' + (on ? ' on' : '') + '" data-bg="' + f.id + '" aria-pressed="' + on + '" title="' + f.name + '"' +
       (f.c ? ' style="background:' + f.c + '"' : '') + '>' + f.name + '</button>';
   }).join('');
-  $('eGrid').innerHTML = GRID_LEVELS.map(function (g) {
-    return '<button type="button" data-grid="' + g.id + '" class="' + (g.id === gridLevel(S.prefs.grid).id ? 'on' : '') + '">' + g.name + '</button>';
+  $('eGridName').textContent = S.prefs.grid === 'free' ? '自由配置' : gridLevel(S.prefs.grid).name;
+  $('eGrid').innerHTML = GRID_LEVELS.concat([{ id: 'free', name: '自由配置' }]).map(function (g) {
+    var on = S.prefs.grid === 'free' ? g.id === 'free' : g.id === gridLevel(S.prefs.grid).id;
+    return '<button type="button" data-grid="' + g.id + '" class="' + (on ? 'on' : '') + '">' + g.name + '</button>';
   }).join('');
 }
 $('eGrid').addEventListener('click', function (e) {
@@ -2525,8 +2946,8 @@ $('eGrid').addEventListener('click', function (e) {
 });
 function chipHtml(entry, where, k, extra) {
   return '<span class="chip">' + iconSvg(entry.item, 34) + '<span>' + esc(plainName(ITEMS[entry.item].name)) + '</span>' + (extra || '') +
-    '<button type="button" data-lab="' + where + ':' + k + '" aria-pressed="' + !!entry.label + '">名前</button>' +
-    '<button type="button" data-rm="' + where + ':' + k + '" aria-label="けす">×</button></span>';
+    '<button type="button" data-lab="' + where + ':' + k + '" aria-pressed="' + !!entry.label + '">名称</button>' +
+    '<button type="button" data-rm="' + where + ':' + k + '" aria-label="削除">×</button></span>';
 }
 function renderChips() {
   $('eLists').hidden = !SCENE.desk;   // フック・しまう物は机だけの仕組み
@@ -2546,6 +2967,7 @@ document.querySelector('.lists').addEventListener('click', function (e) {
   save(); renderEdit();
 });
 
+var PALETTE_GROUPS = [['thing', '用具・設備'], ['mark', '矢印・目印'], ['people', '人']];
 function renderPalette() {
   var deskMode = !!SCENE.desk;
   document.querySelector('.tabs').hidden = !deskMode;   // 机以外はタブなし：置ける物をそのまま並べる
@@ -2562,8 +2984,17 @@ function renderPalette() {
   var kind = tab === 'hang' ? 'hang' : 'top';
   var ids = deskMode ? Object.keys(ITEMS).filter(function (id) { return (tab === 'away' || ITEMS[id].kind === kind) && !(ITEMS[id].scenes || []).length; })
                      : SCENE.items.slice();
-  $('pItems').innerHTML = ids.map(function (id) {
-    return '<button type="button" data-add="' + id + '">' + iconSvg(id, 54) + '<span>' + plainName(ITEMS[id].name) + '</span></button>';
+  /* パレットのチップ：横長の物（ライン・平均台など）は 絵を上・名前を下。それ以外は 絵を左に できるだけ大きく、名前を右に */
+  var tile = function (id) {
+    var it = ITEMS[id], wd = it.kind === 'hang' ? [1, 1] : itemSize({ item: id, state: Object.keys(it.states)[0] });
+    var wide = wd[0] / wd[1] >= 2.2;
+    return '<button type="button" class="' + (wide ? 'wide' : 'side') + '" data-add="' + id + '">' + iconSvg(id, wide ? 54 : 60) + '<span>' + plainName(it.name) + '</span></button>';
+  };
+  if (deskMode) { $('pItems').innerHTML = ids.map(tile).join(''); return; }
+  // 場所：用具・設備／矢印・目印／人 に分けて並べる
+  $('pItems').innerHTML = PALETTE_GROUPS.map(function (g) {
+    var list = ids.filter(function (id) { return (ITEMS[id].group || 'thing') === g[0]; });
+    return list.length ? '<h3 class="pgroup">' + g[1] + '</h3>' + list.map(tile).join('') : '';
   }).join('');
 }
 document.querySelector('.tabs').addEventListener('click', function (e) {
@@ -2593,6 +3024,9 @@ $('eBg').addEventListener('click', function (e) {
   var id = b.getAttribute('data-bg'); if (id) cur.bg = id; else delete cur.bg; save(); renderEdit();
 });
 $('eText').onchange = function () { SPACE_TEXT = S.prefs.spaceText = this.checked; save(); renderEdit(); };
+document.addEventListener('pointerdown', function (e) {   // ▾ の板は 外を押すと閉じる
+  ['eDisp', 'eGridMenu', 'eMore', 'mAlign'].forEach(function (id) { var d = $(id); if (d.open && !e.target.closest('#' + id)) d.open = false; });
+});
 $('eGridShow').onchange = function () { S.prefs.gridShow = this.checked; save(); renderEdit(); };
 $('eOutline').onchange = function () { OUTLINE = S.prefs.outline = this.checked; save(); renderEdit(); };
 $('eBack').onclick = renderHome;
@@ -2627,6 +3061,21 @@ function setScale(p, s) { s = Math.round(Math.min(SCALE_MAX, Math.max(SCALE_MIN,
 $('selSmall').onclick = function () { var p = cur.top[sel]; setScale(p, scaleOf(p) / 1.25); };
 $('selBig').onclick = function () { var p = cur.top[sel]; setScale(p, scaleOf(p) * 1.25); };
 $('selReal').onclick = function () { setScale(cur.top[sel], 1); };
+/* 場所ごと90°回す（時計回り）：床を回し、置いた物は 位置と向きを いっしょに回す。
+   回した後の床の奥行きを D とすると (x, y) → (D − y, x)。交点の上の物は 交点の上のまま */
+function turnLayout() {
+  if (SCENE.desk) return;
+  var D = DESK.d;
+  cur.top.forEach(function (p) {
+    var x = p.x; p.x = D - p.y; p.y = x;
+    if (isPath(p)) p.pts = p.pts.map(function (v) { return [-v[1], v[0]]; });
+    else p.r = ((p.r || 0) + 90) % 360;
+  });
+  cur.rot = ((cur.rot || 0) + 90) % 360; if (!cur.rot) delete cur.rot;
+  useLayout(cur); EZ.k = 1; EZ.cx = null;
+  save(); renderEdit();
+}
+$('eTurn').onclick = turnLayout;
 $('selRot').onclick = function () {
   var p = cur.top[sel];
   if (isPath(p)) p.pts = p.pts.map(function (v) { return [-v[1], v[0]]; });   // 折れ線の矢印は 交点を始点のまわりに90°回す
@@ -2683,23 +3132,78 @@ $('selGrid').addEventListener('click', function (e) {
   var p = cur.top[sel], n = kidsN(p), k = b.getAttribute('data-k'), d = +b.getAttribute('data-d');
   var nx = n.nx + (k === 'x' ? d : 0), ny = n.ny + (k === 'y' ? d : 0);
   if (nx < 1 || ny < 1) return;
-  if (nx * ny > 36) { toast('36人までです'); return; }
+  if (nx * ny > 36) { toast('最大36人です'); return; }
   p.nx = nx; p.ny = ny; clampP(p); save(); renderEdit();
 });
 $('selPath').onclick = function () {
-  var p = cur.top[sel]; if (!p || p.item !== 'arrow') return;
+  var p = cur.top[sel]; if (!p || !hasCtl(p.item, 'path')) return;
   arrowEdit = !arrowEdit;
   if (arrowEdit) { toPath(p); save(); }
   renderEdit();
 };
 $('selLabel').onclick = function () { var p = cur.top[sel]; p.label = !p.label; save(); renderEdit(); };
 $('selFront').onclick = function () { toFront(); save(); renderEdit(); };
-$('selDel').onclick = function () { cur.top.splice(sel, 1); sel = -1; save(); renderEdit(); };
+$('selDel').onclick = function () { removeItems(selected()); save(); renderEdit(); };
+/* まとめて選んだ物：そろえる・等間隔に並べる（物の外まわり itemBounds で測る。交点には合わせない） */
+function alignSel(how) {
+  var set = selected(); if (set.length < 2) return;
+  var bs = set.map(function (i) { return { p: cur.top[i], b: itemBounds(cur.top[i]) }; });
+  var mn = function (f) { return Math.min.apply(null, bs.map(f)); }, mx = function (f) { return Math.max.apply(null, bs.map(f)); };
+  var L = mn(function (o) { return o.b.x0; }), R = mx(function (o) { return o.b.x1; }), T = mn(function (o) { return o.b.y0; }), B = mx(function (o) { return o.b.y1; });
+  if (how === 'hdist' || how === 'vdist') {
+    var h = how === 'hdist', key = h ? 'x' : 'y';
+    bs.sort(function (a, b) { return a.p[key] - b.p[key]; });
+    var a0 = bs[0].p[key], a1 = bs[bs.length - 1].p[key];
+    bs.forEach(function (o, k) { o.p[key] = a0 + (a1 - a0) * k / (bs.length - 1); });
+  } else bs.forEach(function (o) {
+    var b = o.b, cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+    if (how === 'left') o.p.x += L - b.x0;
+    if (how === 'right') o.p.x += R - b.x1;
+    if (how === 'hcenter') o.p.x += (L + R) / 2 - cx;
+    if (how === 'top') o.p.y += T - b.y0;
+    if (how === 'bottom') o.p.y += B - b.y1;
+    if (how === 'vcenter') o.p.y += (T + B) / 2 - cy;
+  });
+  save(); renderEdit();
+}
+/* 基準に揃える：基準の物の 中心の x（縦一列）か y（横一列）に ほかの物の中心を合わせる。等間隔：基準は動かさず、
+   両はしの物の間に 中心を等しい間隔で並べる（並びの順は いまの位置の順） */
+function alignToRef(axis) {
+  var set = selected(), ref = cur.top[sel]; if (set.length < 2 || !ref) return;
+  var rb = itemBounds(ref), c = axis === 'x' ? (rb.x0 + rb.x1) / 2 : (rb.y0 + rb.y1) / 2;
+  set.forEach(function (i) {
+    var p = cur.top[i], b = itemBounds(p);
+    if (axis === 'x') p.x += c - (b.x0 + b.x1) / 2; else p.y += c - (b.y0 + b.y1) / 2;
+  });
+  save(); renderEdit();
+}
+function scaleSel(f) {   // まとめて拡大・縮小（f：倍率。0 なら実寸に戻す）。物ごとの中心は動かさない
+  selected().forEach(function (i) {
+    var p = cur.top[i], s = f ? scaleOf(p) * f : 1;
+    s = Math.round(Math.min(SCALE_MAX, Math.max(SCALE_MIN, s)) * 100) / 100;
+    if (s === 1) delete p.s; else p.s = s;
+  });
+  save(); renderEdit();
+}
+$('multiBar').addEventListener('click', function (e) {
+  if (e.target.closest('#mRefNext')) {   // 基準を 選んだ物の中で次へ
+    var k = msel.indexOf(sel); sel = msel[(k + 1) % msel.length]; renderEdit(); return;
+  }
+  var ax = e.target.closest('[data-ref]'); if (ax) { alignToRef(ax.getAttribute('data-ref')); $('mAlign').open = false; return; }
+  if (e.target.closest('#mSmall')) { scaleSel(1 / 1.25); return; }
+  if (e.target.closest('#mBig')) { scaleSel(1.25); return; }
+  if (e.target.closest('#mReal')) { scaleSel(0); return; }
+  var b = e.target.closest('[data-al]'); if (b) { alignSel(b.getAttribute('data-al')); $('mAlign').open = false; return; }
+  if (e.target.closest('#mDup')) { pasteN = 0; pasteItem(selected().map(function (i) { return clone(cur.top[i]); })); }
+  if (e.target.closest('#mDel')) { removeItems(selected()); save(); renderEdit(); }
+  if (e.target.closest('#mNone')) { selectOnly(-1); renderEdit(); }
+});
 function toFront() { var p = cur.top.splice(sel, 1)[0]; cur.top.push(p); sel = cur.top.length - 1; }
 
 /* 物の中心をいちばん近いグリッドの交点に合わせる。交点は机の外にも「あらい」1目分広がる
    （本が半分だけ机に乗る配置）。それ以上はみ出すのは物の形まかせで許す（重ね置きなど実際の机でも起きる） */
 function clampP(p) {
+  if (S.prefs.grid === 'free') return;   // 自由配置：交点に合わせない（グリッドの線は「標準」の細かさで見せる）
   var q = snap(p.x, p.y, gridLevel(S.prefs.grid));
   p.x = q.x; p.y = q.y;
 }
@@ -2710,6 +3214,9 @@ function svgPoint(svg, e) {
   var pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
   return pt.matrixTransform(svg.getScreenCTM().inverse());
 }
+/* ▲ edit.js ここまで ▲ */
+/* ▼ history.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* 配置図の画面 ③：取り消し・やり直し と 写す・貼る（キーボード） */
 /* ---- 取り消し・やり直し（Ctrl+Z／Ctrl+Y・Ctrl+Shift+Z）----
    編集画面で保存するたびに、変える前の配置を積む。配置を開き直すと空になる（配置ごと・この画面の間だけ）。 */
 var hist = { undo: [], redo: [], last: null }, HIST_MAX = 100;
@@ -2725,8 +3232,10 @@ function restore(s) {   // cur は S.layouts の中の同じ物なので、中�
   Object.keys(cur).forEach(function (k) { delete cur[k]; }); Object.keys(o).forEach(function (k) { cur[k] = o[k]; });
   hist.last = s;
   if (sel >= cur.top.length) sel = -1;
+  msel = msel.filter(function (i) { return i < cur.top.length; }); if (msel.length < 2) msel = [];
+  useLayout(cur);   // 場所の向き（rot）も戻る
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
-  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+  try { Store.save(S); } catch (e) {}
   renderEdit(); renderPalette(); histButtons();
 }
 function undo() { if (!hist.undo.length) return; hist.redo.push(hist.last); restore(hist.undo.pop()); }
@@ -2738,11 +3247,17 @@ $('eUndo').onclick = undo; $('eRedo').onclick = redo;
    選んだ物を1つ写しておき、貼ると グリッド1目ずつ右下にずらして置く。別の配置にも貼れる（その場所に置ける物だけ）。 */
 var clip = null, pasteN = 0;
 function canPlace(id) { return SCENE.desk ? !(ITEMS[id].scenes || []).length : SCENE.items.indexOf(id) >= 0; }
-function pasteItem(src) {
-  if (!canPlace(src.item)) { toast('この場所には置けない物です'); return; }
-  var g = gridLevel(S.prefs.grid), q = clone(src);
-  pasteN++; q.x += pasteN * DESK.w / g.nx; q.y += pasteN * DESK.d / g.ny; clampP(q);
-  cur.top.push(q); sel = cur.top.length - 1; save(); renderEdit();
+function pasteItem(src) {   // src：1つの物 か 物の並び。並びは 形を保ったまま ずらして貼る
+  var list = (Array.isArray(src) ? src : [src]).filter(function (q) { return canPlace(q.item); });
+  if (!list.length) { toast('この場所には配置できない用具です'); return; }
+  var g = gridLevel(S.prefs.grid), added = [];
+  pasteN++;
+  list.forEach(function (s0) {
+    var q = clone(s0); q.x += pasteN * DESK.w / g.nx; q.y += pasteN * DESK.d / g.ny; if (list.length === 1) clampP(q);
+    cur.top.push(q); added.push(cur.top.length - 1);
+  });
+  msel = added.length > 1 ? added : []; sel = added[added.length - 1];
+  save(); renderEdit();
 }
 document.addEventListener('keydown', function (e) {
   if ($('vEdit').hidden || e.target.closest('input,textarea') || e.altKey) return;
@@ -2750,16 +3265,22 @@ document.addEventListener('keydown', function (e) {
   if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
   if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
   if (mod && k === 'v') { if (clip) { e.preventDefault(); pasteItem(clip); } return; }
-  if (sel < 0) return;
+  if (k === 'escape') { selectOnly(-1); renderEdit(); return; }
+  if (mod && k === 'a') { e.preventDefault(); msel = cur.top.map(function (_, i) { return i; }); sel = msel.length - 1; if (msel.length < 2) msel = []; renderEdit(); return; }
+  var set = selected();
+  if (!set.length) return;
+  var items = set.map(function (i) { return clone(cur.top[i]); });
   if (mod && (k === 'c' || k === 'x')) {
-    e.preventDefault(); clip = clone(cur.top[sel]); pasteN = 0;
-    if (k === 'x') { cur.top.splice(sel, 1); sel = -1; save(); renderEdit(); toast('切り取りました'); } else toast('写しました（Ctrl+V で貼る）');
+    e.preventDefault(); clip = items.length > 1 ? items : items[0]; pasteN = 0;
+    if (k === 'x') { removeItems(set); save(); renderEdit(); toast('切り取りました'); } else toast('コピーしました（Ctrl+V で貼り付け）');
     return;
   }
-  if (mod && k === 'd') { e.preventDefault(); pasteN = 0; pasteItem(cur.top[sel]); return; }
-  if (k === 'delete' || k === 'backspace') { e.preventDefault(); cur.top.splice(sel, 1); sel = -1; save(); renderEdit(); }
+  if (mod && k === 'd') { e.preventDefault(); pasteN = 0; pasteItem(items.length > 1 ? items : items[0]); return; }
+  if (k === 'delete' || k === 'backspace') { e.preventDefault(); removeItems(set); save(); renderEdit(); }
 });
-
+/* ▲ history.js ここまで ▲ */
+/* ▼ pointer.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* 配置図の画面 ③：指・マウスの操作（引きずる・囲む・拡大縮小・2本指） */
 /* ---- 編集画面の拡大・縮小 ----
    ホイール（マウス・タッチパッド）：指している所を中心に拡大・縮小。2本指：つまんで拡大・縮小、そのまま動かすと移動。
    空いた所を引きずる：拡大しているとき、見る範囲を動かす（引きずらずに離せば、これまでどおり「選んだ物をそこへ移す」）。
@@ -2774,6 +3295,12 @@ function applyZoom() {
   if (EZ.k > 1) { EZ.cx = cx; EZ.cy = cy; }
   svg.setAttribute('viewBox', (cx - w / 2) + ' ' + (cy - h / 2) + ' ' + w + ' ' + h);
   $('zReset').textContent = Math.round(EZ.k * 100) + '%';
+  GRID_ZOOM = EZ.k;   // グリッドの線と丸を 画面上で同じ太さに保つ（描き直さずに太さだけ変える）
+  var gg = svg.querySelector('.grid');
+  if (gg) {
+    var sw = +gg.getAttribute('data-sw') / EZ.k;
+    Array.prototype.forEach.call(gg.children, function (el) { el.style.strokeWidth = sw; if (el.hasAttribute('data-r')) el.setAttribute('r', +el.getAttribute('data-r') / EZ.k); });
+  }
   $('zReset').disabled = EZ.k === 1;
 }
 function zoomAt(q, f) {   // 図の点 q を画面上で動かさずに 倍率を f 倍
@@ -2824,27 +3351,57 @@ $('editSvg').addEventListener('pointerdown', function (e) {
   if (!g) {
     // 空いた所：引きずれば見る範囲を動かし（拡大しているとき）、引きずらずに離せば下の「タップ」の動き
     var inv = this.getScreenCTM().inverse();
-    pan = { sx: e.clientX, sy: e.clientY, inv: inv, cx: EZ.cx, cy: EZ.cy, moved: false, q: svgPoint(this, e) };
+    // 拡大していないとき（または Shift）：引きずると 囲んだ物をまとめて選ぶ。拡大しているとき：見る範囲を動かす
+    pan = { sx: e.clientX, sy: e.clientY, inv: inv, cx: EZ.cx, cy: EZ.cy, moved: false, q: svgPoint(this, e), band: e.shiftKey || EZ.k === 1, add: e.shiftKey || e.ctrlKey };
     this.setPointerCapture(e.pointerId);
     return;
   }
   var i = +g.getAttribute('data-i'), p = cur.top[i], pt = svgPoint(this, e);
-  if (sel !== i) { sel = i; renderEdit(); g = this.querySelector('.it[data-i="' + i + '"]'); }
-  drag = { el: g, p: p, dx: pt.x - p.x, dy: pt.y - p.y, moved: false };
+  if (e.shiftKey || e.ctrlKey || e.metaKey) {   // Shift／Ctrl＋押す：まとめて選ぶ に足す・外す
+    var set = selected(), at = set.indexOf(i);
+    if (at >= 0) set.splice(at, 1); else set.push(i);
+    msel = set.length > 1 ? set : []; sel = set.length ? set[set.length - 1] : -1;
+    renderEdit(); return;
+  }
+  if (selected().indexOf(i) < 0) { selectOnly(i); renderEdit(); }
+  else if (msel.length < 2 && sel !== i) { selectOnly(i); renderEdit(); }
+  sel = i;
+  var group = selected();
+  drag = { p: p, dx: pt.x - p.x, dy: pt.y - p.y, moved: false,
+           items: group.map(function (j) { var q = cur.top[j]; return { q: q, ox: q.x - p.x, oy: q.y - p.y, el: $('editSvg').querySelector('.it[data-i="' + j + '"]') }; }) };
   this.setPointerCapture(e.pointerId);
 });
+function drawBand(a, b) {
+  var svg = $('editSvg'), r = svg.querySelector('.band');
+  if (!r) { r = document.createElementNS('http://www.w3.org/2000/svg', 'rect'); r.setAttribute('class', 'band'); svg.appendChild(r); }
+  r.setAttribute('x', Math.min(a.x, b.x)); r.setAttribute('y', Math.min(a.y, b.y));
+  r.setAttribute('width', Math.abs(a.x - b.x)); r.setAttribute('height', Math.abs(a.y - b.y));
+}
+function bandSelect(a, b, add) {   // 囲みに少しでもかかった物を選ぶ
+  var x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x), y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+  var hit = [];
+  cur.top.forEach(function (p, i) { var bb = itemBounds(p); if (bb.x1 >= x0 && bb.x0 <= x1 && bb.y1 >= y0 && bb.y0 <= y1) hit.push(i); });
+  if (add) selected().forEach(function (i) { if (hit.indexOf(i) < 0) hit.push(i); });
+  msel = hit.length > 1 ? hit : [];
+  // 基準（揃えるときに動かさない物）は 引きずり始めた所にいちばん近い物
+  var dist = function (i) { var b = itemBounds(cur.top[i]); return Math.hypot((b.x0 + b.x1) / 2 - a.x, (b.y0 + b.y1) / 2 - a.y); };
+  sel = hit.length ? hit.reduce(function (m, i) { return dist(i) < dist(m) ? i : m; }, hit[0]) : -1;
+  renderEdit();
+}
 function emptyTap(q) {
   // 物を選んでいるときに机の上の空いた所を押すと、そこへ移す（指で引きずらなくてよい）
   var gm = gridMargin();
+  if (msel.length > 1) { selectOnly(-1); renderEdit(); return; }
   if (sel >= 0 && q.x >= -gm.x && q.x <= DESK.w + gm.x && q.y >= -gm.y && q.y <= DESK.d + gm.y) {
     var sp = cur.top[sel]; sp.x = q.x; sp.y = q.y; clampP(sp); save(); renderEdit();
-  } else if (sel >= 0) { sel = -1; renderEdit(); }
+  } else if (sel >= 0) { selectOnly(-1); renderEdit(); }
 }
 $('editSvg').addEventListener('pointermove', function (e) {
   if (touches[e.pointerId]) touches[e.pointerId] = { x: e.clientX, y: e.clientY };
   if (pinch) { pinchMove(); return; }
   if (pan) {
     if (Math.hypot(e.clientX - pan.sx, e.clientY - pan.sy) > 6) pan.moved = true;
+    if (pan.moved && pan.band) { drawBand(pan.q, svgPoint(this, e)); return; }
     if (pan.moved && EZ.k > 1) {
       var m = pan.inv, dx = (e.clientX - pan.sx) * m.a + (e.clientY - pan.sy) * m.c, dy = (e.clientX - pan.sx) * m.b + (e.clientY - pan.sy) * m.d;
       EZ.cx = pan.cx - dx; EZ.cy = pan.cy - dy; applyZoom();
@@ -2854,18 +3411,25 @@ $('editSvg').addEventListener('pointermove', function (e) {
   if (!drag) return;
   var pt = svgPoint(this, e), p = drag.p;
   var nx = p.x, ny = p.y;
-  p.x = pt.x - drag.dx; p.y = pt.y - drag.dy; clampP(p);
+  p.x = pt.x - drag.dx; p.y = pt.y - drag.dy; clampP(p);   // つかんだ物を交点に合わせ、ほかの物は 同じだけ動かす（並びを保つ）
   if (p.x !== nx || p.y !== ny) drag.moved = true;
-  drag.el.setAttribute('transform', itemTransform(p));
+  drag.items.forEach(function (o) { o.q.x = p.x + o.ox; o.q.y = p.y + o.oy; if (o.el) o.el.setAttribute('transform', itemTransform(o.q)); });
 });
 function endDrag() {
-  if (!drag) return;
+  if (!drag) { if (Store.flush) Store.flush(); return; }
   var moved = drag.moved; drag = null;
   if (moved) { save(); renderEdit(); }
+  if (Store.flush) Store.flush();   // 引きずっている間に届いた ほかの人の変更を取り込む
 }
 $('editSvg').addEventListener('pointerup', function (e) {
   touchEnd(e);
-  if (pan) { var p0 = pan; pan = null; if (!p0.moved) emptyTap(p0.q); return; }
+  if (pan) {
+    var p0 = pan; pan = null;
+    if (!p0.moved) { emptyTap(p0.q); return; }
+    if (p0.band) bandSelect(p0.q, svgPoint(this, e), p0.add);
+    if (Store.flush) Store.flush();
+    return;
+  }
   endDrag();
 });
 document.addEventListener('keydown', function (e) {   // 矢印キーでグリッド1目ずつ動かす
@@ -2873,13 +3437,45 @@ document.addEventListener('keydown', function (e) {   // 矢印キーでグリ�
   var d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
   if (!d) return;
   e.preventDefault();
-  var g = gridLevel(S.prefs.grid), p = cur.top[sel];
-  p.x += d[0] * DESK.w / g.nx; p.y += d[1] * DESK.d / g.ny; clampP(p); save(); renderEdit();
+  var g = gridLevel(S.prefs.grid);
+  selected().forEach(function (i) { var p = cur.top[i]; p.x += d[0] * DESK.w / g.nx; p.y += d[1] * DESK.d / g.ny; if (msel.length < 2) clampP(p); });
+  save(); renderEdit();
 });
 $('editSvg').addEventListener('pointercancel', function (e) { touchEnd(e); pan = null; endDrag(); });
-
+/* ▲ pointer.js ここまで ▲ */
+/* ▼ boot.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
+/* 配置図：起動（最初の画面と、共有のときの受け取り） */
 renderHome();
-/* ▲ app.js ここまで ▲ */
+
+/* ---- 共有（GAS版）：起動したら共有の配置を受け取り、ほかの人の変更が来たら描き直す ---- */
+$('dReset').hidden = Store.kind === 'gas';   // 共有では「標準に戻す」はしない（みんなの配置が消えるため）
+$('dHint').textContent = Store.kind === 'gas' ? '配置は校内で共有されています（同時に編集しても統合されます）。書き出しはバックアップに使えます。'
+                                              : '配置はこの端末のブラウザに保存されます。別の端末へは書き出したファイルで移行します。';
+function refreshView() {
+  if (!$('vEdit').hidden && cur) { if (!byId(cur.id)) return renderHome(); useLayout(cur); renderEdit(); renderPalette(); }
+  else if (!$('vShow').hidden && cur) { if (!byId(cur.id)) return renderHome(); renderShow(); }
+  else renderHome();
+}
+Store.onPresence = function () { if (!$('vEdit').hidden && cur) peers(); };
+function peers() {
+  var who = Store.editors ? Store.editors(cur.id) : [];
+  $('ePeers').hidden = !who.length;
+  $('ePeers').textContent = who.length ? '同時編集中：' + who.join('、') : '';
+}
+var selU = [];   // 取り込む直前に選んでいた物の名札（store.js が取り込む前に before を呼ぶ）
+Store.before = function () { selU = cur ? selected().map(function (i) { return (cur.top[i] || {}).u; }).filter(Boolean) : []; };
+Store.start(refreshView, function (id, by, conflict) {
+  if (cur && cur.id === id && !$('vEdit').hidden) {
+    hist = { undo: [], redo: [], last: JSON.stringify(cur) }; histButtons();   // 取り消しは 取り込んだ後から数え直す（相手の変更を戻さないため）
+    // 選んでいた物は 番号ではなく名札 u で選び直す（まぜると並び順が変わるため）
+    var at = function (u) { for (var i = 0; i < cur.top.length; i++) if (cur.top[i].u === u) return i; return -1; };
+    sel = selU.length ? at(selU[selU.length - 1]) : -1;
+    msel = selU.map(at).filter(function (i) { return i >= 0; }); if (msel.length < 2) msel = [];
+    if (!conflict) toast((by || '他の先生') + 'さんの変更を反映しました');
+  }
+  refreshView();
+});
+/* ▲ boot.js ここまで ▲ */
 </script>
 </body>
 </html>
