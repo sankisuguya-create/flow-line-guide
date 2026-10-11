@@ -201,27 +201,29 @@ function addPrismX(F,poly,x0,x1,col,edge){
   G.forEach(function(f){F.push(f);});
 }
 /* 写真（アイリスプラザ CAL-XS01M）の組み立て。左右それぞれ：
-   ① 長いパイプ：背もたれの上から まっすぐ斜めに下りて、前の床へ（背の柱と前の脚が1本）。
-   ② 短いパイプ：①の座面より少し上（黒い留め具）から、うしろの床へ。①と②で横から見て「入」の字。
+   ① 長いパイプ：背もたれの上から まっすぐ斜めに下りて、前の床へ（背の柱と前の脚が1本）。内がわ。
+   ② 短いパイプ：①の座面より少し上（黒い小さな留め具が支点）から、うしろの床へ。①の外がわ。横から見て「入」の字。
    ③ 床の桟：前の足どうし・うしろの足どうしを横につなぐ（角の黒い足ゴムつき）。
    座面は①に うしろの端でつながり、前へ張り出す。背もたれは①の上の端に、①と同じ傾きで付く。 */
 function pipeChair(){
   var S=SPEC.pipechair, F=[], w=S.W/2, t=S.tube, met="#BFC4CA", blk="#2F3134";
   var yTop=-S.D/2+20, yF=S.frontFoot, yR=-S.D/2+35;   // 足ゴムの はしが 奥行 D に収まる位置
   var yA=function(z){ return yF+(yTop-yF)*z/S.H; };                              // ①の上の点の Y（高さ z で）
-  var xa=w-t/2, xb=w-t*2;                                                          // ①は外がわ、②は内がわ
+  var xb=w-t/2, xa=w-t*1.5;                                                        // ②（うしろの脚）は外がわ、①は内がわ（写真）
   [-1,1].forEach(function(s){
-    addBeam(F,[s*xa,yF,t/2],[s*xa,yTop,S.H-10],t,met);                             // ① 長いパイプ
+    addBeam(F,[s*xa,yF,t/2],[s*xa,yA(S.H-40),S.H-40],t,met);                             // ① 長いパイプ
     addBeam(F,[s*xb,yA(S.lockZ),S.lockZ],[s*xb,yR,t/2],t,met);                     // ② 短いパイプ
-    addBox(F,s*xa-10,s*xa+10,yA(S.lockZ)-30,yA(S.lockZ)+30,S.lockZ-40,S.lockZ+30,{top:blk,side:blk,end:blk},"#151617");   // 留め具
-    [[s*xa,yF],[s*xb,yR]].forEach(function(q){ addBox(F,q[0]-11,q[0]+11,q[1]-35,q[1]+35,0,t+4,{top:blk,side:blk,end:blk},"#151617"); });   // 足ゴム
+    addBox(F,s*(xa+xb)/2-t,s*(xa+xb)/2+t,yA(S.lockZ)-16,yA(S.lockZ)+16,S.lockZ-20,S.lockZ+20,{top:blk,side:blk,end:blk},blk);   // 支点の留め具（①と②をはさむ小さな黒）
+    [[s*xa,yF],[s*xb,yR]].forEach(function(q){ addBox(F,q[0]-11,q[0]+11,q[1]-35,q[1]+35,0,t+4,{top:blk,side:blk,end:blk},blk); });   // 足ゴム
   });
   addBeam(F,[-xa,yF,t/2],[xa,yF,t/2],t,met);                                       // ③ 前の床の桟
   addBeam(F,[-xb,yR,t/2],[xb,yR,t/2],t,met);                                       // ③ うしろの床の桟
   var yS=yA(S.seatZ);                                                              // 座面のうしろの端＝①と交わる所
-  addPrismX(F,[[yS,S.seatZ-22],[S.D/2,S.seatZ-22],[S.D/2,S.seatZ],[yS,S.seatZ]],-(xa-t/2),xa-t/2,blk,"#151617");   // 座面
+  addPrismX(F,[[yS,S.seatZ-22],[S.D/2,S.seatZ-22],[S.D/2,S.seatZ],[yS,S.seatZ]],-(xa-t/2),xa-t/2,blk,blk);   // 座面
   var z0=S.H-S.backH, k=18;                                                        // 背もたれ：①に沿って傾いた板
-  addPrismX(F,[[yA(z0)-k,z0],[yA(z0),z0],[yA(S.H),S.H],[yA(S.H)-k,S.H]],-w,w,blk,"#151617");
+  addPrismX(F,[[yA(z0)-k,z0],[yA(z0),z0],[yA(S.H),S.H],[yA(S.H)-k,S.H]],-w,w,blk,blk);
+  // 黒い部品（座面・背もたれ・留め具・足ゴム）は角を丸めない：面ごとに丸めると、ふちの面と中の面の間に すき間が出る
+  F.forEach(function(f){ if(f.col===blk){ f.sharp=f.p.map(function(_,i){return i;}); f.edge=blk; } });
   return {faces:F, foot:{W:S.W,L:S.D}};
 }
 function longTable(){

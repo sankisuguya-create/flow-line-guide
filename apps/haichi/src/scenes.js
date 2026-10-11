@@ -65,7 +65,7 @@ function spaceFloorSvg(sp, bg) {   // bg：床の色（部屋・通路・場の�
     if (dr.kind !== 'open') [a, b].forEach(function (p) { s += v ? ln(p[0] - k, p[1], p[0] + k, p[1], INKW, WALL) : ln(p[0], p[1] - k, p[0], p[1] + k, INKW, WALL); });
   });
   if (!SPACE_TEXT) lab = '';
-  if (sp.up) lab += tx(sp.size[0] - 0.3, 0.7, '▲ ' + sp.up, 0.8, null, 'end');
+  if (sp.up) lab += tx(sp.size[0], -0.6, '▲ ' + sp.up, 0.8, '#3B4650', 'end');   // 方位は場の外（右上の外がわ）
   if (SPACE_TEXT && sp.status !== '確認済') lab += tx(0.3, sp.size[1] - 0.6, '※ 仮の地図', 0.7, '#B0392B', 'start');
   return '<g transform="scale(1000)">' + (defs ? '<defs>' + defs + '</defs>' : '') + s + lab + '</g>';
 }

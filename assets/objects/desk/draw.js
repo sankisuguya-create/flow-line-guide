@@ -250,6 +250,7 @@ function topView(lay, o) {
   if (o.grid) s += gridSvg(o.grid);
   s += labelsSvg(lab.labels, o.ruby);
   var m = lab.margin, E = 20 * K;
+  if (SCENE.space) m = { L: m.L, R: m.R, T: Math.max(m.T, 1300), B: m.B };   // 場の外の方位（scenes.js）の分だけ上をあける
   return { svg: s, labels: lab.labels, box: { x0: Math.min(-Math.max(m.L, E), ib.x0), y0: Math.min(-Math.max(m.T, E), ib.y0), x1: Math.max(DESK.w + Math.max(m.R, E), ib.x1), y1: Math.max(bottom + Math.max(m.B, E), ib.y1) } };
 }
 
