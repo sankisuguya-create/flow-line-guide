@@ -14,7 +14,14 @@ export const FILES = {
   "items.js": "assets/objects/gym/items.js",
   "scenes.js": "apps/haichi/src/scenes.js",
   "draw.js": "assets/objects/desk/draw.js",
-  "app.js": "apps/haichi/src/app.js",
+  "store.js": "apps/haichi/src/store.js",
+  "state.js": "apps/haichi/src/app/state.js",
+  "home.js": "apps/haichi/src/app/home.js",
+  "show.js": "apps/haichi/src/app/show.js",
+  "edit.js": "apps/haichi/src/app/edit.js",
+  "history.js": "apps/haichi/src/app/history.js",
+  "pointer.js": "apps/haichi/src/app/pointer.js",
+  "boot.js": "apps/haichi/src/app/boot.js",
 };
 // 場の一覧：assets/spaces/<場所>/space.json。床の絵に要る項目だけを持ってくる（動線・隊形は配置図では使わない）
 export function spacesJs() {
@@ -34,5 +41,5 @@ export function read(name) {
   if (!FILES[name]) throw new Error("知らない @include: " + name);
   return fs.readFileSync(path.join(ROOT, FILES[name]), "utf8");
 }
-// テストが vm で読む順（app.js は画面が要るので除く）
-export const LOGIC = ["data.js", "extra.js", "mesh.js", "items.js", "spaces.js", "scenes.js", "draw.js"];
+// テストが vm で読む順（app/ は画面が要るので除く）
+export const LOGIC = ["data.js", "extra.js", "mesh.js", "items.js", "spaces.js", "scenes.js", "draw.js", "store.js"];

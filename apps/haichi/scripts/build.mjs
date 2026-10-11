@@ -27,14 +27,19 @@ export function render() {
   if (/^@dark\{/m.test(out)) throw new Error("展開しきれていない @dark が残っている");
   return out;
 }
-const dist = path.join(APP, "dist/Index.html");
+// 同じ1ファイルを2か所へ：dist（HTML単体版。開くだけ）と gas（GAS版。Code.gs・appsscript.json と組で貼る）
+const outs = [path.join(APP, "dist/Index.html"), path.join(APP, "gas/Index.html")];
 const html = render();
 if (process.argv.includes("--check")) {
-  const now = fs.existsSync(dist) ? fs.readFileSync(dist, "utf8") : "";
-  if (now !== html) { console.error("dist/Index.html が古い。node apps/haichi/scripts/build.mjs で作り直す"); process.exit(1); }
-  console.log("ok: dist は最新");
+  for (const f of outs) {
+    const now = fs.existsSync(f) ? fs.readFileSync(f, "utf8") : "";
+    if (now !== html) { console.error(path.relative(APP, f) + " が古い。node apps/haichi/scripts/build.mjs で作り直す"); process.exit(1); }
+  }
+  console.log("ok: dist・gas は最新");
 } else {
-  fs.mkdirSync(path.dirname(dist), { recursive: true });
-  fs.writeFileSync(dist, html);
-  console.log("wrote", path.relative(process.cwd(), dist), (html.length / 1024).toFixed(0) + "KB");
+  for (const f of outs) {
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, html);
+    console.log("wrote", path.relative(process.cwd(), f), (html.length / 1024).toFixed(0) + "KB");
+  }
 }

@@ -64,6 +64,30 @@ await step('写す・貼る・取り消す・やり直す・けす', async () =>
   assert.equal(await n(), n0);
 });
 
+await step('まとめて選ぶ：Shift＋押す・囲む・そろえる・まとめて動かす・まとめて消す', async () => {
+  // 跳び箱（3コース）：3つの跳び箱（gbox）を Shift＋押すで選び、上をそろえる
+  await p.click('#eBack'); await p.click('[data-fix="g_tobibako3"]');
+  const top = () => p.evaluate(() => JSON.parse(localStorage.getItem('haichi.v1')).layouts.find(l => l.id === 'g_tobibako3').top);
+  const boxes = (await top()).map((q, i) => [q, i]).filter(([q]) => q.item === 'gbox').map(([, i]) => i);
+  await p.locator(`#editSvg .it[data-i="${boxes[0]}"]`).click();
+  for (const i of boxes.slice(1)) await p.locator(`#editSvg .it[data-i="${i}"]`).click({modifiers: ['Shift']});
+  assert.equal(await p.textContent('#mCount'), '3個');
+  await p.click('[data-al="hdist"]');
+  let t = await top(); const xs = boxes.map(i => t[i].x).sort((a, b) => a - b);
+  assert.ok(Math.abs((xs[1] - xs[0]) - (xs[2] - xs[1])) < 1e-6, '横に等間隔');
+  const y0 = boxes.map(i => t[i].y);
+  await p.keyboard.press('ArrowDown');
+  t = await top(); assert.ok(boxes.every((i, k) => t[i].y > y0[k]), 'まとめて動く');
+  await p.keyboard.press('Control+z');
+  // 囲む：図の左上から右下まで引きずると すべて選ぶ
+  await p.keyboard.press('Escape');
+  const box = await p.locator('#editSvg').boundingBox();
+  await p.mouse.move(box.x + 5, box.y + 5); await p.mouse.down(); await p.mouse.move(box.x + box.width - 5, box.y + box.height - 5, {steps: 5}); await p.mouse.up();
+  assert.equal(await p.textContent('#mCount'), (await top()).length + '個');
+  await p.click('#mDel'); assert.equal((await top()).length, 0);
+  await p.keyboard.press('Control+z'); assert.ok((await top()).length > 0);
+});
+
 await step('矢印をのばす：上へ2目、斜め、ちぢめる、色', async () => {
   await p.click('#eBack'); await p.click('#hNew'); await p.click('[data-add="arrow"]'); await p.click('#selPath');
   const marks = () => p.$$eval('.amark:not(.shrink)', els => els.map(m => ({e: m.dataset.ext, x: +m.dataset.x, y: +m.dataset.y})));

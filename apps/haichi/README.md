@@ -2,7 +2,22 @@
 
 授業や活動の前に、**場所のどこに何を置くか**を教室の大画面モニターに映して見せる道具。
 homeroom-tools の「机の配置図」（apps/desk-layout）をそのまま移し、場所を足した。
-`dist/Index.html` をブラウザで開くだけで動く。サーバも名簿も使わない。外部通信なし。
+2つの版がある。中身は同じ1ファイルで、置き場所で動き方が変わる。
+
+| 版 | 置き方 | 保存 |
+|---|---|---|
+| HTML単体版 | `dist/Index.html` をブラウザで開く | この端末のブラウザだけ。別の端末へは書き出したファイルで移す |
+| GAS版 | `gas/` の3つ（Index.html・Code.gs・appsscript.json）を GAS に置き、ウェブアプリとして配る | 学校のみんなで共有。**同時に直してもまざる** |
+
+どちらも名簿は使わない。HTML単体版は外部通信なし。
+
+### GAS版の置き方
+1. 新しい GAS のプロジェクトを作り、`gas/Code.gs` と `gas/appsscript.json`（エディタの設定で「appsscript.json を表示」）を貼る。
+2. HTML ファイル `Index` を作り、`gas/Index.html` の中身を貼る。
+3. 「デプロイ → 新しいデプロイ → ウェブアプリ」。実行は「自分」、アクセスは「同じ組織のユーザー」。
+4. 初めて開いたとき、作った人のドライブにスプレッドシート「配置図データ」ができる（1行＝1つの配置）。消さない。
+
+同時に直すしくみ：直すたびに少し待って、変わった配置だけを送る。ほかの人が先に書いていたら、物ごとに3方向でまぜる（自分が変えた所は自分、相手が変えた所は相手。両方が同じ物を変えたら 後から送った人）。4秒ごとにほかの人の変更を取りに行き、同じ配置を開いている人の名前を上に出す。ほかの人の変更を取り込むと、取り消し（Ctrl+Z）はそこから数え直す。共有では「標準の配置に戻す」は出さない（みんなの配置が消えるため）。
 
 ## 場所
 
@@ -41,7 +56,7 @@ homeroom-tools の「机の配置図」（apps/desk-layout）をそのまま移�
 - それで描けない物は `custom(p)` で `{ box, draw }` を返す（矢印の「じゆう」）。立体は `mesh` を持てば本体が同じ形で扱う。
 - 編集画面に専用の操作が要る物は `controls` に名前を書く（`'grid'`＝横・縦の人数、`'path'`＝矢印をのばす）。
 - 床に描く物（ライン・テープ）は `floor: true`。いつも ほかの物の下に描く。
-- 保存の形を変えたら `app.js` の `SAVE_VER` を上げ、`migrate` に読み替えを1つ足す。
+- 保存の形を変えたら `src/app/state.js` の `SAVE_VER` を上げ、`migrate` に読み替えを1つ足す。
 
 ## 部品と正本
 
@@ -52,13 +67,14 @@ homeroom-tools の「机の配置図」（apps/desk-layout）をそのまま移�
 | 物（机・教室・体育館・運動場） | `assets/objects/desk/data.js`・`draw.js` |
 | 体育館の用具の立体・置く物 | `assets/objects/gym/mesh.js`・`items.js` |
 | 場の床 | `assets/spaces/*/space.json`（`extends` を持つ行事用の上乗せは出さない）。描き方は `src/scenes.js` |
-| 画面・見た目 | `src/app.js`・`src/style.css`・`src/tokens.css`（中立の色は `assets/ui/base.css`） |
+| 画面・見た目 | `src/app/`（state 保存と状態／home えらぶ／show 見せる・印刷／edit なおす／history 取り消し・写す／pointer 指とマウス／boot 起動）・`src/store.js`（保存のしかた：端末／共有）・`src/style.css`・`src/tokens.css`（中立の色は `assets/ui/base.css`） |
 
 ```bash
-node apps/haichi/scripts/build.mjs           # src → dist
+node apps/haichi/scripts/build.mjs           # src → dist と gas（同じ1ファイル）
 node apps/haichi/scripts/build.mjs --check   # dist が古いと止まる
 node apps/haichi/tests/test-app.mjs          # 不変条件
 node apps/haichi/tests/e2e.mjs               # 画面の操作（playwright が要る。Chromium の場所は PW_CHROMIUM）
+node apps/haichi/tests/gas.mjs               # GAS版：Code.gs の中身と、画面2つで同時に直す
 node apps/haichi/scripts/screenshot.mjs <出力先>   # 画面を撮る（playwright が要る）
 ```
 
