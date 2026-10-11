@@ -1440,39 +1440,55 @@ function addPrismX(F,poly,x0,x1,col,edge){
    ② 短いパイプ：①の座面より少し上（黒い小さな留め具が支点）から、うしろの床へ。①の外がわ。横から見て「入」の字。
    ③ 床の桟：前の足どうし・うしろの足どうしを横につなぐ（角の黒い足ゴムつき）。
    座面は①に うしろの端でつながり、前へ張り出す。背もたれは①の上の端に、①と同じ傾きで付く。 */
+// 角を丸めた長方形（中心 cx,cy、幅 w、高さ h、角の半径 r）の頂点列。角ごとに n 点
+function rrect(cx,cy,w,h,r,n){ n=n||4; r=Math.min(r,w/2,h/2); var p=[], c=[[w/2-r,h/2-r,0],[-(w/2-r),h/2-r,90],[-(w/2-r),-(h/2-r),180],[w/2-r,-(h/2-r),270]];
+  c.forEach(function(q){ for(var i=0;i<=n;i++){ var a=(q[2]+90*i/n)*Math.PI/180; p.push([cx+q[0]+r*Math.cos(a), cy+q[1]+r*Math.sin(a)]); } }); return p; }
+/* 板（角を丸めた形を厚みぶん押し出す）。P(u,v,s)：板の上の2次元の点 (u,v) と 表(s=1)／裏(s=0) を立体の点にする。
+   穴（hole）があれば 表・裏の面は 外の輪から細い切れ目で穴の輪へつないだ1枚の多角形にする（面を分けると継ぎ目が見える）。
+   角の丸みは形そのものに入れてあるので、描くときは丸めない（sharp）。 */
+function addSlab(F,outer,hole,P,col){
+  var G=[], H=[], all=function(f){ return f.p.map(function(_,i){return i;}); };
+  [1,0].forEach(function(s){
+    var ring=outer.map(function(q){return P(q[0],q[1],s);});
+    if(hole){ var hr=hole.map(function(q){return P(q[0],q[1],s);}).reverse(); ring=ring.concat([ring[0]],hr,[hr[0]]); }
+    G.push({p:ring,col:col});
+  });
+  var side=function(pts,list){ for(var i=0;i<pts.length;i++){ var a=pts[i], b=pts[(i+1)%pts.length];
+    list.push({p:[P(a[0],a[1],1),P(b[0],b[1],1),P(b[0],b[1],0),P(a[0],a[1],0)],col:col}); } };
+  side(outer,G); if(hole) side(hole,H);
+  var cen=function(pts){ var u=0,v=0; pts.forEach(function(q){u+=q[0];v+=q[1];}); return [u/pts.length,v/pts.length]; };
+  var c=cen(outer), m=P(c[0],c[1],0.5); outward(G,m);
+  if(hole){ var hc=cen(hole), hm=P(hc[0],hc[1],0.5); outward(H,hm); H.forEach(function(f){ f.p.reverse(); }); }   // 穴の内がわは穴の中を向く
+  G.concat(H).forEach(function(f){ f.sharp=all(f); f.edge=null; F.push(f); });
+}
+/* 写真（アイリスプラザ CAL-XS01M）の組み立て。左右それぞれ：
+   ① 長いパイプ：前の床から まっすぐ斜めに上がり、背もたれの下の端で板の中へ入る（背の柱と前の脚が1本）。内がわ。
+   ② 短いパイプ：①の座面より少し上（黒い小さな留め具が支点）から、うしろの床へ。①の外がわ。横から見て「入」の字。
+   ③ 床の桟：前の足どうし・うしろの足どうしを横につなぐ（角の黒い足ゴムつき）。
+   座面は①に うしろの端でつながり、前へ張り出す。背もたれは①の上の端に、①と同じ傾きで付く。
+   黒い部品は角を少し丸めた板として作る。 */
 function pipeChair(){
   var S=SPEC.pipechair, F=[], w=S.W/2, t=S.tube, met="#BFC4CA", blk="#2F3134";
-  var yTop=-S.D/2+20, yF=S.frontFoot, yR=-S.D/2+20;   // 足ゴムの はしが 奥行 D に収まる位置
+  var yTop=-S.D/2+20, yF=S.frontFoot, yR=-S.D/2+20;                               // 足ゴムの はしが 奥行 D に収まる位置
   var yA=function(z){ return yF+(yTop-yF)*z/S.H; };                              // ①の上の点の Y（高さ z で）
   var tx=12, xb=w-tx/2, xa=w-tx*1.5;                                               // 脚は横に薄い（前後 t・横 tx）。②（うしろの脚）は外がわ、①は内がわ（写真）
+  var z0=S.H-S.backH, k=18;                                                        // 背もたれの下の端・厚み
+  var flat=function(cx,cy,z,th){ return function(u,v,s){ return [u,v,z+s*th]; }; };   // 床に平行な板
   [-1,1].forEach(function(s){
-    addBeam(F,[s*xa,yF,t/2],[s*xa,yA(S.H-40),S.H-40],t,met,null,tx);                             // ① 長いパイプ
-    addBeam(F,[s*xb,yA(S.lockZ),S.lockZ],[s*xb,yR,t/2],t,met,null,tx);                     // ② 短いパイプ
-    addBox(F,s*(xa+xb)/2-tx,s*(xa+xb)/2+tx,yA(S.lockZ)-16,yA(S.lockZ)+16,S.lockZ-20,S.lockZ+20,{top:blk,side:blk,end:blk},blk);   // 支点の留め具（①と②をはさむ小さな黒）
-    [[s*xa,yF],[s*xb,yR]].forEach(function(q){ addBox(F,q[0]-tx/2,q[0]+tx/2,q[1]-20,q[1]+20,0,14,{top:blk,side:blk,end:blk},blk); });   // 足ゴム
+    addBeam(F,[s*xa,yF,t/2],[s*xa,yA(z0+15),z0+15],t,met,null,tx);                 // ① 長いパイプ（背もたれの中で止める：板の前に はみ出さない）
+    addBeam(F,[s*xb,yA(S.lockZ),S.lockZ],[s*xb,yR,t/2],t,met,null,tx);             // ② 短いパイプ
+    var lx=s*(xa+xb)/2, ly=yA(S.lockZ);                                            // 支点の留め具（①と②をはさむ小さな黒）
+    addSlab(F,rrect(lx,ly,2*tx,32,5),null,flat(0,0,S.lockZ-20,40),blk);
+    [[s*xa,yF],[s*xb,yR]].forEach(function(q){ addSlab(F,rrect(q[0],q[1],tx,40,5),null,flat(0,0,0,14),blk); });   // 足ゴム
   });
   addBeam(F,[-xa,yF,t/2],[xa,yF,t/2],t,met);                                       // ③ 前の床の桟
   addBeam(F,[-xb,yR,t/2],[xb,yR,t/2],t,met);                                       // ③ うしろの床の桟
-  var yS=yA(S.seatZ);                                                              // 座面のうしろの端＝①と交わる所
-  addPrismX(F,[[yS,S.seatZ-22],[S.D/2,S.seatZ-22],[S.D/2,S.seatZ],[yS,S.seatZ]],-(xa-t/2),xa-t/2,blk,blk);   // 座面
-  var z0=S.H-S.backH, k=18;                                                        // 背もたれ：①に沿って傾いた板
-  // 背もたれ：①に沿って傾いた板。上の中ほどに 持ち手の穴（横長の矩形。写真）。穴のまわりを4枚の板に分けて組む
-  // 前・うしろの面は穴のまわりの4枚、ふちの4面、穴の内がわの4面を じかに組む（板を分けると継ぎ目の面が見える）
+  var yS=yA(S.seatZ), sw=2*(xa-t/2);                                               // 座面：うしろの端＝①と交わる所、前へ張り出す
+  addSlab(F,rrect(0,(yS+S.D/2)/2,sw,S.D/2-yS,30),null,flat(0,0,S.seatZ-22,22),blk);
+  // 背もたれ：①に沿って傾いた板。上の中ほどに 持ち手の穴（横長の矩形。写真）。柱を板の中に埋めるため 表は①より前へ12
   var hw=S.hole.W/2, h0=S.H-S.hole.top-S.hole.H, h1=S.H-S.hole.top;
-  var Q=function(x,z,f){ return [x, f?yA(z)+12:yA(z)-k, z]; };                     // f：前の面（柱を板の中に埋めるため前へ12）
-  var outer=[], hole=[];
-  [true,false].forEach(function(f){
-    [[-w,w,z0,h0],[-w,w,h1,S.H],[-w,-hw,h0,h1],[hw,w,h0,h1]].forEach(function(r){
-      outer.push({p:[Q(r[0],r[2],f),Q(r[1],r[2],f),Q(r[1],r[3],f),Q(r[0],r[3],f)],col:blk}); });
-  });
-  var ring=function(xs,zs,list){ var c=[[xs[0],zs[0]],[xs[1],zs[0]],[xs[1],zs[1]],[xs[0],zs[1]]];
-    for(var i=0;i<4;i++){ var a=c[i], b=c[(i+1)%4]; list.push({p:[Q(a[0],a[1],true),Q(b[0],b[1],true),Q(b[0],b[1],false),Q(a[0],a[1],false)],col:blk}); } };
-  ring([-w,w],[z0,S.H],outer); ring([-hw,hw],[h0,h1],hole);
-  outward(outer,[0,yA((z0+S.H)/2)-k/2+6,(z0+S.H)/2]);
-  outward(hole,[0,yA((h0+h1)/2)-k/2+6,(h0+h1)/2]); hole.forEach(function(f){ f.p.reverse(); });   // 穴の内がわの面は 穴の中を向く
-  outer.concat(hole).forEach(function(f){ F.push(f); });
-  // 黒い部品（座面・背もたれ・留め具・足ゴム）は角を丸めない：面ごとに丸めると、ふちの面と中の面の間に すき間が出る
-  F.forEach(function(f){ if(f.col===blk){ f.sharp=f.p.map(function(_,i){return i;}); f.edge=null; } });   // 線は面と同じ色（継ぎ目を見せない）
+  addSlab(F,rrect(0,(z0+S.H)/2,S.W,S.backH,24),rrect(0,(h0+h1)/2,S.hole.W,S.hole.H,10),
+    function(u,v,s){ return [u, s?yA(v)+12:yA(v)-k, v]; },blk);
   return {faces:F, foot:{W:S.W,L:S.D}};
 }
 function longTable(){
