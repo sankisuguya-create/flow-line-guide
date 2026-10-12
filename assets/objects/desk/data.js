@@ -145,6 +145,7 @@ var FLOOR_COLORS = [
 function floorColor(id) { var f = FLOOR_COLORS.filter(function (x) { return x.id === id; })[0]; return f ? f.c : null; }
 var OUTLINE = false;
 var GRID_ZOOM = 1;   // 編集画面の拡大率（app.js が入れる）。グリッドの線を細く保つのに使う
+var DIM_SHOW = true;     // 寸法（←→）を出すか。まとめて出す・隠す（端末に保存）
 var SPACE_TEXT = true;   // 場の床の文字（「北の袖」など区画の名前・階段の行き先・仮の地図）を出すか。方位はいつも出す
 function T(cx, cy, text, fs, fill) {
   return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + MIRROR + ' 1)"><text x="0" y="' + (fs * 0.36) + '" font-size="' + fs +

@@ -99,7 +99,11 @@ await step('まとめて選ぶ：Shift＋押す・囲む・そろえる・まと
 });
 
 await step('矢印をのばす：上へ2目、斜め、ちぢめる、色', async () => {
-  await p.click('#eBack'); await p.click('#hNew'); await p.click('[data-add="arrow"]'); await p.click('#selPath');
+  await p.click('#eBack'); await p.click('#hNew');
+  // 右のパレットは 既定で畳んである。開くと覚えている（以降の検査は開いたまま）
+  assert.equal(await p.isVisible('[data-add="arrow"]'), false, '既定は畳む');
+  for (const g of ['thing', 'mark', 'people']) if (await p.locator(`.pgrp[data-g="${g}"]`).count()) await p.click(`.pgrp[data-g="${g}"] > summary`);
+  await p.click('[data-add="arrow"]'); await p.click('#selPath');
   const marks = () => p.$$eval('.amark:not(.shrink)', els => els.map(m => ({e: m.dataset.ext, x: +m.dataset.x, y: +m.dataset.y})));
   assert.equal((await marks()).length, 16, '先と元に8方向ずつ');
   const go = async (f) => { const t = (await marks()).filter(m => m.e === 'tip').sort(f)[0]; await p.locator(`.amark[data-ext="tip"][data-x="${t.x}"][data-y="${t.y}"]`).dispatchEvent('pointerdown'); };
@@ -149,6 +153,26 @@ await step('名称を直せる・引き出し線は細い曲線', async () => {
   const h = await p.innerHTML('#editSvg');
   assert.ok(h.includes('>3年1組</text>') && /<path d="M[^"]*C[^"]*" class="lead"/.test(h));
   await p.fill('#selLname', ''); assert.ok(!(await k()).lname, '空なら物の名前に戻る');
+});
+
+await step('寸法：自動で長さ、入れると手動、自動で戻る', async () => {
+  await p.click('[data-add="dim"]');
+  const d = async () => (await lastLayout()).top.at(-1);
+  assert.equal((await d()).item, 'dim');
+  assert.ok((await p.innerHTML('#editSvg')).includes('>3m</text>'), '自動：3m');
+  await p.click('#selLen [data-len="1"]'); assert.ok((await p.innerHTML('#editSvg')).includes('>3.1m</text>'), '長さに合わせる');
+  await p.fill('#selText', '約30m'); assert.equal((await d()).text, '約30m');
+  assert.ok(await p.locator('#dimMode [data-dim="man"].on').count(), '手動になる');
+  assert.ok((await p.innerHTML('#editSvg')).includes('>約30m</text>'));
+  await p.click('#dimMode [data-dim="auto"]'); assert.ok(!(await d()).text);
+  assert.ok((await p.innerHTML('#editSvg')).includes('>3.1m</text>'));
+  await p.click('#eDisp summary'); await p.uncheck('#eDim');
+  assert.ok(!(await p.innerHTML('#editSvg')).includes('>3.1m</text>'), '寸法をまとめて隠す');
+  await p.check('#eDim'); assert.ok((await p.innerHTML('#editSvg')).includes('>3.1m</text>'));
+  await p.click('#eDisp summary');
+  const last = (await lastLayout()).top.length - 1;
+  await p.locator(`#editSvg .it[data-i="${last}"]`).dispatchEvent('pointerdown', {pointerId: 1, isPrimary: true}); await p.locator('#editSvg').dispatchEvent('pointerup', {pointerId: 1});
+  assert.equal(await p.isVisible('#dimMode'), true, '選び直せる');
 });
 
 await step('拡大・縮小とグリッドの線', async () => {

@@ -8,7 +8,7 @@ function openEdit(id) {
   histButtons();
   setPalette(S.prefs.palette !== false);
   $('eOutline').checked = OUTLINE; $('eGridShow').checked = S.prefs.gridShow !== false;
-  $('eTextBox').hidden = !SCENE.space; $('eText').checked = SPACE_TEXT;
+  $('eDim').checked = DIM_SHOW; $('eTextBox').hidden = !SCENE.space; $('eText').checked = SPACE_TEXT;
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
   go('vEdit'); renderEdit(); renderPalette();
 }
@@ -46,6 +46,11 @@ function renderEdit() {
     $('selReal').textContent = Math.round(scaleOf(p) * 100) + '%'; $('selReal').title = '実寸（100%）に戻す';
     $('selTextBox').hidden = !it.text;
     if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
+    var isDim = p.item === 'dim';   // 寸法：自動（長さ）か手動（入れた文字）。入れると手動、自動を押すと消す
+    $('selTextCap').textContent = isDim ? '表示' : '文字';
+    $('selText').placeholder = isDim ? dimAuto(p) : '例：待機場所';
+    $('dimMode').hidden = !isDim;
+    if (isDim) $('dimMode').querySelectorAll('[data-dim]').forEach(function (b) { b.classList.toggle('on', (b.getAttribute('data-dim') === 'man') === !!p.text); });
     $('selSize').hidden = !it.sizes;
     if (it.sizes) $('selSize').textContent = Object.keys(it.sizes).map(function (k) { return (k === sizeOf(p) ? '●' : '○') + it.sizes[k].name; }).join(' ');
     $('selLen').hidden = !hasCtl(p.item, 'len');
@@ -139,7 +144,7 @@ function renderPalette() {
   $('pItems').innerHTML = PALETTE_GROUPS.map(function (g) {
     var list = ids.filter(function (id) { return (ITEMS[id].group || 'thing') === g[0]; });
     if (!list.length) return '';
-    var shut = (S.prefs.palShut || []).indexOf(g[0]) >= 0;   // 畳んだ分類（端末に保存）
+    var shut = (S.prefs.palOpen || []).indexOf(g[0]) < 0;   // 既定は畳む。開いた分類だけ開く（端末に保存）
     return '<details class="pgrp" data-g="' + g[0] + '"' + (shut ? '' : ' open') + '><summary class="pgroup">' + g[1] + '<small>' + list.length + '</small></summary><div class="tiles in">' + list.map(tile).join('') + '</div></details>';
   }).join('');
 }
@@ -155,6 +160,7 @@ $('pItems').addEventListener('click', function (e) {
   var b = e.target.closest('[data-add]'); if (!b) return;
   var id = b.getAttribute('data-add');
   if (tab === 'top') {
+    if (id === 'dim' && !DIM_SHOW) DIM_SHOW = S.prefs.dimShow = true;   // 隠しているときに足したら 出す
     cur.top.push({ item: id, state: Object.keys(ITEMS[id].states)[0], x: DESK.w / 2, y: DESK.d / 2, r: 0, label: false });
     sel = cur.top.length - 1;
   } else if (tab === 'hang') cur.hooks[dest.hang].push({ item: id, label: false });
@@ -169,6 +175,11 @@ $('eBg').addEventListener('click', function (e) {
   var b = e.target.closest('[data-bg]'); if (!b) return;
   var id = b.getAttribute('data-bg'); if (id) cur.bg = id; else delete cur.bg; save(); renderEdit();
 });
+$('eDim').onchange = function () {   // 寸法をまとめて出す・隠す。隠した寸法は選べないので 選びを外す
+  DIM_SHOW = S.prefs.dimShow = this.checked;
+  if (!DIM_SHOW) { msel = msel.filter(function (i) { return cur.top[i].item !== 'dim'; }); if (sel >= 0 && cur.top[sel] && cur.top[sel].item === 'dim') sel = -1; }
+  save(); renderEdit();
+};
 $('eText').onchange = function () { SPACE_TEXT = S.prefs.spaceText = this.checked; save(); renderEdit(); };
 document.addEventListener('pointerdown', function (e) {   // ▾ の板は 外を押すと閉じる
   ['eDisp', 'eGridMenu', 'eMore', 'mAlign'].forEach(function (id) { var d = $(id); if (d.open && !e.target.closest('#' + id)) d.open = false; });
@@ -198,6 +209,12 @@ $('selSize').onclick = function () {
 $('selColors').addEventListener('click', function (e) {
   var b = e.target.closest('[data-col]'); if (!b) return;
   cur.top[sel].color = +b.getAttribute('data-col'); save(); renderEdit();
+});
+$('dimMode').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-dim]'), p = cur.top[sel]; if (!b || !p) return;
+  if (b.getAttribute('data-dim') === 'auto') delete p.text; else if (!p.text) p.text = dimAuto(p);
+  save(); renderEdit();
+  if (b.getAttribute('data-dim') === 'man') { $('selText').focus(); $('selText').select(); }
 });
 $('selLname').addEventListener('input', function () {   // 名称を直す。空にすると物の名前に戻る
   var p = cur.top[sel]; if (!p) return;
@@ -392,9 +409,9 @@ function svgPoint(svg, e) {
 /* パレットの分類を畳む・開く（端末に保存） */
 $('pItems').addEventListener('toggle', function (e) {
   var d = e.target; if (!d.matches || !d.matches('details.pgrp')) return;
-  var g = d.getAttribute('data-g'), s = (S.prefs.palShut || []).filter(function (x) { return x !== g; });
-  if (!d.open) s.push(g);
-  S.prefs.palShut = s; save();
+  var g = d.getAttribute('data-g'), s = (S.prefs.palOpen || []).filter(function (x) { return x !== g; });
+  if (d.open) s.push(g);
+  S.prefs.palOpen = s; save();
 }, true);
 /* 「設置」：右のパレット（置く物）を出す・しまう。しまうと 図を広く使える（端末に保存） */
 function setPalette(on) {

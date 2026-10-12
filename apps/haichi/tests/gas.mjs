@@ -82,6 +82,7 @@ await step('同時に別の物を足すと まざる', async () => {
   await A.click('[data-scene="gym"]'); await A.click('[data-fix="g_shukai"]');
   await B.click('[data-fix="g_shukai"]');
   const n0 = rowOf('g_shukai').top.length;
+  for (const P of [A, B]) for (const g of ['thing', 'mark', 'people']) await P.click(`.pgrp[data-g="${g}"] > summary`);   // 既定で畳んである
   await A.click('[data-add="gcone"]'); await B.click('[data-add="hoop"]');
   await wait(9000);   // 送る（0.7秒）→ 相手が取りに来る（4秒ごと）
   const items = rowOf('g_shukai').top.map(p => p.item);

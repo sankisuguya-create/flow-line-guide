@@ -87,6 +87,7 @@ function scOf(l) { return SCENES[(l && l.scene) || ''] ? l.scene : 'desk'; }   /
 var scene = SCENES[S.prefs.scene] ? S.prefs.scene : 'desk';   // メニューで選んでいる場所
 useScene(scene);
 OUTLINE = !!S.prefs.outline;   // 物の輪郭を太く（端末に保存）
+DIM_SHOW = S.prefs.dimShow !== false;   // 寸法を出すか（端末に保存）
 SPACE_TEXT = S.prefs.spaceText !== false;   // 場の床の文字（端末に保存）
 var cur = null;          // 表示・編集中の配置
 var flip = false;
