@@ -99,7 +99,11 @@ await step('まとめて選ぶ：Shift＋押す・囲む・そろえる・まと
 });
 
 await step('矢印をのばす：上へ2目、斜め、ちぢめる、色', async () => {
-  await p.click('#eBack'); await p.click('#hNew'); await p.click('[data-add="arrow"]'); await p.click('#selPath');
+  await p.click('#eBack'); await p.click('#hNew');
+  // 右のパレットは 既定で畳んである。開くと覚えている（以降の検査は開いたまま）
+  assert.equal(await p.isVisible('[data-add="arrow"]'), false, '既定は畳む');
+  for (const g of ['thing', 'mark', 'people']) if (await p.locator(`.pgrp[data-g="${g}"]`).count()) await p.click(`.pgrp[data-g="${g}"] > summary`);
+  await p.click('[data-add="arrow"]'); await p.click('#selPath');
   const marks = () => p.$$eval('.amark:not(.shrink)', els => els.map(m => ({e: m.dataset.ext, x: +m.dataset.x, y: +m.dataset.y})));
   assert.equal((await marks()).length, 16, '先と元に8方向ずつ');
   const go = async (f) => { const t = (await marks()).filter(m => m.e === 'tip').sort(f)[0]; await p.locator(`.amark[data-ext="tip"][data-x="${t.x}"][data-y="${t.y}"]`).dispatchEvent('pointerdown'); };

@@ -144,7 +144,7 @@ function renderPalette() {
   $('pItems').innerHTML = PALETTE_GROUPS.map(function (g) {
     var list = ids.filter(function (id) { return (ITEMS[id].group || 'thing') === g[0]; });
     if (!list.length) return '';
-    var shut = (S.prefs.palShut || []).indexOf(g[0]) >= 0;   // 畳んだ分類（端末に保存）
+    var shut = (S.prefs.palOpen || []).indexOf(g[0]) < 0;   // 既定は畳む。開いた分類だけ開く（端末に保存）
     return '<details class="pgrp" data-g="' + g[0] + '"' + (shut ? '' : ' open') + '><summary class="pgroup">' + g[1] + '<small>' + list.length + '</small></summary><div class="tiles in">' + list.map(tile).join('') + '</div></details>';
   }).join('');
 }
@@ -409,9 +409,9 @@ function svgPoint(svg, e) {
 /* パレットの分類を畳む・開く（端末に保存） */
 $('pItems').addEventListener('toggle', function (e) {
   var d = e.target; if (!d.matches || !d.matches('details.pgrp')) return;
-  var g = d.getAttribute('data-g'), s = (S.prefs.palShut || []).filter(function (x) { return x !== g; });
-  if (!d.open) s.push(g);
-  S.prefs.palShut = s; save();
+  var g = d.getAttribute('data-g'), s = (S.prefs.palOpen || []).filter(function (x) { return x !== g; });
+  if (d.open) s.push(g);
+  S.prefs.palOpen = s; save();
 }, true);
 /* 「設置」：右のパレット（置く物）を出す・しまう。しまうと 図を広く使える（端末に保存） */
 function setPalette(on) {
