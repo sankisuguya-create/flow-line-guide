@@ -63,8 +63,9 @@ function colorIndex(p) {
   var it = ITEMS[p.item];
   return p.color == null ? (it.color0 || 0) : (p.color | 0) % it.colors.length;
 }
-function colorOf(p) {
+function colorOf(p) {   // 置いた物の色：自由に選んだ色（hex）があればそれ、なければ 色の見本の番号
   var c = ITEMS[p.item].colors;
+  if (c && /^#[0-9a-fA-F]{6}$/.test(p.hex || '')) return p.hex;
   return c ? c[colorIndex(p)] : null;
 }
 /* 描く大きさ。判型を選べる物は判型から（開くと幅2倍）、ほかは状態ごとの寸法 */
@@ -122,7 +123,7 @@ function rotBox(w, d, r) {
    （パイプいすを何十脚も並べたときの重さ対策。拡大・縮小は外側の transform でかけるので鍵に入れない） */
 var MESH_CACHE = {}, MESH_CACHE_N = 0;
 function meshSvg(p) {
-  var key = [p.item, stateOf(p), sizeOf(p), p.r || 0, p.m ? 1 : 0].join('|');
+  var key = [p.item, stateOf(p), sizeOf(p), colorOf(p) || '', p.r || 0, p.m ? 1 : 0].join('|');   // 色も鍵に（コーン）
   if (MESH_CACHE[key]) return MESH_CACHE[key];
   if (++MESH_CACHE_N > 400) { MESH_CACHE = {}; MESH_CACHE_N = 1; }
   return (MESH_CACHE[key] = meshSvgRaw(p));

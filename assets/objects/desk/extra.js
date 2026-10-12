@@ -100,7 +100,12 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
     for (var j = 0; j < ny; j++) for (var i = 0; i < nx; i++) {
       var x = i * KID.dx + (KID.dx - 400) / 2, y = j * KID.dy + (KID.dy - 500) / 2;
       s += '<g transform="translate(' + x + ' ' + y + ')">' + ELL(200, 470, 168, 25, 'rgba(0,0,0,.16)') + C(200, 90, 96, col, 8) +
-        '<path d="' + roundPoly([[112, 200], [288, 200], [352, 475], [48, 475]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/></g>';
+        '<path d="' + roundPoly([[112, 200], [288, 200], [352, 475], [48, 475]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>';
+      if (p && p.num) {   // 出席番号：絵の左上に白い札。横順（左上から右へ）か 縦順（左上から下へ）
+        var no = (p.n0 || 1) + (p.nord === 'v' ? i * ny + j : j * nx + i), t = String(no), bw = Math.max(150, t.length * 95 + 50);
+        s += R(-60, -40, bw, 160, '#FFFFFF', 30, 8) + T(-60 + bw / 2, 40, t, 120);
+      }
+      s += '</g>';
     }
     return s;
   } } } });

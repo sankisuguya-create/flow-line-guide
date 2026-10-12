@@ -122,6 +122,25 @@ await step('児童：横×縦の人数、36人まで', async () => {
   assert.deepEqual([k.nx, k.ny], [6, 6]);
 });
 
+await step('児童：出席番号（はじめの番号・縦順）と自由な色', async () => {
+  const k = async () => (await lastLayout()).top.find(q => q.item === 'kids');
+  await p.click('#kNum'); assert.equal((await k()).num, true);
+  assert.ok((await p.innerHTML('#editSvg')).includes('>36</text>'), '6×6 で 1〜36 番');
+  await p.click('[data-n0="1"]'); await p.click('[data-n0="1"]'); assert.equal((await k()).n0, 3);
+  await p.click('#kOrd'); assert.equal((await k()).nord, 'v');
+  await p.locator('#selHex').evaluate(el => { el.value = '#123456'; el.dispatchEvent(new Event('change', {bubbles: true})); });
+  assert.equal((await k()).hex, '#123456'); assert.ok((await p.innerHTML('#editSvg')).includes('#123456'));
+  await p.click('#selColors [data-col="1"]'); assert.ok(!(await k()).hex, '見本を押すと見本の色に戻る');
+});
+
+await step('コーン：色・柄なし・ミニコーン', async () => {
+  const r = await p.evaluate(() => {
+    const d = (it, q) => { const c = ITEMS[it].custom ? ITEMS[it].custom(q) : null; return JSON.stringify(c || meshSvg(Object.assign({item: it}, q))); };
+    return { band: d('gcone', {state: 'band'}), plain: d('gcone', {state: 'plain', color: 2}), mini: d('gminicone', {color: 3}) };
+  });
+  assert.ok(r.band.length > 50 && r.mini.length > 50); assert.notEqual(r.plain, r.band); assert.ok(r.plain.includes('70,185,122') || r.plain.length > 50);
+});
+
 await step('拡大・縮小とグリッドの線', async () => {
   await p.click('#selBig'); assert.equal(await p.textContent('#selReal'), '125%');
   await p.click('#selReal'); assert.equal(await p.textContent('#selReal'), '100%');

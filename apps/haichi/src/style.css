@@ -265,3 +265,8 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 .pgrp>summary small{margin-left:auto;font-weight:400;color:var(--ink-faint)}
 #pItems:has(.pgrp){display:block}
 .tiles.in{max-height:none;overflow:visible}
+
+/* 色：見本にない色を選ぶ丸（中に色の選び方） */
+.swatches .sw.free{position:relative;display:inline-block;overflow:hidden;cursor:pointer}
+.swatches .sw.free input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+#kNumOpt{display:inline-flex;align-items:center;gap:4px}

@@ -3,7 +3,7 @@
    space.json は m、配置図は mm なので 1000 倍。床の描き方は導線プレイヤー（engine/player/flow.js）と
    同じ決まり（docs/hub.md「描き方」）：線＝壁だけ、同じ zone は外まわりだけ、扉＝切れ目＋枠、開口＝切れ目、
    階段＝踏み段の線（矢印なし、下の階へは黒く消える）、床の目印＝点線。 */
-var SPACE_ITEMS = ['gbox', 'gboard', 'gmat', 'gthick', 'gcone', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'].concat(EXTRA_SPACE_ITEMS);   // 足した物（desk/extra.js）のうち体育館に置ける物も
+var SPACE_ITEMS = ['gbox', 'gboard', 'gmat', 'gthick', 'gcone', 'gminicone', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'].concat(EXTRA_SPACE_ITEMS);   // 足した物（desk/extra.js）のうち体育館に置ける物も
 SPACES.forEach(function (sp) {
   // 場の id が既存の場所（gym など）と同じなら、その場所の床をこの場で置きかえる（保存した配置・置ける物はそのまま）
   if (SCENES[sp.id] && !SCENES[sp.id].desk) {
