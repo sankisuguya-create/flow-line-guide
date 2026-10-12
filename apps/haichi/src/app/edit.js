@@ -8,7 +8,7 @@ function openEdit(id) {
   histButtons();
   setPalette(S.prefs.palette !== false);
   $('eOutline').checked = OUTLINE; $('eGridShow').checked = S.prefs.gridShow !== false;
-  $('eTextBox').hidden = !SCENE.space; $('eText').checked = SPACE_TEXT;
+  $('eDim').checked = DIM_SHOW; $('eTextBox').hidden = !SCENE.space; $('eText').checked = SPACE_TEXT;
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
   go('vEdit'); renderEdit(); renderPalette();
 }
@@ -160,6 +160,7 @@ $('pItems').addEventListener('click', function (e) {
   var b = e.target.closest('[data-add]'); if (!b) return;
   var id = b.getAttribute('data-add');
   if (tab === 'top') {
+    if (id === 'dim' && !DIM_SHOW) DIM_SHOW = S.prefs.dimShow = true;   // 隠しているときに足したら 出す
     cur.top.push({ item: id, state: Object.keys(ITEMS[id].states)[0], x: DESK.w / 2, y: DESK.d / 2, r: 0, label: false });
     sel = cur.top.length - 1;
   } else if (tab === 'hang') cur.hooks[dest.hang].push({ item: id, label: false });
@@ -174,6 +175,11 @@ $('eBg').addEventListener('click', function (e) {
   var b = e.target.closest('[data-bg]'); if (!b) return;
   var id = b.getAttribute('data-bg'); if (id) cur.bg = id; else delete cur.bg; save(); renderEdit();
 });
+$('eDim').onchange = function () {   // 寸法をまとめて出す・隠す。隠した寸法は選べないので 選びを外す
+  DIM_SHOW = S.prefs.dimShow = this.checked;
+  if (!DIM_SHOW) { msel = msel.filter(function (i) { return cur.top[i].item !== 'dim'; }); if (sel >= 0 && cur.top[sel] && cur.top[sel].item === 'dim') sel = -1; }
+  save(); renderEdit();
+};
 $('eText').onchange = function () { SPACE_TEXT = S.prefs.spaceText = this.checked; save(); renderEdit(); };
 document.addEventListener('pointerdown', function (e) {   // ▾ の板は 外を押すと閉じる
   ['eDisp', 'eGridMenu', 'eMore', 'mAlign'].forEach(function (id) { var d = $(id); if (d.open && !e.target.closest('#' + id)) d.open = false; });

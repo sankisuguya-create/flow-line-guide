@@ -103,7 +103,7 @@ function drawBand(a, b) {
 function bandSelect(a, b, add) {   // 囲みに少しでもかかった物を選ぶ
   var x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x), y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
   var hit = [];
-  cur.top.forEach(function (p, i) { var bb = itemBounds(p); if (bb.x1 >= x0 && bb.x0 <= x1 && bb.y1 >= y0 && bb.y0 <= y1) hit.push(i); });
+  cur.top.forEach(function (p, i) { if (p.item === 'dim' && !DIM_SHOW) return; var bb = itemBounds(p); if (bb.x1 >= x0 && bb.x0 <= x1 && bb.y1 >= y0 && bb.y0 <= y1) hit.push(i); });
   if (add) selected().forEach(function (i) { if (hit.indexOf(i) < 0) hit.push(i); });
   msel = hit.length > 1 ? hit : [];
   // 基準（揃えるときに動かさない物）は 引きずり始めた所にいちばん近い物

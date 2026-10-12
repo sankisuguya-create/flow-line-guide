@@ -325,6 +325,7 @@ function topView(lay, o) {
   var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
   drawOrder(lay.top).forEach(function (i) {
     var p = lay.top[i];
+    if (p.item === 'dim' && !DIM_SHOW) return;   // 寸法を隠しているとき
     s += drawTopItem(p, i, ((Array.isArray(o.sel) ? o.sel.indexOf(i) >= 0 : o.sel === i) ? 'sel' : '') + (o.ref === i ? ' ref' : ''));   // ref：揃えるときの基準の物   // o.sel：番号 か 番号の並び（まとめて選んだとき）
     var bb = itemBounds(p);
     ib.x0 = Math.min(ib.x0, bb.x0); ib.x1 = Math.max(ib.x1, bb.x1);

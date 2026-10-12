@@ -162,6 +162,13 @@ await step('寸法：自動で長さ、入れると手動、自動で戻る', as
   assert.ok((await p.innerHTML('#editSvg')).includes('>約30m</text>'));
   await p.click('#dimMode [data-dim="auto"]'); assert.ok(!(await d()).text);
   assert.ok((await p.innerHTML('#editSvg')).includes('>3.1m</text>'));
+  await p.click('#eDisp summary'); await p.uncheck('#eDim');
+  assert.ok(!(await p.innerHTML('#editSvg')).includes('>3.1m</text>'), '寸法をまとめて隠す');
+  await p.check('#eDim'); assert.ok((await p.innerHTML('#editSvg')).includes('>3.1m</text>'));
+  await p.click('#eDisp summary');
+  const last = (await lastLayout()).top.length - 1;
+  await p.locator(`#editSvg .it[data-i="${last}"]`).dispatchEvent('pointerdown', {pointerId: 1, isPrimary: true}); await p.locator('#editSvg').dispatchEvent('pointerup', {pointerId: 1});
+  assert.equal(await p.isVisible('#dimMode'), true, '選び直せる');
 });
 
 await step('拡大・縮小とグリッドの線', async () => {

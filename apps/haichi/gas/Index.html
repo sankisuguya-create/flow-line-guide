@@ -402,10 +402,11 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
         </div>
       </details>
       <details class="dispmenu" id="eDisp">
-        <summary class="tbtn" title="床の色・輪郭・エリア名"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>表示</span></summary>
+        <summary class="tbtn" title="床の色・輪郭・寸法・エリア名"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>表示</span></summary>
         <div class="dpanel">
           <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
           <label class="chk"><input type="checkbox" id="eOutline">輪郭を強調</label>
+          <label class="chk"><input type="checkbox" id="eDim">寸法</label>
           <label id="eTextBox" class="chk" hidden><input type="checkbox" id="eText">エリア名</label>
           <label class="chk" title="映す画面で左右反転してよい"><input type="checkbox" id="eFlip">映す画面で反転を許可</label>
         </div>
@@ -664,6 +665,7 @@ var FLOOR_COLORS = [
 function floorColor(id) { var f = FLOOR_COLORS.filter(function (x) { return x.id === id; })[0]; return f ? f.c : null; }
 var OUTLINE = false;
 var GRID_ZOOM = 1;   // 編集画面の拡大率（app.js が入れる）。グリッドの線を細く保つのに使う
+var DIM_SHOW = true;     // 寸法（←→）を出すか。まとめて出す・隠す（端末に保存）
 var SPACE_TEXT = true;   // 場の床の文字（「北の袖」など区画の名前・階段の行き先・仮の地図）を出すか。方位はいつも出す
 function T(cx, cy, text, fs, fill) {
   return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + MIRROR + ' 1)"><text x="0" y="' + (fs * 0.36) + '" font-size="' + fs +
@@ -2261,6 +2263,7 @@ function topView(lay, o) {
   var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
   drawOrder(lay.top).forEach(function (i) {
     var p = lay.top[i];
+    if (p.item === 'dim' && !DIM_SHOW) return;   // 寸法を隠しているとき
     s += drawTopItem(p, i, ((Array.isArray(o.sel) ? o.sel.indexOf(i) >= 0 : o.sel === i) ? 'sel' : '') + (o.ref === i ? ' ref' : ''));   // ref：揃えるときの基準の物   // o.sel：番号 か 番号の並び（まとめて選んだとき）
     var bb = itemBounds(p);
     ib.x0 = Math.min(ib.x0, bb.x0); ib.x1 = Math.max(ib.x1, bb.x1);
@@ -2743,6 +2746,7 @@ function scOf(l) { return SCENES[(l && l.scene) || ''] ? l.scene : 'desk'; }   /
 var scene = SCENES[S.prefs.scene] ? S.prefs.scene : 'desk';   // メニューで選んでいる場所
 useScene(scene);
 OUTLINE = !!S.prefs.outline;   // 物の輪郭を太く（端末に保存）
+DIM_SHOW = S.prefs.dimShow !== false;   // 寸法を出すか（端末に保存）
 SPACE_TEXT = S.prefs.spaceText !== false;   // 場の床の文字（端末に保存）
 var cur = null;          // 表示・編集中の配置
 var flip = false;
@@ -2985,7 +2989,7 @@ function openEdit(id) {
   histButtons();
   setPalette(S.prefs.palette !== false);
   $('eOutline').checked = OUTLINE; $('eGridShow').checked = S.prefs.gridShow !== false;
-  $('eTextBox').hidden = !SCENE.space; $('eText').checked = SPACE_TEXT;
+  $('eDim').checked = DIM_SHOW; $('eTextBox').hidden = !SCENE.space; $('eText').checked = SPACE_TEXT;
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
   go('vEdit'); renderEdit(); renderPalette();
 }
@@ -3137,6 +3141,7 @@ $('pItems').addEventListener('click', function (e) {
   var b = e.target.closest('[data-add]'); if (!b) return;
   var id = b.getAttribute('data-add');
   if (tab === 'top') {
+    if (id === 'dim' && !DIM_SHOW) DIM_SHOW = S.prefs.dimShow = true;   // 隠しているときに足したら 出す
     cur.top.push({ item: id, state: Object.keys(ITEMS[id].states)[0], x: DESK.w / 2, y: DESK.d / 2, r: 0, label: false });
     sel = cur.top.length - 1;
   } else if (tab === 'hang') cur.hooks[dest.hang].push({ item: id, label: false });
@@ -3151,6 +3156,11 @@ $('eBg').addEventListener('click', function (e) {
   var b = e.target.closest('[data-bg]'); if (!b) return;
   var id = b.getAttribute('data-bg'); if (id) cur.bg = id; else delete cur.bg; save(); renderEdit();
 });
+$('eDim').onchange = function () {   // 寸法をまとめて出す・隠す。隠した寸法は選べないので 選びを外す
+  DIM_SHOW = S.prefs.dimShow = this.checked;
+  if (!DIM_SHOW) { msel = msel.filter(function (i) { return cur.top[i].item !== 'dim'; }); if (sel >= 0 && cur.top[sel] && cur.top[sel].item === 'dim') sel = -1; }
+  save(); renderEdit();
+};
 $('eText').onchange = function () { SPACE_TEXT = S.prefs.spaceText = this.checked; save(); renderEdit(); };
 document.addEventListener('pointerdown', function (e) {   // ▾ の板は 外を押すと閉じる
   ['eDisp', 'eGridMenu', 'eMore', 'mAlign'].forEach(function (id) { var d = $(id); if (d.open && !e.target.closest('#' + id)) d.open = false; });
@@ -3569,7 +3579,7 @@ function drawBand(a, b) {
 function bandSelect(a, b, add) {   // 囲みに少しでもかかった物を選ぶ
   var x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x), y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
   var hit = [];
-  cur.top.forEach(function (p, i) { var bb = itemBounds(p); if (bb.x1 >= x0 && bb.x0 <= x1 && bb.y1 >= y0 && bb.y0 <= y1) hit.push(i); });
+  cur.top.forEach(function (p, i) { if (p.item === 'dim' && !DIM_SHOW) return; var bb = itemBounds(p); if (bb.x1 >= x0 && bb.x0 <= x1 && bb.y1 >= y0 && bb.y0 <= y1) hit.push(i); });
   if (add) selected().forEach(function (i) { if (hit.indexOf(i) < 0) hit.push(i); });
   msel = hit.length > 1 ? hit : [];
   // 基準（揃えるときに動かさない物）は 引きずり始めた所にいちばん近い物
