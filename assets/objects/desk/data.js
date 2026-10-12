@@ -601,7 +601,7 @@ var ITEMS = {
         for (i = 0; i < n; i++) {
           var cx = w * (i + 0.5) / n;
           if (id === 'rowline') s += L(cx, h * 0.08, cx, h * 0.92, col, 140);
-          else for (j = 0; j < 4; j++) s += C(cx, h * (j + 0.5) / 4, 100, col, 10);
+          else { var nd = Math.max(1, Math.round(h / 500)); for (j = 0; j < nd; j++) s += C(cx, h * (j + 0.5) / nd, 100, col, 10); }   // 50cm に1人（長さを変えると数が変わる）
         }
         return s;
       };

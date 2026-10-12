@@ -168,6 +168,31 @@ await step('場所を90°回転：物も回り、4回で元に戻る。取り消
   await p.click('#eBack');
 });
 
+await step('回転しても人は頭が上、長さを変える、重なりの順', async () => {
+  await p.click('[data-fix="g_tobibako3"]');
+  const get = () => p.evaluate(() => JSON.parse(localStorage.getItem('haichi.v1')).layouts.find(l => l.id === 'g_tobibako3').top);
+  const k0 = (await get()).find(q => q.item === 'kids'), t0 = (await get()).find(q => q.item === 'teacher');
+  await p.click('#eTurn');
+  const k1 = (await get()).find(q => q.item === 'kids'), t1 = (await get()).find(q => q.item === 'teacher');
+  assert.equal(k1.r || 0, k0.r || 0, '児童は頭が上のまま'); assert.deepEqual([k1.nx, k1.ny], [k0.ny, k0.nx], '並びは回る');
+  assert.equal(t1.r || 0, t0.r || 0, '先生も頭が上');
+  await p.keyboard.press('Control+z');
+  // 長さ：背の順ラインを置いて +2目
+  await p.click('[data-add="rowseno"]');
+  await p.click('#selLen [data-len="1"]'); await p.click('#selLen [data-len="1"]');
+  let top = await get(); const ln = top[top.length - 1];
+  assert.equal(ln.len, 3000, '2m＋50cm×2'); assert.match(await p.textContent('#lenV'), /3m（6人）/);
+  // 重なり：いま足した物（いちばん上）を 最背面へ → 描く順の最初
+  await p.click('#selStack [data-z="back"]');
+  const first = await p.evaluate(() => drawOrder(cur.top)[0]);
+  assert.equal(first, (await get()).length - 1, '最背面で いちばん先に描く');
+  await p.click('#selStack [data-z="up"]');
+  assert.equal(await p.evaluate(() => drawOrder(cur.top)[1]), (await get()).length - 1, '前面へで1つ上');
+  await p.click('#selStack [data-z="front"]');
+  const ord = await p.evaluate(() => drawOrder(cur.top)); assert.equal(ord[ord.length - 1], (await get()).length - 1, '最前面');
+  await p.click('#eBack');
+});
+
 await step('パレット：用具・設備／矢印・目印／人 に分かれる', async () => {
   await p.click('[data-fix="g_shukai"]');
   assert.deepEqual(await p.$$eval('#pItems .pgroup', els => els.map(e => e.textContent)), ['用具・設備', '矢印・目印', '人']);

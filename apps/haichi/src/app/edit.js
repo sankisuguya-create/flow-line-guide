@@ -45,6 +45,8 @@ function renderEdit() {
     if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
     $('selSize').hidden = !it.sizes;
     if (it.sizes) $('selSize').textContent = Object.keys(it.sizes).map(function (k) { return (k === sizeOf(p) ? '●' : '○') + it.sizes[k].name; }).join(' ');
+    $('selLen').hidden = !hasCtl(p.item, 'len');
+    if (hasCtl(p.item, 'len')) { var lw = itemSize(p), lv = (it.stretch.axis === 'w' ? lw[0] : lw[1]) / scaleOf(p); $('lenV').textContent = (lv / 1000).toFixed(lv % 1000 ? 1 : 0) + 'm' + (p.item.indexOf('row') === 0 ? '（' + Math.max(1, Math.round(lv / 500)) + '人）' : ''); }
     $('selGrid').hidden = !hasCtl(p.item, 'grid');
     if (hasCtl(p.item, 'grid')) { var kn = kidsN(p); $('kNx').textContent = kn.nx; $('kNy').textContent = kn.ny; $('kSum').textContent = '（' + kn.nx * kn.ny + '人）'; }
     $('selPath').hidden = !hasCtl(p.item, 'path'); $('selPath').setAttribute('aria-pressed', String(arrowEdit && hasCtl(p.item, 'path')));
@@ -195,6 +197,7 @@ function turnLayout() {
   cur.top.forEach(function (p) {
     var x = p.x; p.x = D - p.y; p.y = x;
     if (isPath(p)) p.pts = p.pts.map(function (v) { return [-v[1], v[0]]; });
+    else if (ITEMS[p.item].upright) { if (hasCtl(p.item, 'grid')) { var n = kidsN(p); p.nx = n.ny; p.ny = n.nx; } }   // 人は頭を上のまま、並びだけ回す
     else p.r = ((p.r || 0) + 90) % 360;
   });
   cur.rot = ((cur.rot || 0) + 90) % 360; if (!cur.rot) delete cur.rot;
@@ -268,7 +271,16 @@ $('selPath').onclick = function () {
   renderEdit();
 };
 $('selLabel').onclick = function () { var p = cur.top[sel]; p.label = !p.label; save(); renderEdit(); };
-$('selFront').onclick = function () { toFront(); save(); renderEdit(); };
+$('selStack').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-z]'); if (!b) return;
+  restack(b.getAttribute('data-z')); save(); renderEdit();
+});
+$('selLen').addEventListener('click', function (e) {   // 長さ：1目ずつ（列は50cm＝1人分）
+  var b = e.target.closest('[data-len]'); if (!b) return;
+  var p = cur.top[sel], it = ITEMS[p.item], st = it.stretch, now = it.stretch.axis === 'w' ? itemSize(p)[0] / scaleOf(p) : itemSize(p)[1] / scaleOf(p);
+  p.len = Math.min(st.max, Math.max(st.min, Math.round(now / st.step) * st.step + (+b.getAttribute('data-len')) * st.step));
+  save(); renderEdit();
+});
 $('selDel').onclick = function () { removeItems(selected()); save(); renderEdit(); };
 /* まとめて選んだ物：そろえる・等間隔に並べる（物の外まわり itemBounds で測る。交点には合わせない） */
 function alignSel(how) {
@@ -324,7 +336,16 @@ $('multiBar').addEventListener('click', function (e) {
   if (e.target.closest('#mDel')) { removeItems(selected()); save(); renderEdit(); }
   if (e.target.closest('#mNone')) { selectOnly(-1); renderEdit(); }
 });
-function toFront() { var p = cur.top.splice(sel, 1)[0]; cur.top.push(p); sel = cur.top.length - 1; }
+/* 重なりの順：いま描いている順（drawOrder）を z に書き、選んだ物を1つ前・1つ後ろ・いちばん前・いちばん後ろへ */
+function restack(how) {
+  var order = drawOrder(cur.top), at = order.indexOf(sel);
+  if (at < 0) return;
+  order.splice(at, 1);
+  var to = how === 'front' ? order.length : how === 'back' ? 0 : how === 'up' ? Math.min(order.length, at + 1) : Math.max(0, at - 1);
+  order.splice(to, 0, sel);
+  order.forEach(function (i, k) { cur.top[i].z = k; });
+}
+function toFront() { restack('front'); }
 
 /* 物の中心をいちばん近いグリッドの交点に合わせる。交点は机の外にも「あらい」1目分広がる
    （本が半分だけ机に乗る配置）。それ以上はみ出すのは物の形まかせで許す（重ね置きなど実際の机でも起きる） */

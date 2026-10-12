@@ -72,6 +72,10 @@ function baseSize(p) {
   var it = ITEMS[p.item], st = stateOf(p);
   if (it.mesh) { var f = it.mesh(p).foot; return [f.W, f.L]; }
   if (it.size) return it.size(p);   // 中身で大きさが変わる物（児童の並び）
+  if (it.stretch && +p.len > 0) {   // 長さを変えられる物（列・ライン）：stretch.axis の向きの寸法を p.len に
+    var b0 = it.sizes ? [it.sizes[sizeOf(p)].w, it.sizes[sizeOf(p)].d] : [it.states[st].w, it.states[st].d];
+    return it.stretch.axis === 'w' ? [+p.len, b0[1]] : [b0[0], +p.len];
+  }
   if (it.sizes) { var z = it.sizes[sizeOf(p)]; return [st === 'open' ? z.w * 2 : z.w, z.d]; }
   return [it.states[st].w, it.states[st].d];
 }
@@ -293,6 +297,9 @@ function drawOrder(top) {
   var layer = function (p) { var it = ITEMS[p.item]; return it.floor ? 0 : it.mesh ? 1 : 2; };
   return idx.sort(function (a, b) {
     var pa = top[a], pb = top[b], la = layer(pa), lb = layer(pb);
+    // 重なりの順を手で決めた物（z：前面へ・後面へ）はそれに従う。z の無い物（後から足した物）は その上
+    var za = pa.z == null ? Infinity : pa.z, zb = pb.z == null ? Infinity : pb.z;
+    if (za !== zb) return za - zb;
     if (la !== lb) return la - lb;
     if (la === 1 && pa.y !== pb.y) return pa.y - pb.y;
     return a - b;
