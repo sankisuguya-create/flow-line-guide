@@ -178,21 +178,34 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
     return R(0, 0, w, h, col, h * 0.25, h * 0.06) + T(w / 2, h / 2, t, fs);
   } } } });
   ITEMS.words.size = function (p) { var t = (p && p.text) || '文字', fs = 30 * K; return [Math.max(fs * 2, textW(t, fs) + fs), fs * 1.6]; };
+  /* 寸法（←→）：両はしに矢じり・はしの印、まん中に長さ。文字は 自動（いまの長さ）か、入れた文字（p.text＝手動） */
+  add('dim', ALL, { name: '{寸法|すんぽう}', text: true, states: { closed: { w: 3000, d: 300, draw: function (w, h, col, p) {
+    var t = dimText(p, w), fs = h * 0.5, y = h / 2, a = Math.min(h * 0.45, w * 0.2), lw = h * 0.06, up = p && ((p.r || 0) % 360 + 360) % 360 > 90 && ((p.r || 0) % 360 + 360) % 360 <= 270;
+    var s = '<g stroke="' + INK + '" stroke-width="' + lw + '" stroke-linecap="round" fill="none">' +
+      '<path d="M' + a * 0.4 + ' ' + y + 'H' + (w - a * 0.4) + 'M0 ' + h * 0.15 + 'V' + h * 0.85 + 'M' + w + ' ' + h * 0.15 + 'V' + h * 0.85 + '"/></g>' +
+      '<path d="M0 ' + y + 'L' + a + ' ' + (y - a * 0.4) + 'L' + a + ' ' + (y + a * 0.4) + 'Z M' + w + ' ' + y + 'L' + (w - a) + ' ' + (y - a * 0.4) + 'L' + (w - a) + ' ' + (y + a * 0.4) + 'Z" fill="' + INK + '"/>';
+    var tw = textW(t, fs) + fs * 0.6;
+    return s + '<g transform="rotate(' + (up ? 180 : 0) + ' ' + w / 2 + ' ' + y + ')">' + R(w / 2 - tw / 2, y - fs * 0.7, tw, fs * 1.4, '#FFFFFF', fs * 0.3, lw * 0.6) + T(w / 2, y, t, fs) + '</g>';
+  } } } });
+  ITEMS.dim.size = function (p) { return [+(p && p.len) > 0 ? +p.len : 3000, 36 * K]; };
   /* 床に描く物：ほかの物より いつも下に描く（draw.js の drawOrder） */
   ['startline', 'goalline', 'tape', 'nummark', 'gline', 'fmark'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].floor = true; });
   /* パレットの分け方（group）：thing＝用具・設備（既定）、mark＝矢印・目印、people＝人 */
-  ['arrow', 'gline', 'tape', 'startline', 'goalline', 'nummark', 'fmark', 'flag', 'words'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].group = 'mark'; });
+  ['arrow', 'dim', 'gline', 'tape', 'startline', 'goalline', 'nummark', 'fmark', 'flag', 'words'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].group = 'mark'; });
   ['person', 'kids', 'classgroup', 'teacher', 'rowdot', 'rowline', 'rowseno'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].group = 'people'; });
   /* 場所を回しても 頭が上のまま（人の絵）。児童の並びは 横と縦の人数を入れかえる（app の turnLayout） */
   ['person', 'teacher', 'kids'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].upright = true; });
   /* 長さを変えられる物：axis＝伸びる向き（d＝縦、w＝横）、mm。列は 50cm＝1人分ずつ */
-  [['rowdot', 'd', 500], ['rowline', 'd', 500], ['rowseno', 'd', 500], ['gline', 'w', 500], ['tape', 'w', 250],
+  [['rowdot', 'd', 500], ['rowline', 'd', 500], ['rowseno', 'd', 500], ['gline', 'w', 500], ['tape', 'w', 250], ['dim', 'w', 100],
    ['startline', 'w', 500], ['goalline', 'w', 500], ['longrope', 'w', 500]].forEach(function (s) {
     if (ITEMS[s[0]]) { ITEMS[s[0]].stretch = { axis: s[1], step: s[2], min: s[2], max: 30000 }; (ITEMS[s[0]].controls = ITEMS[s[0]].controls || []).push('len'); }
   });
 })();
 
 /* ---- 矢印の「じゆう」：交点を結ぶ折れ線 ---- */
+/* 寸法の文字：手動（p.text）があればそれ、なければ長さ（m。1m未満は cm） */
+function dimAuto(p, w) { var mm = (w == null ? baseSize(p)[0] : w) * scaleOf(p); return mm < 1000 ? Math.round(mm / 10) + 'cm' : (Math.round(mm / 100) / 10) + 'm'; }
+function dimText(p, w) { return p && p.text ? String(p.text) : dimAuto(p || { item: 'dim' }, w); }
 function isPath(p) { return p.item === 'arrow' && stateOf(p) === 'path' && Array.isArray(p.pts) && p.pts.length >= 2; }
 function pathBox(p) {   // p.x,p.y からのずれで、線の太さ・矢じりの分を足した範囲
   var m = 500 * scaleOf(p), xs = p.pts.map(function (q) { return q[0]; }), ys = p.pts.map(function (q) { return q[1]; });

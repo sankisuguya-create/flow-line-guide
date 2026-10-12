@@ -46,6 +46,11 @@ function renderEdit() {
     $('selReal').textContent = Math.round(scaleOf(p) * 100) + '%'; $('selReal').title = '実寸（100%）に戻す';
     $('selTextBox').hidden = !it.text;
     if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
+    var isDim = p.item === 'dim';   // 寸法：自動（長さ）か手動（入れた文字）。入れると手動、自動を押すと消す
+    $('selTextCap').textContent = isDim ? '表示' : '文字';
+    $('selText').placeholder = isDim ? dimAuto(p) : '例：待機場所';
+    $('dimMode').hidden = !isDim;
+    if (isDim) $('dimMode').querySelectorAll('[data-dim]').forEach(function (b) { b.classList.toggle('on', (b.getAttribute('data-dim') === 'man') === !!p.text); });
     $('selSize').hidden = !it.sizes;
     if (it.sizes) $('selSize').textContent = Object.keys(it.sizes).map(function (k) { return (k === sizeOf(p) ? '●' : '○') + it.sizes[k].name; }).join(' ');
     $('selLen').hidden = !hasCtl(p.item, 'len');
@@ -198,6 +203,12 @@ $('selSize').onclick = function () {
 $('selColors').addEventListener('click', function (e) {
   var b = e.target.closest('[data-col]'); if (!b) return;
   cur.top[sel].color = +b.getAttribute('data-col'); save(); renderEdit();
+});
+$('dimMode').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-dim]'), p = cur.top[sel]; if (!b || !p) return;
+  if (b.getAttribute('data-dim') === 'auto') delete p.text; else if (!p.text) p.text = dimAuto(p);
+  save(); renderEdit();
+  if (b.getAttribute('data-dim') === 'man') { $('selText').focus(); $('selText').select(); }
 });
 $('selLname').addEventListener('input', function () {   // 名称を直す。空にすると物の名前に戻る
   var p = cur.top[sel]; if (!p) return;

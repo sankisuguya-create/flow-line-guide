@@ -151,6 +151,19 @@ await step('名称を直せる・引き出し線は細い曲線', async () => {
   await p.fill('#selLname', ''); assert.ok(!(await k()).lname, '空なら物の名前に戻る');
 });
 
+await step('寸法：自動で長さ、入れると手動、自動で戻る', async () => {
+  await p.click('[data-add="dim"]');
+  const d = async () => (await lastLayout()).top.at(-1);
+  assert.equal((await d()).item, 'dim');
+  assert.ok((await p.innerHTML('#editSvg')).includes('>3m</text>'), '自動：3m');
+  await p.click('#selLen [data-len="1"]'); assert.ok((await p.innerHTML('#editSvg')).includes('>3.1m</text>'), '長さに合わせる');
+  await p.fill('#selText', '約30m'); assert.equal((await d()).text, '約30m');
+  assert.ok(await p.locator('#dimMode [data-dim="man"].on').count(), '手動になる');
+  assert.ok((await p.innerHTML('#editSvg')).includes('>約30m</text>'));
+  await p.click('#dimMode [data-dim="auto"]'); assert.ok(!(await d()).text);
+  assert.ok((await p.innerHTML('#editSvg')).includes('>3.1m</text>'));
+});
+
 await step('拡大・縮小とグリッドの線', async () => {
   await p.click('#selBig'); assert.equal(await p.textContent('#selReal'), '125%');
   await p.click('#selReal'); assert.equal(await p.textContent('#selReal'), '100%');

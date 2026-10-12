@@ -138,7 +138,8 @@
           <span id="selState" class="seg"></span>
           <button type="button" id="selSize"></button>
           <span id="selColors" class="swatches"></span>
-          <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：待機場所"></label>
+          <label id="selTextBox" class="fld" hidden><span id="selTextCap">文字</span><input id="selText" maxlength="16" placeholder="例：待機場所"></label>
+          <span id="dimMode" class="seg" role="group" aria-label="寸法の文字" hidden><button type="button" data-dim="auto" title="いまの長さを出す">自動</button><button type="button" data-dim="man" title="入れた文字を出す">手動</button></span>
         </span>
         <span class="bgroup">
           <span class="seg" role="group" aria-label="大きさ"><button type="button" id="selSmall" aria-label="縮小">－</button><button type="button" id="selReal">100%</button><button type="button" id="selBig" aria-label="拡大">＋</button></span>
