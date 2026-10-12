@@ -78,17 +78,29 @@ function thickMat(T,showHandles){
   });
   return {faces:F, foot:{W:S.W,L:S.L}};
 }
-function cone(){
-  var S=SPEC.cone, F=[], b=S.base/2, N=18;
-  addBox(F,-b,b,-b,b,0,S.baseT,{top:C.cone,side:C.coneDark,end:C.coneDark},"#1A1A1A");   // 四角い台
-  outward(F,[0,0,S.baseT/2]);
-  var zs=[S.baseT,S.band[0],S.band[1],S.H], rr=function(z){ return S.r0+(S.r1-S.r0)*(z-S.baseT)/(S.H-S.baseT); };
-  for(var k=0;k<3;k++){ var z0=zs[k], z1=zs[k+1], col=k===1?C.white:C.cone, r0=rr(z0), r1=rr(z1);   // 円すい（白い反射帯つき）
+/* コーン。o.color：本体の色、o.band：白い反射帯（柄）を付けるか、o.mini：ミニコーン（低い円すい＋丸い台。仮：高さ230・台の径190mm） */
+SPEC.minicone={ name:"ミニコーン", note:"仮：高さ230mm、台の直径190mm（一般的なミニコーン）", H:230, base:190, baseT:12, r0:62, r1:8 };
+function shadeHex(hex,f){ var n=parseInt(hex.slice(1),16), c=[n>>16,n>>8&255,n&255].map(function(v){return Math.round(Math.min(255,v*f));}); return "#"+c.map(function(v){return ("0"+v.toString(16)).slice(-2);}).join(""); }
+function cone(o){
+  o=o||{};
+  var S=o.mini?SPEC.minicone:SPEC.cone, F=[], b=S.base/2, N=18, col0=o.color||C.cone, band=o.band!==false&&!o.mini;
+  if(o.mini){   // 丸い薄い台（本体と同じ色、少し濃い）
+    var rim=[]; for(var i=0;i<N;i++){ var a=2*Math.PI*i/N; rim.push([b*Math.cos(a),b*Math.sin(a)]); }
+    for(var i=0;i<N;i++){ var p0=rim[i], p1=rim[(i+1)%N];
+      F.push({p:[[p0[0],p0[1],0],[p1[0],p1[1],0],[p1[0],p1[1],S.baseT],[p0[0],p0[1],S.baseT]],col:shadeHex(col0,0.8),edge:null,sharp:[0,1,2,3]}); }
+    for(var i=0;i<N;i++){ var p0=rim[i], p1=rim[(i+1)%N]; F.push({p:[[0,0,S.baseT],[p0[0],p0[1],S.baseT],[p1[0],p1[1],S.baseT]],col:shadeHex(col0,0.9),edge:null}); }
+    outward(F,[0,0,S.baseT/2]);
+  } else {
+    addBox(F,-b,b,-b,b,0,S.baseT,{top:col0,side:C.coneDark,end:C.coneDark},"#1A1A1A");   // 四角い台
+    outward(F,[0,0,S.baseT/2]);
+  }
+  var zs=band?[S.baseT,S.band[0],S.band[1],S.H]:[S.baseT,S.H], rr=function(z){ return S.r0+(S.r1-S.r0)*(z-S.baseT)/(S.H-S.baseT); };
+  for(var k=0;k<zs.length-1;k++){ var z0=zs[k], z1=zs[k+1], col=band&&k===1?C.white:col0, r0=rr(z0), r1=rr(z1);   // 円すい（柄ありは白い反射帯つき）
     for(var i=0;i<N;i++){ var a0=2*Math.PI*i/N, a1=2*Math.PI*(i+1)/N;
       F.push({p:[[r0*Math.cos(a0),r0*Math.sin(a0),z0],[r0*Math.cos(a1),r0*Math.sin(a1),z0],[r1*Math.cos(a1),r1*Math.sin(a1),z1],[r1*Math.cos(a0),r1*Math.sin(a0),z1]],
               col:col,edge:null,sharp:[0,1,2,3],soft:true}); } }
   var top=[]; for(var i=0;i<N;i++){ var a=2*Math.PI*i/N; top.push([S.r1*Math.cos(a),S.r1*Math.sin(a),S.H]); }
-  F.push({p:top,col:C.cone,edge:"#B8400F"});
+  F.push({p:top,col:col0,edge:shadeHex(col0,0.75)});
   outward(F.filter(function(f){return f.soft||f.p===top;}),[0,0,S.H*0.4]);
   return {faces:F, foot:{W:S.base,L:S.base}};
 }

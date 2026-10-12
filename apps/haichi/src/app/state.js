@@ -52,8 +52,11 @@ function sanitize(s) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
                  text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined,
+                 lname: p.lname ? String(p.lname).slice(0, 20) : undefined,
                  u: p.u ? String(p.u) : undefined, z: isFinite(p.z) && p.z !== null ? +p.z : undefined,
                  len: ITEMS[p.item].stretch && +p.len > 0 ? +p.len : undefined,
+                 hex: ITEMS[p.item].colors && /^#[0-9a-fA-F]{6}$/.test(p.hex || '') ? p.hex : undefined,
+                 num: hasCtl(p.item, 'grid') && p.num ? true : undefined, n0: hasCtl(p.item, 'grid') && p.num && +p.n0 > 1 ? Math.min(99, +p.n0 | 0) : undefined, nord: hasCtl(p.item, 'grid') && p.nord === 'v' ? 'v' : undefined,
                  nx: hasCtl(p.item, 'grid') ? kidsN(p).nx : undefined, ny: hasCtl(p.item, 'grid') ? kidsN(p).ny : undefined,
                  pts: hasCtl(p.item, 'path') && Array.isArray(p.pts) ? p.pts.filter(function (q) { return Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]); }).map(function (q) { return [+q[0], +q[1]]; }) : undefined, s: scaleOf(p) !== 1 ? scaleOf(p) : undefined };
       }),

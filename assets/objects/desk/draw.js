@@ -63,8 +63,9 @@ function colorIndex(p) {
   var it = ITEMS[p.item];
   return p.color == null ? (it.color0 || 0) : (p.color | 0) % it.colors.length;
 }
-function colorOf(p) {
+function colorOf(p) {   // 置いた物の色：自由に選んだ色（hex）があればそれ、なければ 色の見本の番号
   var c = ITEMS[p.item].colors;
+  if (c && /^#[0-9a-fA-F]{6}$/.test(p.hex || '')) return p.hex;
   return c ? c[colorIndex(p)] : null;
 }
 /* 描く大きさ。判型を選べる物は判型から（開くと幅2倍）、ほかは状態ごとの寸法 */
@@ -122,7 +123,7 @@ function rotBox(w, d, r) {
    （パイプいすを何十脚も並べたときの重さ対策。拡大・縮小は外側の transform でかけるので鍵に入れない） */
 var MESH_CACHE = {}, MESH_CACHE_N = 0;
 function meshSvg(p) {
-  var key = [p.item, stateOf(p), sizeOf(p), p.r || 0, p.m ? 1 : 0].join('|');
+  var key = [p.item, stateOf(p), sizeOf(p), colorOf(p) || '', p.r || 0, p.m ? 1 : 0].join('|');   // 色も鍵に（コーン）
   if (MESH_CACHE[key]) return MESH_CACHE[key];
   if (++MESH_CACHE_N > 400) { MESH_CACHE = {}; MESH_CACHE_N = 1; }
   return (MESH_CACHE[key] = meshSvgRaw(p));
@@ -213,11 +214,20 @@ function spread(list, lo, hi, gap) {
     lim = a.pos - a.size / 2 - gap;
   }
 }
+/* 名称：直した名称（lname）があればそれ、なければ物の名前 */
+function labelName(p) { return p.lname ? String(p.lname) : ITEMS[p.item].name; }
+/* 引き出し線：細く、ゆるく弧を描く線（向きは いつも同じ回り）。矢印・動線の直線や折れ線と見分けられるように、
+   ほかでは使わない形にする。名称と物が一直線に並んでも 弧になる */
+function leadPath(l) {
+  var dx = l.tx - l.ax, dy = l.ty - l.ay, b = 0.18, nx = -dy * b, ny = dx * b;   // b：弧のふくらみ（長さに対する割合）
+  return 'M' + l.ax + ' ' + l.ay + 'C' + (l.ax + dx * 0.3 + nx) + ' ' + (l.ay + dy * 0.3 + ny) + ' ' +
+         (l.ax + dx * 0.7 + nx) + ' ' + (l.ay + dy * 0.7 + ny) + ' ' + l.tx + ' ' + l.ty;
+}
 function layoutLabels(top, sides, ruby, bottomStart) {
   var groups = { L: [], R: [], T: [], B: [] };
   top.forEach(function (p, i) {
     if (!p.label) return;
-    var name = ITEMS[p.item].name, box = labelBoxSize(name, ruby);
+    var name = labelName(p), box = labelBoxSize(name, ruby);
     var dist = { L: p.x, R: DESK.w - p.x, T: p.y, B: DESK.d - p.y }, best = null;
     sides.forEach(function (s) { if (best == null || dist[s] < dist[best]) best = s; });
     var vert = best === 'L' || best === 'R';
@@ -246,9 +256,10 @@ function layoutLabels(top, sides, ruby, bottomStart) {
 function labelsSvg(labels, ruby) {
   var lines = '', boxes = '';
   labels.forEach(function (l) {
-    lines += '<line x1="' + l.ax + '" y1="' + l.ay + '" x2="' + l.tx + '" y2="' + l.ty + '" class="lead-halo" style="stroke-width:' + 10 * K + '"/>' +
-             '<line x1="' + l.ax + '" y1="' + l.ay + '" x2="' + l.tx + '" y2="' + l.ty + '" class="lead" style="stroke-width:' + 4 * K + '"/>' +
-             '<circle cx="' + l.tx + '" cy="' + l.ty + '" r="' + 9 * K + '" class="lead-dot" style="stroke-width:' + 3 * K + '"/>';
+    var d = leadPath(l);
+    lines += '<path d="' + d + '" class="lead-halo" style="stroke-width:' + 5 * K + '"/>' +
+             '<path d="' + d + '" class="lead" style="stroke-width:' + 1.6 * K + '"/>' +
+             '<circle cx="' + l.tx + '" cy="' + l.ty + '" r="' + 5 * K + '" class="lead-dot" style="stroke-width:' + 2 * K + '"/>';
     boxes += labelBox(l.name, l.cx, l.cy, ruby);
   });
   return '<g class="labels">' + lines + boxes + '</g>';

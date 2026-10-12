@@ -41,6 +41,8 @@ function renderEdit() {
       return '<button type="button" data-st="' + k + '" class="' + (k === stateOf(p) ? 'on' : '') + '">' + (STATE_NAMES[k] || k) + '</button>';
     }).join('');
     $('selLabel').setAttribute('aria-pressed', String(!!p.label));
+    $('selLnameBox').hidden = !p.label;
+    if (document.activeElement !== $('selLname')) { $('selLname').value = p.lname || ''; $('selLname').placeholder = plainName(it.name); }
     $('selReal').textContent = Math.round(scaleOf(p) * 100) + '%'; $('selReal').title = '実寸（100%）に戻す';
     $('selTextBox').hidden = !it.text;
     if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
@@ -49,12 +51,16 @@ function renderEdit() {
     $('selLen').hidden = !hasCtl(p.item, 'len');
     if (hasCtl(p.item, 'len')) { var lw = itemSize(p), lv = (it.stretch.axis === 'w' ? lw[0] : lw[1]) / scaleOf(p); $('lenV').textContent = (lv / 1000).toFixed(lv % 1000 ? 1 : 0) + 'm' + (p.item.indexOf('row') === 0 ? '（' + Math.max(1, Math.round(lv / 500)) + '人）' : ''); }
     $('selGrid').hidden = !hasCtl(p.item, 'grid');
+    if (hasCtl(p.item, 'grid')) {
+      $('kNum').setAttribute('aria-pressed', String(!!p.num)); $('kNumOpt').hidden = !p.num;
+      $('kN0').textContent = p.n0 || 1; $('kOrd').textContent = p.nord === 'v' ? '縦順' : '横順';
+    }
     if (hasCtl(p.item, 'grid')) { var kn = kidsN(p); $('kNx').textContent = kn.nx; $('kNy').textContent = kn.ny; $('kSum').textContent = '（' + kn.nx * kn.ny + '人）'; }
     $('selPath').hidden = !hasCtl(p.item, 'path'); $('selPath').setAttribute('aria-pressed', String(arrowEdit && hasCtl(p.item, 'path')));
     $('selColors').hidden = !it.colors;
     if (it.colors) $('selColors').innerHTML = '色' + it.colors.map(function (c, k) {
-      return '<button type="button" class="sw' + (k === colorIndex(p) ? ' on' : '') + '" data-col="' + k + '" style="background:' + c + '" aria-label="色' + (k + 1) + '"></button>';
-    }).join('');
+      return '<button type="button" class="sw' + (!p.hex && k === colorIndex(p) ? ' on' : '') + '" data-col="' + k + '" style="background:' + c + '" aria-label="色' + (k + 1) + '"></button>';
+    }).join('') + '<label class="sw free' + (p.hex ? ' on' : '') + '" title="ほかの色を選ぶ" style="background:' + (p.hex || 'conic-gradient(#E5484D,#F2C94C,#46B97A,#2F80ED,#A670CA,#E5484D)') + '"><input type="color" id="selHex" value="' + (p.hex || colorOf(p)) + '"></label>';
   }
   renderChips();
   $('eBgBox').hidden = !!SCENE.desk; $('eTurn').hidden = !!SCENE.desk;   // 床の色は場所だけ（机の天板は木の色のまま）
@@ -193,6 +199,10 @@ $('selColors').addEventListener('click', function (e) {
   var b = e.target.closest('[data-col]'); if (!b) return;
   cur.top[sel].color = +b.getAttribute('data-col'); save(); renderEdit();
 });
+$('selLname').addEventListener('input', function () {   // 名称を直す。空にすると物の名前に戻る
+  var p = cur.top[sel]; if (!p) return;
+  var v = this.value.trim(); if (v) p.lname = v; else delete p.lname; save(); renderEdit();
+});
 $('selText').addEventListener('input', function () {
   var p = cur.top[sel]; if (!p) return;
   p.text = this.value; save(); renderEdit();
@@ -269,6 +279,11 @@ function arrowExtend(p, end, q, shrink) {
 }
 /* 児童の並び：横・縦の人数を1人ずつ増減（合わせて36人まで） */
 $('selGrid').addEventListener('click', function (e) {
+  var q = cur.top[sel];
+  if (e.target.closest('#kNum')) { q.num = !q.num; save(); renderEdit(); return; }   // 出席番号を出す・消す
+  if (e.target.closest('#kOrd')) { q.nord = q.nord === 'v' ? undefined : 'v'; save(); renderEdit(); return; }   // 横順 ⇄ 縦順
+  var n0 = e.target.closest('[data-n0]');
+  if (n0) { q.n0 = Math.max(1, Math.min(99, (q.n0 || 1) + (+n0.getAttribute('data-n0')))); save(); renderEdit(); return; }   // はじめの番号
   var b = e.target.closest('[data-k]'); if (!b) return;
   var p = cur.top[sel], n = kidsN(p), k = b.getAttribute('data-k'), d = +b.getAttribute('data-d');
   var nx = n.nx + (k === 'x' ? d : 0), ny = n.ny + (k === 'y' ? d : 0);
@@ -388,3 +403,10 @@ function setPalette(on) {
   document.querySelector('.ebody').classList.toggle('nopal', !on);
 }
 $('eAdd').onclick = function () { setPalette(!(S.prefs.palette !== false)); save(); renderEdit(); };
+
+/* 色の見本にない色：ブラウザの色の選び方で選ぶ（p.hex）。見本を押すと見本の色に戻る */
+$('selColors').addEventListener('change', function (e) {   // 選び終えたとき（選んでいる途中で描き直すと 色の選び方が閉じるため）
+  if (e.target.id !== 'selHex') return;
+  var p = cur.top[sel]; p.hex = e.target.value; save(); renderEdit();
+});
+$('selColors').addEventListener('click', function (e) { var b = e.target.closest('[data-col]'); if (b && cur.top[sel]) delete cur.top[sel].hex; }, true);

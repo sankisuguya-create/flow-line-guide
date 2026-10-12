@@ -131,8 +131,8 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 .lb{fill:var(--ink);font-weight:700}
 .rb{fill:var(--ink-soft)}
 .lbox{fill:var(--sheet);stroke:var(--ink);stroke-width:3}
-.lead{stroke:var(--ink);stroke-width:4}
-.lead-halo{stroke:var(--sheet);stroke-width:10;stroke-linecap:round}
+.lead{stroke:var(--ink);stroke-width:4;fill:none;stroke-linecap:round}
+.lead-halo{stroke:var(--sheet);stroke-width:10;stroke-linecap:round;fill:none}
 .lead-dot{fill:var(--ink);stroke:var(--sheet);stroke-width:3}
 .cap{fill:var(--ink-soft);font-weight:700}
 .cut{stroke:var(--ink-faint);stroke-width:3;stroke-dasharray:14 10}
@@ -323,6 +323,11 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 .pgrp>summary small{margin-left:auto;font-weight:400;color:var(--ink-faint)}
 #pItems:has(.pgrp){display:block}
 .tiles.in{max-height:none;overflow:visible}
+
+/* 色：見本にない色を選ぶ丸（中に色の選び方） */
+.swatches .sw.free{position:relative;display:inline-block;overflow:hidden;cursor:pointer}
+.swatches .sw.free input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+#kNumOpt{display:inline-flex;align-items:center;gap:4px}
 /* ▲ style.css ここまで ▲ */
 </style>
 </head>
@@ -462,11 +467,14 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
           <button type="button" id="selRot">回転 ↻</button>
           <span id="selLen" class="kgrid" hidden>長さ<span class="seg"><button type="button" data-len="-1" aria-label="短く">－</button><b id="lenV"></b><button type="button" data-len="1" aria-label="長く">＋</button></span></span>
           <span id="selGrid" class="kgrid" hidden>横<span class="seg"><button type="button" data-k="x" data-d="-1" aria-label="横を1人減らす">－</button><b id="kNx">1</b><button type="button" data-k="x" data-d="1" aria-label="横を1人増やす">＋</button></span>
-            縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人減らす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人増やす">＋</button></span><span id="kSum"></span></span>
+            縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人減らす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人増やす">＋</button></span><span id="kSum"></span>
+            <button type="button" id="kNum" aria-pressed="false" title="絵の左上に出席番号を出す">出席番号</button>
+            <span id="kNumOpt" hidden>はじめ<span class="seg"><button type="button" data-n0="-1" aria-label="はじめの番号を1つ小さく">－</button><b id="kN0">1</b><button type="button" data-n0="1" aria-label="はじめの番号を1つ大きく">＋</button></span><button type="button" id="kOrd" title="番号の並べ方（横順＝左上から右へ、縦順＝左上から下へ）">横順</button></span></span>
           <button type="button" id="selPath" aria-pressed="false" hidden>矢印を編集</button>
         </span>
         <span class="bgroup">
           <button type="button" id="selLabel" aria-pressed="false">名称を表示</button>
+          <label id="selLnameBox" class="fld" hidden>名称<input id="selLname" maxlength="20"></label>
           <span id="selStack" class="seg" role="group" aria-label="重なりの順"><button type="button" data-z="back" title="いちばん後ろへ">最背面</button><button type="button" data-z="down" title="1つ後ろへ">後面へ</button><button type="button" data-z="up" title="1つ前へ">前面へ</button><button type="button" data-z="front" title="いちばん前へ">最前面</button></span>
           <button type="button" id="selDel" class="danger">削除</button>
         </span>
@@ -1381,7 +1389,12 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
     for (var j = 0; j < ny; j++) for (var i = 0; i < nx; i++) {
       var x = i * KID.dx + (KID.dx - 400) / 2, y = j * KID.dy + (KID.dy - 500) / 2;
       s += '<g transform="translate(' + x + ' ' + y + ')">' + ELL(200, 470, 168, 25, 'rgba(0,0,0,.16)') + C(200, 90, 96, col, 8) +
-        '<path d="' + roundPoly([[112, 200], [288, 200], [352, 475], [48, 475]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/></g>';
+        '<path d="' + roundPoly([[112, 200], [288, 200], [352, 475], [48, 475]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>';
+      if (p && p.num) {   // 出席番号：絵の左上に白い札。横順（左上から右へ）か 縦順（左上から下へ）
+        var no = (p.n0 || 1) + (p.nord === 'v' ? i * ny + j : j * nx + i), t = String(no), bw = Math.max(150, t.length * 95 + 50);
+        s += R(-60, -40, bw, 160, '#FFFFFF', 30, 8) + T(-60 + bw / 2, 40, t, 120);
+      }
+      s += '</g>';
     }
     return s;
   } } } });
@@ -1566,17 +1579,29 @@ function thickMat(T,showHandles){
   });
   return {faces:F, foot:{W:S.W,L:S.L}};
 }
-function cone(){
-  var S=SPEC.cone, F=[], b=S.base/2, N=18;
-  addBox(F,-b,b,-b,b,0,S.baseT,{top:C.cone,side:C.coneDark,end:C.coneDark},"#1A1A1A");   // 四角い台
-  outward(F,[0,0,S.baseT/2]);
-  var zs=[S.baseT,S.band[0],S.band[1],S.H], rr=function(z){ return S.r0+(S.r1-S.r0)*(z-S.baseT)/(S.H-S.baseT); };
-  for(var k=0;k<3;k++){ var z0=zs[k], z1=zs[k+1], col=k===1?C.white:C.cone, r0=rr(z0), r1=rr(z1);   // 円すい（白い反射帯つき）
+/* コーン。o.color：本体の色、o.band：白い反射帯（柄）を付けるか、o.mini：ミニコーン（低い円すい＋丸い台。仮：高さ230・台の径190mm） */
+SPEC.minicone={ name:"ミニコーン", note:"仮：高さ230mm、台の直径190mm（一般的なミニコーン）", H:230, base:190, baseT:12, r0:62, r1:8 };
+function shadeHex(hex,f){ var n=parseInt(hex.slice(1),16), c=[n>>16,n>>8&255,n&255].map(function(v){return Math.round(Math.min(255,v*f));}); return "#"+c.map(function(v){return ("0"+v.toString(16)).slice(-2);}).join(""); }
+function cone(o){
+  o=o||{};
+  var S=o.mini?SPEC.minicone:SPEC.cone, F=[], b=S.base/2, N=18, col0=o.color||C.cone, band=o.band!==false&&!o.mini;
+  if(o.mini){   // 丸い薄い台（本体と同じ色、少し濃い）
+    var rim=[]; for(var i=0;i<N;i++){ var a=2*Math.PI*i/N; rim.push([b*Math.cos(a),b*Math.sin(a)]); }
+    for(var i=0;i<N;i++){ var p0=rim[i], p1=rim[(i+1)%N];
+      F.push({p:[[p0[0],p0[1],0],[p1[0],p1[1],0],[p1[0],p1[1],S.baseT],[p0[0],p0[1],S.baseT]],col:shadeHex(col0,0.8),edge:null,sharp:[0,1,2,3]}); }
+    for(var i=0;i<N;i++){ var p0=rim[i], p1=rim[(i+1)%N]; F.push({p:[[0,0,S.baseT],[p0[0],p0[1],S.baseT],[p1[0],p1[1],S.baseT]],col:shadeHex(col0,0.9),edge:null}); }
+    outward(F,[0,0,S.baseT/2]);
+  } else {
+    addBox(F,-b,b,-b,b,0,S.baseT,{top:col0,side:C.coneDark,end:C.coneDark},"#1A1A1A");   // 四角い台
+    outward(F,[0,0,S.baseT/2]);
+  }
+  var zs=band?[S.baseT,S.band[0],S.band[1],S.H]:[S.baseT,S.H], rr=function(z){ return S.r0+(S.r1-S.r0)*(z-S.baseT)/(S.H-S.baseT); };
+  for(var k=0;k<zs.length-1;k++){ var z0=zs[k], z1=zs[k+1], col=band&&k===1?C.white:col0, r0=rr(z0), r1=rr(z1);   // 円すい（柄ありは白い反射帯つき）
     for(var i=0;i<N;i++){ var a0=2*Math.PI*i/N, a1=2*Math.PI*(i+1)/N;
       F.push({p:[[r0*Math.cos(a0),r0*Math.sin(a0),z0],[r0*Math.cos(a1),r0*Math.sin(a1),z0],[r1*Math.cos(a1),r1*Math.sin(a1),z1],[r1*Math.cos(a0),r1*Math.sin(a0),z1]],
               col:col,edge:null,sharp:[0,1,2,3],soft:true}); } }
   var top=[]; for(var i=0;i<N;i++){ var a=2*Math.PI*i/N; top.push([S.r1*Math.cos(a),S.r1*Math.sin(a),S.H]); }
-  F.push({p:top,col:C.cone,edge:"#B8400F"});
+  F.push({p:top,col:col0,edge:shadeHex(col0,0.75)});
   outward(F.filter(function(f){return f.soft||f.p===top;}),[0,0,S.H*0.4]);
   return {faces:F, foot:{W:S.base,L:S.base}};
 }
@@ -1789,9 +1814,12 @@ return { SPEC: SPEC, pipeChair: pipeChair, longTable: longTable, rowOf: rowOf, C
     { sizes: { s: { name: '6号' }, l: { name: '9号' } } });
   STATE_NAMES.t40 = '40cm'; STATE_NAMES.t50 = '50cm';
   ITEMS.gthick = gi('{厚|あつ}いマット', { t40: {}, t50: {} }, function (p) { return GYM.thickMat(stateOf(p) === 't50' ? 500 : 400, false); });
-  ITEMS.gcone = gi('コーン', { closed: {} }, function () { return GYM.cone(); });
+  var CONE_COLORS = ['#E8541E', '#F2C037', '#1E5FCC', '#46B97A', '#E5484D', '#F7F7F7'];
+  STATE_NAMES.band = '柄あり'; STATE_NAMES.plain = '柄なし';
+  ITEMS.gcone = gi('コーン', { band: {}, plain: {} }, function (p) { return GYM.cone({ color: colorOf(p), band: stateOf(p) !== 'plain' }); }, { colors: CONE_COLORS });
+  ITEMS.gminicone = gi('ミニコーン', { closed: {} }, function (p) { return GYM.cone({ color: colorOf(p), mini: true }); }, { colors: CONE_COLORS });
   var gym = SCENES.gym.items;
-  ['gthick', 'gcone'].forEach(function (id) { if (gym.indexOf(id) < 0) gym.splice(gym.indexOf('gmat') + 1, 0, id); });
+  ['gthick', 'gcone', 'gminicone'].forEach(function (id) { if (gym.indexOf(id) < 0) gym.splice(gym.indexOf('gmat') + 1, 0, id); });
 })();
 /* ▲ items.js ここまで ▲ */
 /* ▼ spaces.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
@@ -1803,7 +1831,7 @@ var SPACES = [{"id":"gym","title":"体育館","status":"仮","up":"北","size":[
    space.json は m、配置図は mm なので 1000 倍。床の描き方は導線プレイヤー（engine/player/flow.js）と
    同じ決まり（docs/hub.md「描き方」）：線＝壁だけ、同じ zone は外まわりだけ、扉＝切れ目＋枠、開口＝切れ目、
    階段＝踏み段の線（矢印なし、下の階へは黒く消える）、床の目印＝点線。 */
-var SPACE_ITEMS = ['gbox', 'gboard', 'gmat', 'gthick', 'gcone', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'].concat(EXTRA_SPACE_ITEMS);   // 足した物（desk/extra.js）のうち体育館に置ける物も
+var SPACE_ITEMS = ['gbox', 'gboard', 'gmat', 'gthick', 'gcone', 'gminicone', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'].concat(EXTRA_SPACE_ITEMS);   // 足した物（desk/extra.js）のうち体育館に置ける物も
 SPACES.forEach(function (sp) {
   // 場の id が既存の場所（gym など）と同じなら、その場所の床をこの場で置きかえる（保存した配置・置ける物はそのまま）
   if (SCENES[sp.id] && !SCENES[sp.id].desk) {
@@ -1957,8 +1985,9 @@ function colorIndex(p) {
   var it = ITEMS[p.item];
   return p.color == null ? (it.color0 || 0) : (p.color | 0) % it.colors.length;
 }
-function colorOf(p) {
+function colorOf(p) {   // 置いた物の色：自由に選んだ色（hex）があればそれ、なければ 色の見本の番号
   var c = ITEMS[p.item].colors;
+  if (c && /^#[0-9a-fA-F]{6}$/.test(p.hex || '')) return p.hex;
   return c ? c[colorIndex(p)] : null;
 }
 /* 描く大きさ。判型を選べる物は判型から（開くと幅2倍）、ほかは状態ごとの寸法 */
@@ -2016,7 +2045,7 @@ function rotBox(w, d, r) {
    （パイプいすを何十脚も並べたときの重さ対策。拡大・縮小は外側の transform でかけるので鍵に入れない） */
 var MESH_CACHE = {}, MESH_CACHE_N = 0;
 function meshSvg(p) {
-  var key = [p.item, stateOf(p), sizeOf(p), p.r || 0, p.m ? 1 : 0].join('|');
+  var key = [p.item, stateOf(p), sizeOf(p), colorOf(p) || '', p.r || 0, p.m ? 1 : 0].join('|');   // 色も鍵に（コーン）
   if (MESH_CACHE[key]) return MESH_CACHE[key];
   if (++MESH_CACHE_N > 400) { MESH_CACHE = {}; MESH_CACHE_N = 1; }
   return (MESH_CACHE[key] = meshSvgRaw(p));
@@ -2107,11 +2136,20 @@ function spread(list, lo, hi, gap) {
     lim = a.pos - a.size / 2 - gap;
   }
 }
+/* 名称：直した名称（lname）があればそれ、なければ物の名前 */
+function labelName(p) { return p.lname ? String(p.lname) : ITEMS[p.item].name; }
+/* 引き出し線：細く、ゆるく弧を描く線（向きは いつも同じ回り）。矢印・動線の直線や折れ線と見分けられるように、
+   ほかでは使わない形にする。名称と物が一直線に並んでも 弧になる */
+function leadPath(l) {
+  var dx = l.tx - l.ax, dy = l.ty - l.ay, b = 0.18, nx = -dy * b, ny = dx * b;   // b：弧のふくらみ（長さに対する割合）
+  return 'M' + l.ax + ' ' + l.ay + 'C' + (l.ax + dx * 0.3 + nx) + ' ' + (l.ay + dy * 0.3 + ny) + ' ' +
+         (l.ax + dx * 0.7 + nx) + ' ' + (l.ay + dy * 0.7 + ny) + ' ' + l.tx + ' ' + l.ty;
+}
 function layoutLabels(top, sides, ruby, bottomStart) {
   var groups = { L: [], R: [], T: [], B: [] };
   top.forEach(function (p, i) {
     if (!p.label) return;
-    var name = ITEMS[p.item].name, box = labelBoxSize(name, ruby);
+    var name = labelName(p), box = labelBoxSize(name, ruby);
     var dist = { L: p.x, R: DESK.w - p.x, T: p.y, B: DESK.d - p.y }, best = null;
     sides.forEach(function (s) { if (best == null || dist[s] < dist[best]) best = s; });
     var vert = best === 'L' || best === 'R';
@@ -2140,9 +2178,10 @@ function layoutLabels(top, sides, ruby, bottomStart) {
 function labelsSvg(labels, ruby) {
   var lines = '', boxes = '';
   labels.forEach(function (l) {
-    lines += '<line x1="' + l.ax + '" y1="' + l.ay + '" x2="' + l.tx + '" y2="' + l.ty + '" class="lead-halo" style="stroke-width:' + 10 * K + '"/>' +
-             '<line x1="' + l.ax + '" y1="' + l.ay + '" x2="' + l.tx + '" y2="' + l.ty + '" class="lead" style="stroke-width:' + 4 * K + '"/>' +
-             '<circle cx="' + l.tx + '" cy="' + l.ty + '" r="' + 9 * K + '" class="lead-dot" style="stroke-width:' + 3 * K + '"/>';
+    var d = leadPath(l);
+    lines += '<path d="' + d + '" class="lead-halo" style="stroke-width:' + 5 * K + '"/>' +
+             '<path d="' + d + '" class="lead" style="stroke-width:' + 1.6 * K + '"/>' +
+             '<circle cx="' + l.tx + '" cy="' + l.ty + '" r="' + 5 * K + '" class="lead-dot" style="stroke-width:' + 2 * K + '"/>';
     boxes += labelBox(l.name, l.cx, l.cy, ruby);
   });
   return '<g class="labels">' + lines + boxes + '</g>';
@@ -2655,8 +2694,11 @@ function sanitize(s) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
                  text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined,
+                 lname: p.lname ? String(p.lname).slice(0, 20) : undefined,
                  u: p.u ? String(p.u) : undefined, z: isFinite(p.z) && p.z !== null ? +p.z : undefined,
                  len: ITEMS[p.item].stretch && +p.len > 0 ? +p.len : undefined,
+                 hex: ITEMS[p.item].colors && /^#[0-9a-fA-F]{6}$/.test(p.hex || '') ? p.hex : undefined,
+                 num: hasCtl(p.item, 'grid') && p.num ? true : undefined, n0: hasCtl(p.item, 'grid') && p.num && +p.n0 > 1 ? Math.min(99, +p.n0 | 0) : undefined, nord: hasCtl(p.item, 'grid') && p.nord === 'v' ? 'v' : undefined,
                  nx: hasCtl(p.item, 'grid') ? kidsN(p).nx : undefined, ny: hasCtl(p.item, 'grid') ? kidsN(p).ny : undefined,
                  pts: hasCtl(p.item, 'path') && Array.isArray(p.pts) ? p.pts.filter(function (q) { return Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]); }).map(function (q) { return [+q[0], +q[1]]; }) : undefined, s: scaleOf(p) !== 1 ? scaleOf(p) : undefined };
       }),
@@ -2962,6 +3004,8 @@ function renderEdit() {
       return '<button type="button" data-st="' + k + '" class="' + (k === stateOf(p) ? 'on' : '') + '">' + (STATE_NAMES[k] || k) + '</button>';
     }).join('');
     $('selLabel').setAttribute('aria-pressed', String(!!p.label));
+    $('selLnameBox').hidden = !p.label;
+    if (document.activeElement !== $('selLname')) { $('selLname').value = p.lname || ''; $('selLname').placeholder = plainName(it.name); }
     $('selReal').textContent = Math.round(scaleOf(p) * 100) + '%'; $('selReal').title = '実寸（100%）に戻す';
     $('selTextBox').hidden = !it.text;
     if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
@@ -2970,12 +3014,16 @@ function renderEdit() {
     $('selLen').hidden = !hasCtl(p.item, 'len');
     if (hasCtl(p.item, 'len')) { var lw = itemSize(p), lv = (it.stretch.axis === 'w' ? lw[0] : lw[1]) / scaleOf(p); $('lenV').textContent = (lv / 1000).toFixed(lv % 1000 ? 1 : 0) + 'm' + (p.item.indexOf('row') === 0 ? '（' + Math.max(1, Math.round(lv / 500)) + '人）' : ''); }
     $('selGrid').hidden = !hasCtl(p.item, 'grid');
+    if (hasCtl(p.item, 'grid')) {
+      $('kNum').setAttribute('aria-pressed', String(!!p.num)); $('kNumOpt').hidden = !p.num;
+      $('kN0').textContent = p.n0 || 1; $('kOrd').textContent = p.nord === 'v' ? '縦順' : '横順';
+    }
     if (hasCtl(p.item, 'grid')) { var kn = kidsN(p); $('kNx').textContent = kn.nx; $('kNy').textContent = kn.ny; $('kSum').textContent = '（' + kn.nx * kn.ny + '人）'; }
     $('selPath').hidden = !hasCtl(p.item, 'path'); $('selPath').setAttribute('aria-pressed', String(arrowEdit && hasCtl(p.item, 'path')));
     $('selColors').hidden = !it.colors;
     if (it.colors) $('selColors').innerHTML = '色' + it.colors.map(function (c, k) {
-      return '<button type="button" class="sw' + (k === colorIndex(p) ? ' on' : '') + '" data-col="' + k + '" style="background:' + c + '" aria-label="色' + (k + 1) + '"></button>';
-    }).join('');
+      return '<button type="button" class="sw' + (!p.hex && k === colorIndex(p) ? ' on' : '') + '" data-col="' + k + '" style="background:' + c + '" aria-label="色' + (k + 1) + '"></button>';
+    }).join('') + '<label class="sw free' + (p.hex ? ' on' : '') + '" title="ほかの色を選ぶ" style="background:' + (p.hex || 'conic-gradient(#E5484D,#F2C94C,#46B97A,#2F80ED,#A670CA,#E5484D)') + '"><input type="color" id="selHex" value="' + (p.hex || colorOf(p)) + '"></label>';
   }
   renderChips();
   $('eBgBox').hidden = !!SCENE.desk; $('eTurn').hidden = !!SCENE.desk;   // 床の色は場所だけ（机の天板は木の色のまま）
@@ -3114,6 +3162,10 @@ $('selColors').addEventListener('click', function (e) {
   var b = e.target.closest('[data-col]'); if (!b) return;
   cur.top[sel].color = +b.getAttribute('data-col'); save(); renderEdit();
 });
+$('selLname').addEventListener('input', function () {   // 名称を直す。空にすると物の名前に戻る
+  var p = cur.top[sel]; if (!p) return;
+  var v = this.value.trim(); if (v) p.lname = v; else delete p.lname; save(); renderEdit();
+});
 $('selText').addEventListener('input', function () {
   var p = cur.top[sel]; if (!p) return;
   p.text = this.value; save(); renderEdit();
@@ -3190,6 +3242,11 @@ function arrowExtend(p, end, q, shrink) {
 }
 /* 児童の並び：横・縦の人数を1人ずつ増減（合わせて36人まで） */
 $('selGrid').addEventListener('click', function (e) {
+  var q = cur.top[sel];
+  if (e.target.closest('#kNum')) { q.num = !q.num; save(); renderEdit(); return; }   // 出席番号を出す・消す
+  if (e.target.closest('#kOrd')) { q.nord = q.nord === 'v' ? undefined : 'v'; save(); renderEdit(); return; }   // 横順 ⇄ 縦順
+  var n0 = e.target.closest('[data-n0]');
+  if (n0) { q.n0 = Math.max(1, Math.min(99, (q.n0 || 1) + (+n0.getAttribute('data-n0')))); save(); renderEdit(); return; }   // はじめの番号
   var b = e.target.closest('[data-k]'); if (!b) return;
   var p = cur.top[sel], n = kidsN(p), k = b.getAttribute('data-k'), d = +b.getAttribute('data-d');
   var nx = n.nx + (k === 'x' ? d : 0), ny = n.ny + (k === 'y' ? d : 0);
@@ -3309,6 +3366,13 @@ function setPalette(on) {
   document.querySelector('.ebody').classList.toggle('nopal', !on);
 }
 $('eAdd').onclick = function () { setPalette(!(S.prefs.palette !== false)); save(); renderEdit(); };
+
+/* 色の見本にない色：ブラウザの色の選び方で選ぶ（p.hex）。見本を押すと見本の色に戻る */
+$('selColors').addEventListener('change', function (e) {   // 選び終えたとき（選んでいる途中で描き直すと 色の選び方が閉じるため）
+  if (e.target.id !== 'selHex') return;
+  var p = cur.top[sel]; p.hex = e.target.value; save(); renderEdit();
+});
+$('selColors').addEventListener('click', function (e) { var b = e.target.closest('[data-col]'); if (b && cur.top[sel]) delete cur.top[sel].hex; }, true);
 /* ▲ edit.js ここまで ▲ */
 /* ▼ history.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
 /* 配置図の画面 ③：取り消し・やり直し と 写す・貼る（キーボード） */

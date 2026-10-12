@@ -145,11 +145,14 @@
           <button type="button" id="selRot">回転 ↻</button>
           <span id="selLen" class="kgrid" hidden>長さ<span class="seg"><button type="button" data-len="-1" aria-label="短く">－</button><b id="lenV"></b><button type="button" data-len="1" aria-label="長く">＋</button></span></span>
           <span id="selGrid" class="kgrid" hidden>横<span class="seg"><button type="button" data-k="x" data-d="-1" aria-label="横を1人減らす">－</button><b id="kNx">1</b><button type="button" data-k="x" data-d="1" aria-label="横を1人増やす">＋</button></span>
-            縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人減らす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人増やす">＋</button></span><span id="kSum"></span></span>
+            縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人減らす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人増やす">＋</button></span><span id="kSum"></span>
+            <button type="button" id="kNum" aria-pressed="false" title="絵の左上に出席番号を出す">出席番号</button>
+            <span id="kNumOpt" hidden>はじめ<span class="seg"><button type="button" data-n0="-1" aria-label="はじめの番号を1つ小さく">－</button><b id="kN0">1</b><button type="button" data-n0="1" aria-label="はじめの番号を1つ大きく">＋</button></span><button type="button" id="kOrd" title="番号の並べ方（横順＝左上から右へ、縦順＝左上から下へ）">横順</button></span></span>
           <button type="button" id="selPath" aria-pressed="false" hidden>矢印を編集</button>
         </span>
         <span class="bgroup">
           <button type="button" id="selLabel" aria-pressed="false">名称を表示</button>
+          <label id="selLnameBox" class="fld" hidden>名称<input id="selLname" maxlength="20"></label>
           <span id="selStack" class="seg" role="group" aria-label="重なりの順"><button type="button" data-z="back" title="いちばん後ろへ">最背面</button><button type="button" data-z="down" title="1つ後ろへ">後面へ</button><button type="button" data-z="up" title="1つ前へ">前面へ</button><button type="button" data-z="front" title="いちばん前へ">最前面</button></span>
           <button type="button" id="selDel" class="danger">削除</button>
         </span>

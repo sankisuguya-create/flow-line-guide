@@ -19,7 +19,10 @@
     { sizes: { s: { name: '6号' }, l: { name: '9号' } } });
   STATE_NAMES.t40 = '40cm'; STATE_NAMES.t50 = '50cm';
   ITEMS.gthick = gi('{厚|あつ}いマット', { t40: {}, t50: {} }, function (p) { return GYM.thickMat(stateOf(p) === 't50' ? 500 : 400, false); });
-  ITEMS.gcone = gi('コーン', { closed: {} }, function () { return GYM.cone(); });
+  var CONE_COLORS = ['#E8541E', '#F2C037', '#1E5FCC', '#46B97A', '#E5484D', '#F7F7F7'];
+  STATE_NAMES.band = '柄あり'; STATE_NAMES.plain = '柄なし';
+  ITEMS.gcone = gi('コーン', { band: {}, plain: {} }, function (p) { return GYM.cone({ color: colorOf(p), band: stateOf(p) !== 'plain' }); }, { colors: CONE_COLORS });
+  ITEMS.gminicone = gi('ミニコーン', { closed: {} }, function (p) { return GYM.cone({ color: colorOf(p), mini: true }); }, { colors: CONE_COLORS });
   var gym = SCENES.gym.items;
-  ['gthick', 'gcone'].forEach(function (id) { if (gym.indexOf(id) < 0) gym.splice(gym.indexOf('gmat') + 1, 0, id); });
+  ['gthick', 'gcone', 'gminicone'].forEach(function (id) { if (gym.indexOf(id) < 0) gym.splice(gym.indexOf('gmat') + 1, 0, id); });
 })();
