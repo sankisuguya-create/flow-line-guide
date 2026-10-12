@@ -193,6 +193,27 @@ await step('回転しても人は頭が上、長さを変える、重なりの�
   await p.click('#eBack');
 });
 
+await step('選択モード：ホイールで拡大しない・拡大中でもドラッグで囲む／場所の外を押すと選択解除', async () => {
+  await p.click('[data-fix="g_tobibako3"]');
+  const box = await p.locator('#editSvg').boundingBox();
+  await p.locator('#editSvg .it[data-i="0"]').dispatchEvent('pointerdown', {pointerId: 1, isPrimary: true}); await p.locator('#editSvg').dispatchEvent('pointerup', {pointerId: 1});
+  assert.equal(await p.evaluate(() => sel), 0);
+  await p.mouse.click(box.x + 8, box.y + box.height - 8);   // 図の中だが 場所（床）の外
+  assert.equal(await p.evaluate(() => sel), -1, '場所の外で解除');
+  await p.locator('#editSvg .it[data-i="0"]').dispatchEvent('pointerdown', {pointerId: 1, isPrimary: true}); await p.locator('#editSvg').dispatchEvent('pointerup', {pointerId: 1});
+  await p.mouse.click(3, box.y + box.height / 2);   // 図の左の何もない所（ページの余白）
+  assert.equal(await p.evaluate(() => sel), -1, '図の外で解除');
+  await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2); for (let i = 0; i < 3; i++) await p.mouse.wheel(0, -100);   // 拡大してから
+  await p.click('#eSelect');
+  const z = await p.textContent('#zReset');
+  await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await p.mouse.wheel(0, -100);
+  assert.equal(await p.textContent('#zReset'), z, '選択モードでは拡大しない');
+  await p.mouse.move(box.x + 20, box.y + 20); await p.mouse.down(); await p.mouse.move(box.x + box.width - 20, box.y + box.height - 20, {steps: 5}); await p.mouse.up();
+  assert.ok(+(await p.textContent('#mCount')).replace('個', '') > 1, '拡大中でも囲んで選べる');
+  await p.click('#eSelect'); await p.keyboard.press('Escape'); await p.click('#zReset');
+  await p.click('#eBack');
+});
+
 await step('パレット：用具・設備／矢印・目印／人 に分かれる', async () => {
   await p.click('[data-fix="g_shukai"]');
   assert.deepEqual(await p.$$eval('#pItems .pgroup', els => els.map(e => e.textContent)), ['用具・設備', '矢印・目印', '人']);

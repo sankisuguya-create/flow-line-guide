@@ -294,6 +294,17 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 /* 絵を左に置くので 2列（名前が1行〜2行で読める幅） */
 .tiles{grid-template-columns:repeat(2,1fr)}
 .tiles button.side span{font-size:13px}
+
+/* 上の帯のボタン：アイコンの下に文字 */
+.ebar .tbtn{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:54px;min-height:48px;padding:3px 8px;font-size:11px;font-weight:700;line-height:1.15}
+.ebar .tbtn .ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ebar .tbtn small{display:block;font-size:10px;font-weight:400;color:var(--ink-soft)}
+.ebar summary.tbtn::after{content:none!important}
+.ebar .tbtn.primary .ic{stroke:#fff}
+.ebar #eUndo,.ebar #eRedo{font-size:11px;min-width:54px}
+#eSelect[aria-pressed="true"]{background:var(--a-bg);border-color:var(--a-line);color:var(--a-ink)}
+#editSvg.selecting{cursor:crosshair}
+#eMore summary.tbtn{font-size:11px;padding:3px 8px}
 /* ▲ style.css ここまで ▲ */
 </style>
 </head>
@@ -351,22 +362,23 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 <section id="vEdit" class="edit" hidden>
   <!-- 上の帯：①配置そのもの（名前・読み・反転）②場所とグリッド ③見え方 ／ 右：取り消し・映す・その他。毎回は触らない物は ▾ の中 -->
   <header class="ebar">
-    <button type="button" id="eBack">← 戻る</button>
+    <button type="button" id="eBack" class="tbtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg><span>戻る</span></button>
     <div class="egroup">
       <label class="fld">配置名<input id="eName" maxlength="20"></label>
       <label class="fld">読み<input id="eYomi" maxlength="30" placeholder="ふりがな"></label>
     </div>
     <div class="egroup">
-      <button type="button" id="eTurn" title="場所を時計回りに90°回転（置いた物も一緒に回ります）">↻ 場所を回転</button>
+      <button type="button" id="eTurn" class="tbtn" title="場所を時計回りに90°回転（置いた物も一緒に回ります）"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>回転</span></button>
+      <button type="button" id="eSelect" class="tbtn" aria-pressed="false" title="オン：ドラッグで囲んでまとめて選ぶ（ホイールの拡大縮小は止まる）"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="13" height="13" rx="1" stroke-dasharray="3 2.5"/><path d="M12 12l8.5 3.2-3.6 1.4-1.4 3.6z"/></svg><span>選択</span></button>
       <details class="dispmenu" id="eGridMenu">
-        <summary>グリッド：<span id="eGridName">標準</span></summary>
+        <summary class="tbtn" title="グリッドの細かさ・線の表示"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg><span>グリッド<small id="eGridName">標準</small></span></summary>
         <div class="dpanel">
           <div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div>
           <label class="chk"><input type="checkbox" id="eGridShow" checked>グリッド線を表示</label>
         </div>
       </details>
       <details class="dispmenu" id="eDisp">
-        <summary>表示</summary>
+        <summary class="tbtn" title="床の色・輪郭・エリア名"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>表示</span></summary>
         <div class="dpanel">
           <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
           <label class="chk"><input type="checkbox" id="eOutline">輪郭を強調</label>
@@ -377,10 +389,10 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
     </div>
     <span id="ePeers" class="peers" hidden></span>
     <span class="sp"></span>
-    <span class="seg" role="group" aria-label="取り消し"><button type="button" id="eUndo" title="取り消す（Ctrl+Z）" aria-label="取り消す" disabled>↶</button><button type="button" id="eRedo" title="やり直す（Ctrl+Y）" aria-label="やり直す" disabled>↷</button></span>
-    <button type="button" id="eShow" class="primary">映す</button>
+    <button type="button" id="eUndo" class="tbtn" title="元に戻す（Ctrl+Z）" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>元に戻す</span></button><button type="button" id="eRedo" class="tbtn" title="やり直し（Ctrl+Y）" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg><span>やり直し</span></button>
+    <button type="button" id="eShow" class="tbtn primary"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>映す</span></button>
     <details class="dispmenu" id="eMore">
-      <summary aria-label="その他">⋯</summary>
+      <summary class="tbtn" title="この配置の複製・削除"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>その他</span></summary>
       <div class="dpanel">
         <button type="button" id="eCopy">この配置を複製</button>
         <button type="button" id="eDel" class="danger">この配置を削除</button>
@@ -3347,7 +3359,11 @@ function zoomAt(q, f) {   // 図の点 q を画面上で動かさずに 倍率�
   applyZoom();
 }
 function viewCenter() { var v = $('editSvg').viewBox.baseVal; return { x: v.x + v.width / 2, y: v.y + v.height / 2 }; }
+/* 「選択」がオン：ホイールで拡大縮小しない（ページはそのまま）。空いた所のドラッグは いつも囲んで選ぶ */
+var selectMode = false;
+$('eSelect').onclick = function () { selectMode = !selectMode; this.setAttribute('aria-pressed', String(selectMode)); $('editSvg').classList.toggle('selecting', selectMode); };
 $('editSvg').addEventListener('wheel', function (e) {
+  if (selectMode) return;
   e.preventDefault();
   zoomAt(svgPoint(this, e), Math.pow(1.2, -Math.sign(e.deltaY) * Math.min(3, Math.abs(e.deltaY) / 60 || 1)));
 }, { passive: false });
@@ -3357,6 +3373,7 @@ $('zReset').onclick = function () { EZ.k = 1; applyZoom(); };
 var touches = {}, pinch = null, pan = null;
 function touchList() { return Object.keys(touches).map(function (k) { return touches[k]; }); }
 $('editSvg').addEventListener('pointerdown', function (e) {
+  if (e.isPrimary) touches = {};   // 1本目の指（マウス）で数え直す：取りこぼした指が残って「2本指」と見誤らないように
   touches[e.pointerId] = { x: e.clientX, y: e.clientY };
   var tl = touchList();
   if (tl.length === 2) {   // 2本目の指：物の移動・範囲の移動をやめて、つまむ操作へ
@@ -3389,7 +3406,7 @@ $('editSvg').addEventListener('pointerdown', function (e) {
     // 空いた所：引きずれば見る範囲を動かし（拡大しているとき）、引きずらずに離せば下の「タップ」の動き
     var inv = this.getScreenCTM().inverse();
     // 拡大していないとき（または Shift）：引きずると 囲んだ物をまとめて選ぶ。拡大しているとき：見る範囲を動かす
-    pan = { sx: e.clientX, sy: e.clientY, inv: inv, cx: EZ.cx, cy: EZ.cy, moved: false, q: svgPoint(this, e), band: e.shiftKey || EZ.k === 1, add: e.shiftKey || e.ctrlKey };
+    pan = { sx: e.clientX, sy: e.clientY, inv: inv, cx: EZ.cx, cy: EZ.cy, moved: false, q: svgPoint(this, e), band: selectMode || e.shiftKey || EZ.k === 1, add: e.shiftKey || e.ctrlKey };
     this.setPointerCapture(e.pointerId);
     return;
   }
@@ -3427,9 +3444,9 @@ function bandSelect(a, b, add) {   // 囲みに少しでもかかった物を選
 }
 function emptyTap(q) {
   // 物を選んでいるときに机の上の空いた所を押すと、そこへ移す（指で引きずらなくてよい）
-  var gm = gridMargin();
   if (msel.length > 1) { selectOnly(-1); renderEdit(); return; }
-  if (sel >= 0 && q.x >= -gm.x && q.x <= DESK.w + gm.x && q.y >= -gm.y && q.y <= DESK.d + gm.y) {
+  var gm = SCENE.desk ? gridMargin() : { x: 0, y: 0 };   // 机は「半分はみ出す」置き方があるので 1目分の外まで
+  if (sel >= 0 && q.x >= -gm.x && q.x <= DESK.w + gm.x && q.y >= -gm.y && q.y <= DESK.d + gm.y) {   // 場所の中：選んだ物をそこへ。場所の外：選択を解除
     var sp = cur.top[sel]; sp.x = q.x; sp.y = q.y; clampP(sp); save(); renderEdit();
   } else if (sel >= 0) { selectOnly(-1); renderEdit(); }
 }
@@ -3479,6 +3496,13 @@ document.addEventListener('keydown', function (e) {   // 矢印キーでグリ�
   save(); renderEdit();
 });
 $('editSvg').addEventListener('pointercancel', function (e) { touchEnd(e); pan = null; endDrag(); });
+
+/* 編集画面で 図・選んだ物の帯・パレット・上の帯 以外（何もない所）を押したら 選択を解除 */
+document.addEventListener('pointerdown', function (e) {
+  if ($('vEdit').hidden || (sel < 0 && msel.length < 2)) return;
+  if (e.target.closest('#editSvg, .selbar, .palette, .ebar, .lists, dialog, .zoombar, #toast')) return;
+  selectOnly(-1); arrowEdit = false; renderEdit();
+}, true);   // 先に（捕まえる段で）調べる：図の中の物を押すと 描き直しで押した要素が外れ、あとからでは どこを押したか分からない
 /* ▲ pointer.js ここまで ▲ */
 /* ▼ boot.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
 /* 配置図：起動（最初の画面と、共有のときの受け取り） */
