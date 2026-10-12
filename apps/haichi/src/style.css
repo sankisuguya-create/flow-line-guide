@@ -236,3 +236,32 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 /* 絵を左に置くので 2列（名前が1行〜2行で読める幅） */
 .tiles{grid-template-columns:repeat(2,1fr)}
 .tiles button.side span{font-size:13px}
+
+/* 上の帯のボタン：アイコンの下に文字 */
+.ebar .tbtn{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:54px;min-height:48px;padding:3px 8px;font-size:11px;font-weight:700;line-height:1.15}
+.ebar .tbtn .ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ebar .tbtn small{display:block;font-size:10px;font-weight:400;color:var(--ink-soft)}
+.ebar summary.tbtn::after{content:none!important}
+.ebar .tbtn.primary .ic{stroke:#fff}
+.ebar #eUndo,.ebar #eRedo{font-size:11px;min-width:54px}
+#eSelect[aria-pressed="true"]{background:var(--a-bg);border-color:var(--a-line);color:var(--a-ink)}
+#editSvg.selecting{cursor:crosshair}
+#eMore summary.tbtn{font-size:11px;padding:3px 8px}
+
+/* 「設置」がオフ：パレットをしまって図を広く */
+.ebody.nopal{grid-template-columns:minmax(0,1fr)}
+.ebody.nopal .palette{display:none}
+#eAdd[aria-pressed="true"]{background:var(--a-bg);border-color:var(--a-line);color:var(--a-ink)}
+#eGridIc .ic{width:22px;height:22px}
+/* グリッドの選択：アイコンのボタン */
+#eGrid .gbtn{min-width:44px;padding:4px 8px}
+#eGrid .gbtn .ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+/* パレットの分類：畳める見出し */
+.pgrp{margin-bottom:6px}
+.pgrp>summary.pgroup{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;padding:6px 2px}
+.pgrp>summary.pgroup::-webkit-details-marker{display:none}
+.pgrp>summary.pgroup::before{content:"▸";font-size:12px;color:var(--ink-soft)}
+.pgrp[open]>summary.pgroup::before{content:"▾"}
+.pgrp>summary small{margin-left:auto;font-weight:400;color:var(--ink-faint)}
+#pItems:has(.pgrp){display:block}
+.tiles.in{max-height:none;overflow:visible}

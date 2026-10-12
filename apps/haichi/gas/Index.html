@@ -294,6 +294,35 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 /* 絵を左に置くので 2列（名前が1行〜2行で読める幅） */
 .tiles{grid-template-columns:repeat(2,1fr)}
 .tiles button.side span{font-size:13px}
+
+/* 上の帯のボタン：アイコンの下に文字 */
+.ebar .tbtn{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:54px;min-height:48px;padding:3px 8px;font-size:11px;font-weight:700;line-height:1.15}
+.ebar .tbtn .ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ebar .tbtn small{display:block;font-size:10px;font-weight:400;color:var(--ink-soft)}
+.ebar summary.tbtn::after{content:none!important}
+.ebar .tbtn.primary .ic{stroke:#fff}
+.ebar #eUndo,.ebar #eRedo{font-size:11px;min-width:54px}
+#eSelect[aria-pressed="true"]{background:var(--a-bg);border-color:var(--a-line);color:var(--a-ink)}
+#editSvg.selecting{cursor:crosshair}
+#eMore summary.tbtn{font-size:11px;padding:3px 8px}
+
+/* 「設置」がオフ：パレットをしまって図を広く */
+.ebody.nopal{grid-template-columns:minmax(0,1fr)}
+.ebody.nopal .palette{display:none}
+#eAdd[aria-pressed="true"]{background:var(--a-bg);border-color:var(--a-line);color:var(--a-ink)}
+#eGridIc .ic{width:22px;height:22px}
+/* グリッドの選択：アイコンのボタン */
+#eGrid .gbtn{min-width:44px;padding:4px 8px}
+#eGrid .gbtn .ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+/* パレットの分類：畳める見出し */
+.pgrp{margin-bottom:6px}
+.pgrp>summary.pgroup{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;padding:6px 2px}
+.pgrp>summary.pgroup::-webkit-details-marker{display:none}
+.pgrp>summary.pgroup::before{content:"▸";font-size:12px;color:var(--ink-soft)}
+.pgrp[open]>summary.pgroup::before{content:"▾"}
+.pgrp>summary small{margin-left:auto;font-weight:400;color:var(--ink-faint)}
+#pItems:has(.pgrp){display:block}
+.tiles.in{max-height:none;overflow:visible}
 /* ▲ style.css ここまで ▲ */
 </style>
 </head>
@@ -351,22 +380,24 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 <section id="vEdit" class="edit" hidden>
   <!-- 上の帯：①配置そのもの（名前・読み・反転）②場所とグリッド ③見え方 ／ 右：取り消し・映す・その他。毎回は触らない物は ▾ の中 -->
   <header class="ebar">
-    <button type="button" id="eBack">← 戻る</button>
+    <button type="button" id="eBack" class="tbtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg><span>戻る</span></button>
     <div class="egroup">
       <label class="fld">配置名<input id="eName" maxlength="20"></label>
       <label class="fld">読み<input id="eYomi" maxlength="30" placeholder="ふりがな"></label>
     </div>
     <div class="egroup">
-      <button type="button" id="eTurn" title="場所を時計回りに90°回転（置いた物も一緒に回ります）">↻ 場所を回転</button>
+      <button type="button" id="eAdd" class="tbtn" aria-pressed="true" title="右に 置く物（用具・目印・人）を出す・しまう"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 14v7M14 17.5h7"/></svg><span>設置</span></button>
+      <button type="button" id="eTurn" class="tbtn" title="場所を時計回りに90°回転（置いた物も一緒に回ります）"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>回転</span></button>
+      <button type="button" id="eSelect" class="tbtn" aria-pressed="false" title="オン：ドラッグで囲んでまとめて選ぶ（ホイールの拡大縮小は止まる）"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="13" height="13" rx="1" stroke-dasharray="3 2.5"/><path d="M12 12l8.5 3.2-3.6 1.4-1.4 3.6z"/></svg><span>選択</span></button>
       <details class="dispmenu" id="eGridMenu">
-        <summary>グリッド：<span id="eGridName">標準</span></summary>
+        <summary class="tbtn" title="グリッドの細かさ・線の表示"><span id="eGridIc"></span><span>グリッド</span></summary>
         <div class="dpanel">
           <div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div>
           <label class="chk"><input type="checkbox" id="eGridShow" checked>グリッド線を表示</label>
         </div>
       </details>
       <details class="dispmenu" id="eDisp">
-        <summary>表示</summary>
+        <summary class="tbtn" title="床の色・輪郭・エリア名"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>表示</span></summary>
         <div class="dpanel">
           <div id="eBgBox" class="gridsel">床の色<div id="eBg" class="seg" role="group" aria-label="床の色"></div></div>
           <label class="chk"><input type="checkbox" id="eOutline">輪郭を強調</label>
@@ -377,10 +408,10 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
     </div>
     <span id="ePeers" class="peers" hidden></span>
     <span class="sp"></span>
-    <span class="seg" role="group" aria-label="取り消し"><button type="button" id="eUndo" title="取り消す（Ctrl+Z）" aria-label="取り消す" disabled>↶</button><button type="button" id="eRedo" title="やり直す（Ctrl+Y）" aria-label="やり直す" disabled>↷</button></span>
-    <button type="button" id="eShow" class="primary">映す</button>
+    <button type="button" id="eUndo" class="tbtn" title="元に戻す（Ctrl+Z）" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>元に戻す</span></button><button type="button" id="eRedo" class="tbtn" title="やり直し（Ctrl+Y）" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg><span>やり直し</span></button>
+    <button type="button" id="eShow" class="tbtn primary"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>映す</span></button>
     <details class="dispmenu" id="eMore">
-      <summary aria-label="その他">⋯</summary>
+      <summary class="tbtn" title="この配置の複製・削除"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>その他</span></summary>
       <div class="dpanel">
         <button type="button" id="eCopy">この配置を複製</button>
         <button type="button" id="eDel" class="danger">この配置を削除</button>
@@ -429,13 +460,14 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
         <span class="bgroup">
           <span class="seg" role="group" aria-label="大きさ"><button type="button" id="selSmall" aria-label="縮小">－</button><button type="button" id="selReal">100%</button><button type="button" id="selBig" aria-label="拡大">＋</button></span>
           <button type="button" id="selRot">回転 ↻</button>
+          <span id="selLen" class="kgrid" hidden>長さ<span class="seg"><button type="button" data-len="-1" aria-label="短く">－</button><b id="lenV"></b><button type="button" data-len="1" aria-label="長く">＋</button></span></span>
           <span id="selGrid" class="kgrid" hidden>横<span class="seg"><button type="button" data-k="x" data-d="-1" aria-label="横を1人減らす">－</button><b id="kNx">1</b><button type="button" data-k="x" data-d="1" aria-label="横を1人増やす">＋</button></span>
             縦<span class="seg"><button type="button" data-k="y" data-d="-1" aria-label="縦を1人減らす">－</button><b id="kNy">1</b><button type="button" data-k="y" data-d="1" aria-label="縦を1人増やす">＋</button></span><span id="kSum"></span></span>
           <button type="button" id="selPath" aria-pressed="false" hidden>矢印を編集</button>
         </span>
         <span class="bgroup">
           <button type="button" id="selLabel" aria-pressed="false">名称を表示</button>
-          <button type="button" id="selFront">最前面へ</button>
+          <span id="selStack" class="seg" role="group" aria-label="重なりの順"><button type="button" data-z="back" title="いちばん後ろへ">最背面</button><button type="button" data-z="down" title="1つ後ろへ">後面へ</button><button type="button" data-z="up" title="1つ前へ">前面へ</button><button type="button" data-z="front" title="いちばん前へ">最前面</button></span>
           <button type="button" id="selDel" class="danger">削除</button>
         </span>
       </div>
@@ -1079,7 +1111,7 @@ var ITEMS = {
         for (i = 0; i < n; i++) {
           var cx = w * (i + 0.5) / n;
           if (id === 'rowline') s += L(cx, h * 0.08, cx, h * 0.92, col, 140);
-          else for (j = 0; j < 4; j++) s += C(cx, h * (j + 0.5) / 4, 100, col, 10);
+          else { var nd = Math.max(1, Math.round(h / 500)); for (j = 0; j < nd; j++) s += C(cx, h * (j + 0.5) / nd, 100, col, 10); }   // 50cm に1人（長さを変えると数が変わる）
         }
         return s;
       };
@@ -1427,6 +1459,13 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
   /* パレットの分け方（group）：thing＝用具・設備（既定）、mark＝矢印・目印、people＝人 */
   ['arrow', 'gline', 'tape', 'startline', 'goalline', 'nummark', 'fmark', 'flag', 'words'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].group = 'mark'; });
   ['person', 'kids', 'classgroup', 'teacher', 'rowdot', 'rowline', 'rowseno'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].group = 'people'; });
+  /* 場所を回しても 頭が上のまま（人の絵）。児童の並びは 横と縦の人数を入れかえる（app の turnLayout） */
+  ['person', 'teacher', 'kids'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].upright = true; });
+  /* 長さを変えられる物：axis＝伸びる向き（d＝縦、w＝横）、mm。列は 50cm＝1人分ずつ */
+  [['rowdot', 'd', 500], ['rowline', 'd', 500], ['rowseno', 'd', 500], ['gline', 'w', 500], ['tape', 'w', 250],
+   ['startline', 'w', 500], ['goalline', 'w', 500], ['longrope', 'w', 500]].forEach(function (s) {
+    if (ITEMS[s[0]]) { ITEMS[s[0]].stretch = { axis: s[1], step: s[2], min: s[2], max: 30000 }; (ITEMS[s[0]].controls = ITEMS[s[0]].controls || []).push('len'); }
+  });
 })();
 
 /* ---- 矢印の「じゆう」：交点を結ぶ折れ線 ---- */
@@ -1927,6 +1966,10 @@ function baseSize(p) {
   var it = ITEMS[p.item], st = stateOf(p);
   if (it.mesh) { var f = it.mesh(p).foot; return [f.W, f.L]; }
   if (it.size) return it.size(p);   // 中身で大きさが変わる物（児童の並び）
+  if (it.stretch && +p.len > 0) {   // 長さを変えられる物（列・ライン）：stretch.axis の向きの寸法を p.len に
+    var b0 = it.sizes ? [it.sizes[sizeOf(p)].w, it.sizes[sizeOf(p)].d] : [it.states[st].w, it.states[st].d];
+    return it.stretch.axis === 'w' ? [+p.len, b0[1]] : [b0[0], +p.len];
+  }
   if (it.sizes) { var z = it.sizes[sizeOf(p)]; return [st === 'open' ? z.w * 2 : z.w, z.d]; }
   return [it.states[st].w, it.states[st].d];
 }
@@ -2148,6 +2191,9 @@ function drawOrder(top) {
   var layer = function (p) { var it = ITEMS[p.item]; return it.floor ? 0 : it.mesh ? 1 : 2; };
   return idx.sort(function (a, b) {
     var pa = top[a], pb = top[b], la = layer(pa), lb = layer(pb);
+    // 重なりの順を手で決めた物（z：前面へ・後面へ）はそれに従う。z の無い物（後から足した物）は その上
+    var za = pa.z == null ? Infinity : pa.z, zb = pb.z == null ? Infinity : pb.z;
+    if (za !== zb) return za - zb;
     if (la !== lb) return la - lb;
     if (la === 1 && pa.y !== pb.y) return pa.y - pb.y;
     return a - b;
@@ -2609,7 +2655,8 @@ function sanitize(s) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
                  text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined,
-                 u: p.u ? String(p.u) : undefined,
+                 u: p.u ? String(p.u) : undefined, z: isFinite(p.z) && p.z !== null ? +p.z : undefined,
+                 len: ITEMS[p.item].stretch && +p.len > 0 ? +p.len : undefined,
                  nx: hasCtl(p.item, 'grid') ? kidsN(p).nx : undefined, ny: hasCtl(p.item, 'grid') ? kidsN(p).ny : undefined,
                  pts: hasCtl(p.item, 'path') && Array.isArray(p.pts) ? p.pts.filter(function (q) { return Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]); }).map(function (q) { return [+q[0], +q[1]]; }) : undefined, s: scaleOf(p) !== 1 ? scaleOf(p) : undefined };
       }),
@@ -2880,6 +2927,7 @@ function openEdit(id) {
   sel = -1; msel = []; EZ.k = 1; EZ.cx = null;
   hist = { undo: [], redo: [], last: JSON.stringify(cur) };
   histButtons();
+  setPalette(S.prefs.palette !== false);
   $('eOutline').checked = OUTLINE; $('eGridShow').checked = S.prefs.gridShow !== false;
   $('eTextBox').hidden = !SCENE.space; $('eText').checked = SPACE_TEXT;
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
@@ -2919,6 +2967,8 @@ function renderEdit() {
     if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
     $('selSize').hidden = !it.sizes;
     if (it.sizes) $('selSize').textContent = Object.keys(it.sizes).map(function (k) { return (k === sizeOf(p) ? '●' : '○') + it.sizes[k].name; }).join(' ');
+    $('selLen').hidden = !hasCtl(p.item, 'len');
+    if (hasCtl(p.item, 'len')) { var lw = itemSize(p), lv = (it.stretch.axis === 'w' ? lw[0] : lw[1]) / scaleOf(p); $('lenV').textContent = (lv / 1000).toFixed(lv % 1000 ? 1 : 0) + 'm' + (p.item.indexOf('row') === 0 ? '（' + Math.max(1, Math.round(lv / 500)) + '人）' : ''); }
     $('selGrid').hidden = !hasCtl(p.item, 'grid');
     if (hasCtl(p.item, 'grid')) { var kn = kidsN(p); $('kNx').textContent = kn.nx; $('kNy').textContent = kn.ny; $('kSum').textContent = '（' + kn.nx * kn.ny + '人）'; }
     $('selPath').hidden = !hasCtl(p.item, 'path'); $('selPath').setAttribute('aria-pressed', String(arrowEdit && hasCtl(p.item, 'path')));
@@ -2934,10 +2984,10 @@ function renderEdit() {
     return '<button type="button" class="sw bg' + (on ? ' on' : '') + '" data-bg="' + f.id + '" aria-pressed="' + on + '" title="' + f.name + '"' +
       (f.c ? ' style="background:' + f.c + '"' : '') + '>' + f.name + '</button>';
   }).join('');
-  $('eGridName').textContent = S.prefs.grid === 'free' ? '自由配置' : gridLevel(S.prefs.grid).name;
+  var gid = S.prefs.grid === 'free' ? 'free' : gridLevel(S.prefs.grid).id;
+  $('eGridIc').innerHTML = gridIcon(gid); $('eGridIc').setAttribute('title', gridName(gid));
   $('eGrid').innerHTML = GRID_LEVELS.concat([{ id: 'free', name: '自由配置' }]).map(function (g) {
-    var on = S.prefs.grid === 'free' ? g.id === 'free' : g.id === gridLevel(S.prefs.grid).id;
-    return '<button type="button" data-grid="' + g.id + '" class="' + (on ? 'on' : '') + '">' + g.name + '</button>';
+    return '<button type="button" class="gbtn' + (g.id === gid ? ' on' : '') + '" data-grid="' + g.id + '" title="' + g.name + '" aria-label="' + g.name + '">' + gridIcon(g.id) + '</button>';
   }).join('');
 }
 $('eGrid').addEventListener('click', function (e) {
@@ -2967,6 +3017,15 @@ document.querySelector('.lists').addEventListener('click', function (e) {
   save(); renderEdit();
 });
 
+/* グリッドの細かさを 文字ではなく 目の数で示すアイコン（粗い2×2・標準3×3・細かい4×4・極細6×6、自由配置は十字の矢印） */
+function gridName(id) { var g = GRID_LEVELS.filter(function (x) { return x.id === id; })[0]; return id === 'free' ? '自由配置' : g ? g.name : ''; }
+function gridIcon(id) {
+  var s = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">';
+  if (id === 'free') return s + '<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>';
+  var n = { coarse: 2, normal: 3, fine: 4, xfine: 6 }[id] || 3, d = '';
+  for (var i = 1; i < n; i++) { var v = 3 + 18 * i / n; d += 'M' + v + ' 3v18M3 ' + v + 'h18'; }
+  return s + '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="' + d + '" stroke-width="' + (n > 4 ? 1.2 : 1.6) + '"/></svg>';
+}
 var PALETTE_GROUPS = [['thing', '用具・設備'], ['mark', '矢印・目印'], ['people', '人']];
 function renderPalette() {
   var deskMode = !!SCENE.desk;
@@ -2994,7 +3053,9 @@ function renderPalette() {
   // 場所：用具・設備／矢印・目印／人 に分けて並べる
   $('pItems').innerHTML = PALETTE_GROUPS.map(function (g) {
     var list = ids.filter(function (id) { return (ITEMS[id].group || 'thing') === g[0]; });
-    return list.length ? '<h3 class="pgroup">' + g[1] + '</h3>' + list.map(tile).join('') : '';
+    if (!list.length) return '';
+    var shut = (S.prefs.palShut || []).indexOf(g[0]) >= 0;   // 畳んだ分類（端末に保存）
+    return '<details class="pgrp" data-g="' + g[0] + '"' + (shut ? '' : ' open') + '><summary class="pgroup">' + g[1] + '<small>' + list.length + '</small></summary><div class="tiles in">' + list.map(tile).join('') + '</div></details>';
   }).join('');
 }
 document.querySelector('.tabs').addEventListener('click', function (e) {
@@ -3069,6 +3130,7 @@ function turnLayout() {
   cur.top.forEach(function (p) {
     var x = p.x; p.x = D - p.y; p.y = x;
     if (isPath(p)) p.pts = p.pts.map(function (v) { return [-v[1], v[0]]; });
+    else if (ITEMS[p.item].upright) { if (hasCtl(p.item, 'grid')) { var n = kidsN(p); p.nx = n.ny; p.ny = n.nx; } }   // 人は頭を上のまま、並びだけ回す
     else p.r = ((p.r || 0) + 90) % 360;
   });
   cur.rot = ((cur.rot || 0) + 90) % 360; if (!cur.rot) delete cur.rot;
@@ -3142,7 +3204,16 @@ $('selPath').onclick = function () {
   renderEdit();
 };
 $('selLabel').onclick = function () { var p = cur.top[sel]; p.label = !p.label; save(); renderEdit(); };
-$('selFront').onclick = function () { toFront(); save(); renderEdit(); };
+$('selStack').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-z]'); if (!b) return;
+  restack(b.getAttribute('data-z')); save(); renderEdit();
+});
+$('selLen').addEventListener('click', function (e) {   // 長さ：1目ずつ（列は50cm＝1人分）
+  var b = e.target.closest('[data-len]'); if (!b) return;
+  var p = cur.top[sel], it = ITEMS[p.item], st = it.stretch, now = it.stretch.axis === 'w' ? itemSize(p)[0] / scaleOf(p) : itemSize(p)[1] / scaleOf(p);
+  p.len = Math.min(st.max, Math.max(st.min, Math.round(now / st.step) * st.step + (+b.getAttribute('data-len')) * st.step));
+  save(); renderEdit();
+});
 $('selDel').onclick = function () { removeItems(selected()); save(); renderEdit(); };
 /* まとめて選んだ物：そろえる・等間隔に並べる（物の外まわり itemBounds で測る。交点には合わせない） */
 function alignSel(how) {
@@ -3198,7 +3269,16 @@ $('multiBar').addEventListener('click', function (e) {
   if (e.target.closest('#mDel')) { removeItems(selected()); save(); renderEdit(); }
   if (e.target.closest('#mNone')) { selectOnly(-1); renderEdit(); }
 });
-function toFront() { var p = cur.top.splice(sel, 1)[0]; cur.top.push(p); sel = cur.top.length - 1; }
+/* 重なりの順：いま描いている順（drawOrder）を z に書き、選んだ物を1つ前・1つ後ろ・いちばん前・いちばん後ろへ */
+function restack(how) {
+  var order = drawOrder(cur.top), at = order.indexOf(sel);
+  if (at < 0) return;
+  order.splice(at, 1);
+  var to = how === 'front' ? order.length : how === 'back' ? 0 : how === 'up' ? Math.min(order.length, at + 1) : Math.max(0, at - 1);
+  order.splice(to, 0, sel);
+  order.forEach(function (i, k) { cur.top[i].z = k; });
+}
+function toFront() { restack('front'); }
 
 /* 物の中心をいちばん近いグリッドの交点に合わせる。交点は机の外にも「あらい」1目分広がる
    （本が半分だけ机に乗る配置）。それ以上はみ出すのは物の形まかせで許す（重ね置きなど実際の机でも起きる） */
@@ -3214,6 +3294,21 @@ function svgPoint(svg, e) {
   var pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
   return pt.matrixTransform(svg.getScreenCTM().inverse());
 }
+
+/* パレットの分類を畳む・開く（端末に保存） */
+$('pItems').addEventListener('toggle', function (e) {
+  var d = e.target; if (!d.matches || !d.matches('details.pgrp')) return;
+  var g = d.getAttribute('data-g'), s = (S.prefs.palShut || []).filter(function (x) { return x !== g; });
+  if (!d.open) s.push(g);
+  S.prefs.palShut = s; save();
+}, true);
+/* 「設置」：右のパレット（置く物）を出す・しまう。しまうと 図を広く使える（端末に保存） */
+function setPalette(on) {
+  S.prefs.palette = on;
+  $('eAdd').setAttribute('aria-pressed', String(on));
+  document.querySelector('.ebody').classList.toggle('nopal', !on);
+}
+$('eAdd').onclick = function () { setPalette(!(S.prefs.palette !== false)); save(); renderEdit(); };
 /* ▲ edit.js ここまで ▲ */
 /* ▼ history.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
 /* 配置図の画面 ③：取り消し・やり直し と 写す・貼る（キーボード） */
@@ -3310,7 +3405,11 @@ function zoomAt(q, f) {   // 図の点 q を画面上で動かさずに 倍率�
   applyZoom();
 }
 function viewCenter() { var v = $('editSvg').viewBox.baseVal; return { x: v.x + v.width / 2, y: v.y + v.height / 2 }; }
+/* 「選択」がオン：ホイールで拡大縮小しない（ページはそのまま）。空いた所のドラッグは いつも囲んで選ぶ */
+var selectMode = false;
+$('eSelect').onclick = function () { selectMode = !selectMode; this.setAttribute('aria-pressed', String(selectMode)); $('editSvg').classList.toggle('selecting', selectMode); };
 $('editSvg').addEventListener('wheel', function (e) {
+  if (selectMode) return;
   e.preventDefault();
   zoomAt(svgPoint(this, e), Math.pow(1.2, -Math.sign(e.deltaY) * Math.min(3, Math.abs(e.deltaY) / 60 || 1)));
 }, { passive: false });
@@ -3320,6 +3419,7 @@ $('zReset').onclick = function () { EZ.k = 1; applyZoom(); };
 var touches = {}, pinch = null, pan = null;
 function touchList() { return Object.keys(touches).map(function (k) { return touches[k]; }); }
 $('editSvg').addEventListener('pointerdown', function (e) {
+  if (e.isPrimary) touches = {};   // 1本目の指（マウス）で数え直す：取りこぼした指が残って「2本指」と見誤らないように
   touches[e.pointerId] = { x: e.clientX, y: e.clientY };
   var tl = touchList();
   if (tl.length === 2) {   // 2本目の指：物の移動・範囲の移動をやめて、つまむ操作へ
@@ -3352,7 +3452,7 @@ $('editSvg').addEventListener('pointerdown', function (e) {
     // 空いた所：引きずれば見る範囲を動かし（拡大しているとき）、引きずらずに離せば下の「タップ」の動き
     var inv = this.getScreenCTM().inverse();
     // 拡大していないとき（または Shift）：引きずると 囲んだ物をまとめて選ぶ。拡大しているとき：見る範囲を動かす
-    pan = { sx: e.clientX, sy: e.clientY, inv: inv, cx: EZ.cx, cy: EZ.cy, moved: false, q: svgPoint(this, e), band: e.shiftKey || EZ.k === 1, add: e.shiftKey || e.ctrlKey };
+    pan = { sx: e.clientX, sy: e.clientY, inv: inv, cx: EZ.cx, cy: EZ.cy, moved: false, q: svgPoint(this, e), band: selectMode || e.shiftKey || EZ.k === 1, add: e.shiftKey || e.ctrlKey };
     this.setPointerCapture(e.pointerId);
     return;
   }
@@ -3390,9 +3490,9 @@ function bandSelect(a, b, add) {   // 囲みに少しでもかかった物を選
 }
 function emptyTap(q) {
   // 物を選んでいるときに机の上の空いた所を押すと、そこへ移す（指で引きずらなくてよい）
-  var gm = gridMargin();
   if (msel.length > 1) { selectOnly(-1); renderEdit(); return; }
-  if (sel >= 0 && q.x >= -gm.x && q.x <= DESK.w + gm.x && q.y >= -gm.y && q.y <= DESK.d + gm.y) {
+  var gm = SCENE.desk ? gridMargin() : { x: 0, y: 0 };   // 机は「半分はみ出す」置き方があるので 1目分の外まで
+  if (sel >= 0 && q.x >= -gm.x && q.x <= DESK.w + gm.x && q.y >= -gm.y && q.y <= DESK.d + gm.y) {   // 場所の中：選んだ物をそこへ。場所の外：選択を解除
     var sp = cur.top[sel]; sp.x = q.x; sp.y = q.y; clampP(sp); save(); renderEdit();
   } else if (sel >= 0) { selectOnly(-1); renderEdit(); }
 }
@@ -3442,6 +3542,13 @@ document.addEventListener('keydown', function (e) {   // 矢印キーでグリ�
   save(); renderEdit();
 });
 $('editSvg').addEventListener('pointercancel', function (e) { touchEnd(e); pan = null; endDrag(); });
+
+/* 編集画面で 図・選んだ物の帯・パレット・上の帯 以外（何もない所）を押したら 選択を解除 */
+document.addEventListener('pointerdown', function (e) {
+  if ($('vEdit').hidden || (sel < 0 && msel.length < 2)) return;
+  if (e.target.closest('#editSvg, .selbar, .palette, .ebar, .lists, dialog, .zoombar, #toast')) return;
+  selectOnly(-1); arrowEdit = false; renderEdit();
+}, true);   // 先に（捕まえる段で）調べる：図の中の物を押すと 描き直しで押した要素が外れ、あとからでは どこを押したか分からない
 /* ▲ pointer.js ここまで ▲ */
 /* ▼ boot.js から。直すのは正本のほう（apps/haichi/scripts/parts.mjs の表） ▼ */
 /* 配置図：起動（最初の画面と、共有のときの受け取り） */

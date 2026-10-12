@@ -28,7 +28,11 @@ function zoomAt(q, f) {   // 図の点 q を画面上で動かさずに 倍率�
   applyZoom();
 }
 function viewCenter() { var v = $('editSvg').viewBox.baseVal; return { x: v.x + v.width / 2, y: v.y + v.height / 2 }; }
+/* 「選択」がオン：ホイールで拡大縮小しない（ページはそのまま）。空いた所のドラッグは いつも囲んで選ぶ */
+var selectMode = false;
+$('eSelect').onclick = function () { selectMode = !selectMode; this.setAttribute('aria-pressed', String(selectMode)); $('editSvg').classList.toggle('selecting', selectMode); };
 $('editSvg').addEventListener('wheel', function (e) {
+  if (selectMode) return;
   e.preventDefault();
   zoomAt(svgPoint(this, e), Math.pow(1.2, -Math.sign(e.deltaY) * Math.min(3, Math.abs(e.deltaY) / 60 || 1)));
 }, { passive: false });
@@ -38,6 +42,7 @@ $('zReset').onclick = function () { EZ.k = 1; applyZoom(); };
 var touches = {}, pinch = null, pan = null;
 function touchList() { return Object.keys(touches).map(function (k) { return touches[k]; }); }
 $('editSvg').addEventListener('pointerdown', function (e) {
+  if (e.isPrimary) touches = {};   // 1本目の指（マウス）で数え直す：取りこぼした指が残って「2本指」と見誤らないように
   touches[e.pointerId] = { x: e.clientX, y: e.clientY };
   var tl = touchList();
   if (tl.length === 2) {   // 2本目の指：物の移動・範囲の移動をやめて、つまむ操作へ
@@ -70,7 +75,7 @@ $('editSvg').addEventListener('pointerdown', function (e) {
     // 空いた所：引きずれば見る範囲を動かし（拡大しているとき）、引きずらずに離せば下の「タップ」の動き
     var inv = this.getScreenCTM().inverse();
     // 拡大していないとき（または Shift）：引きずると 囲んだ物をまとめて選ぶ。拡大しているとき：見る範囲を動かす
-    pan = { sx: e.clientX, sy: e.clientY, inv: inv, cx: EZ.cx, cy: EZ.cy, moved: false, q: svgPoint(this, e), band: e.shiftKey || EZ.k === 1, add: e.shiftKey || e.ctrlKey };
+    pan = { sx: e.clientX, sy: e.clientY, inv: inv, cx: EZ.cx, cy: EZ.cy, moved: false, q: svgPoint(this, e), band: selectMode || e.shiftKey || EZ.k === 1, add: e.shiftKey || e.ctrlKey };
     this.setPointerCapture(e.pointerId);
     return;
   }
@@ -108,9 +113,9 @@ function bandSelect(a, b, add) {   // 囲みに少しでもかかった物を選
 }
 function emptyTap(q) {
   // 物を選んでいるときに机の上の空いた所を押すと、そこへ移す（指で引きずらなくてよい）
-  var gm = gridMargin();
   if (msel.length > 1) { selectOnly(-1); renderEdit(); return; }
-  if (sel >= 0 && q.x >= -gm.x && q.x <= DESK.w + gm.x && q.y >= -gm.y && q.y <= DESK.d + gm.y) {
+  var gm = SCENE.desk ? gridMargin() : { x: 0, y: 0 };   // 机は「半分はみ出す」置き方があるので 1目分の外まで
+  if (sel >= 0 && q.x >= -gm.x && q.x <= DESK.w + gm.x && q.y >= -gm.y && q.y <= DESK.d + gm.y) {   // 場所の中：選んだ物をそこへ。場所の外：選択を解除
     var sp = cur.top[sel]; sp.x = q.x; sp.y = q.y; clampP(sp); save(); renderEdit();
   } else if (sel >= 0) { selectOnly(-1); renderEdit(); }
 }
@@ -160,3 +165,10 @@ document.addEventListener('keydown', function (e) {   // 矢印キーでグリ�
   save(); renderEdit();
 });
 $('editSvg').addEventListener('pointercancel', function (e) { touchEnd(e); pan = null; endDrag(); });
+
+/* 編集画面で 図・選んだ物の帯・パレット・上の帯 以外（何もない所）を押したら 選択を解除 */
+document.addEventListener('pointerdown', function (e) {
+  if ($('vEdit').hidden || (sel < 0 && msel.length < 2)) return;
+  if (e.target.closest('#editSvg, .selbar, .palette, .ebar, .lists, dialog, .zoombar, #toast')) return;
+  selectOnly(-1); arrowEdit = false; renderEdit();
+}, true);   // 先に（捕まえる段で）調べる：図の中の物を押すと 描き直しで押した要素が外れ、あとからでは どこを押したか分からない

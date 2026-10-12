@@ -178,6 +178,13 @@ function kidsN(p) {   // 児童の並び：横・縦の人数（1以上、合わ
   /* パレットの分け方（group）：thing＝用具・設備（既定）、mark＝矢印・目印、people＝人 */
   ['arrow', 'gline', 'tape', 'startline', 'goalline', 'nummark', 'fmark', 'flag', 'words'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].group = 'mark'; });
   ['person', 'kids', 'classgroup', 'teacher', 'rowdot', 'rowline', 'rowseno'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].group = 'people'; });
+  /* 場所を回しても 頭が上のまま（人の絵）。児童の並びは 横と縦の人数を入れかえる（app の turnLayout） */
+  ['person', 'teacher', 'kids'].forEach(function (id) { if (ITEMS[id]) ITEMS[id].upright = true; });
+  /* 長さを変えられる物：axis＝伸びる向き（d＝縦、w＝横）、mm。列は 50cm＝1人分ずつ */
+  [['rowdot', 'd', 500], ['rowline', 'd', 500], ['rowseno', 'd', 500], ['gline', 'w', 500], ['tape', 'w', 250],
+   ['startline', 'w', 500], ['goalline', 'w', 500], ['longrope', 'w', 500]].forEach(function (s) {
+    if (ITEMS[s[0]]) { ITEMS[s[0]].stretch = { axis: s[1], step: s[2], min: s[2], max: 30000 }; (ITEMS[s[0]].controls = ITEMS[s[0]].controls || []).push('len'); }
+  });
 })();
 
 /* ---- 矢印の「じゆう」：交点を結ぶ折れ線 ---- */
