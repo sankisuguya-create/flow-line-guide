@@ -131,8 +131,8 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 .lb{fill:var(--ink);font-weight:700}
 .rb{fill:var(--ink-soft)}
 .lbox{fill:var(--sheet);stroke:var(--ink);stroke-width:3}
-.lead{stroke:var(--ink);stroke-width:4}
-.lead-halo{stroke:var(--sheet);stroke-width:10;stroke-linecap:round}
+.lead{stroke:var(--ink);stroke-width:4;fill:none;stroke-linecap:round}
+.lead-halo{stroke:var(--sheet);stroke-width:10;stroke-linecap:round;fill:none}
 .lead-dot{fill:var(--ink);stroke:var(--sheet);stroke-width:3}
 .cap{fill:var(--ink-soft);font-weight:700}
 .cut{stroke:var(--ink-faint);stroke-width:3;stroke-dasharray:14 10}
@@ -474,6 +474,7 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
         </span>
         <span class="bgroup">
           <button type="button" id="selLabel" aria-pressed="false">名称を表示</button>
+          <label id="selLnameBox" class="fld" hidden>名称<input id="selLname" maxlength="20"></label>
           <span id="selStack" class="seg" role="group" aria-label="重なりの順"><button type="button" data-z="back" title="いちばん後ろへ">最背面</button><button type="button" data-z="down" title="1つ後ろへ">後面へ</button><button type="button" data-z="up" title="1つ前へ">前面へ</button><button type="button" data-z="front" title="いちばん前へ">最前面</button></span>
           <button type="button" id="selDel" class="danger">削除</button>
         </span>
@@ -2135,11 +2136,20 @@ function spread(list, lo, hi, gap) {
     lim = a.pos - a.size / 2 - gap;
   }
 }
+/* 名称：直した名称（lname）があればそれ、なければ物の名前 */
+function labelName(p) { return p.lname ? String(p.lname) : ITEMS[p.item].name; }
+/* 引き出し線：細く、ゆるく弧を描く線（向きは いつも同じ回り）。矢印・動線の直線や折れ線と見分けられるように、
+   ほかでは使わない形にする。名称と物が一直線に並んでも 弧になる */
+function leadPath(l) {
+  var dx = l.tx - l.ax, dy = l.ty - l.ay, b = 0.18, nx = -dy * b, ny = dx * b;   // b：弧のふくらみ（長さに対する割合）
+  return 'M' + l.ax + ' ' + l.ay + 'C' + (l.ax + dx * 0.3 + nx) + ' ' + (l.ay + dy * 0.3 + ny) + ' ' +
+         (l.ax + dx * 0.7 + nx) + ' ' + (l.ay + dy * 0.7 + ny) + ' ' + l.tx + ' ' + l.ty;
+}
 function layoutLabels(top, sides, ruby, bottomStart) {
   var groups = { L: [], R: [], T: [], B: [] };
   top.forEach(function (p, i) {
     if (!p.label) return;
-    var name = ITEMS[p.item].name, box = labelBoxSize(name, ruby);
+    var name = labelName(p), box = labelBoxSize(name, ruby);
     var dist = { L: p.x, R: DESK.w - p.x, T: p.y, B: DESK.d - p.y }, best = null;
     sides.forEach(function (s) { if (best == null || dist[s] < dist[best]) best = s; });
     var vert = best === 'L' || best === 'R';
@@ -2168,9 +2178,10 @@ function layoutLabels(top, sides, ruby, bottomStart) {
 function labelsSvg(labels, ruby) {
   var lines = '', boxes = '';
   labels.forEach(function (l) {
-    lines += '<line x1="' + l.ax + '" y1="' + l.ay + '" x2="' + l.tx + '" y2="' + l.ty + '" class="lead-halo" style="stroke-width:' + 10 * K + '"/>' +
-             '<line x1="' + l.ax + '" y1="' + l.ay + '" x2="' + l.tx + '" y2="' + l.ty + '" class="lead" style="stroke-width:' + 4 * K + '"/>' +
-             '<circle cx="' + l.tx + '" cy="' + l.ty + '" r="' + 9 * K + '" class="lead-dot" style="stroke-width:' + 3 * K + '"/>';
+    var d = leadPath(l);
+    lines += '<path d="' + d + '" class="lead-halo" style="stroke-width:' + 5 * K + '"/>' +
+             '<path d="' + d + '" class="lead" style="stroke-width:' + 1.6 * K + '"/>' +
+             '<circle cx="' + l.tx + '" cy="' + l.ty + '" r="' + 5 * K + '" class="lead-dot" style="stroke-width:' + 2 * K + '"/>';
     boxes += labelBox(l.name, l.cx, l.cy, ruby);
   });
   return '<g class="labels">' + lines + boxes + '</g>';
@@ -2683,6 +2694,7 @@ function sanitize(s) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
                  text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined,
+                 lname: p.lname ? String(p.lname).slice(0, 20) : undefined,
                  u: p.u ? String(p.u) : undefined, z: isFinite(p.z) && p.z !== null ? +p.z : undefined,
                  len: ITEMS[p.item].stretch && +p.len > 0 ? +p.len : undefined,
                  hex: ITEMS[p.item].colors && /^#[0-9a-fA-F]{6}$/.test(p.hex || '') ? p.hex : undefined,
@@ -2992,6 +3004,8 @@ function renderEdit() {
       return '<button type="button" data-st="' + k + '" class="' + (k === stateOf(p) ? 'on' : '') + '">' + (STATE_NAMES[k] || k) + '</button>';
     }).join('');
     $('selLabel').setAttribute('aria-pressed', String(!!p.label));
+    $('selLnameBox').hidden = !p.label;
+    if (document.activeElement !== $('selLname')) { $('selLname').value = p.lname || ''; $('selLname').placeholder = plainName(it.name); }
     $('selReal').textContent = Math.round(scaleOf(p) * 100) + '%'; $('selReal').title = '実寸（100%）に戻す';
     $('selTextBox').hidden = !it.text;
     if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
@@ -3147,6 +3161,10 @@ $('selSize').onclick = function () {
 $('selColors').addEventListener('click', function (e) {
   var b = e.target.closest('[data-col]'); if (!b) return;
   cur.top[sel].color = +b.getAttribute('data-col'); save(); renderEdit();
+});
+$('selLname').addEventListener('input', function () {   // 名称を直す。空にすると物の名前に戻る
+  var p = cur.top[sel]; if (!p) return;
+  var v = this.value.trim(); if (v) p.lname = v; else delete p.lname; save(); renderEdit();
 });
 $('selText').addEventListener('input', function () {
   var p = cur.top[sel]; if (!p) return;

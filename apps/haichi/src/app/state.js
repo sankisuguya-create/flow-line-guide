@@ -52,6 +52,7 @@ function sanitize(s) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
                  text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined,
+                 lname: p.lname ? String(p.lname).slice(0, 20) : undefined,
                  u: p.u ? String(p.u) : undefined, z: isFinite(p.z) && p.z !== null ? +p.z : undefined,
                  len: ITEMS[p.item].stretch && +p.len > 0 ? +p.len : undefined,
                  hex: ITEMS[p.item].colors && /^#[0-9a-fA-F]{6}$/.test(p.hex || '') ? p.hex : undefined,

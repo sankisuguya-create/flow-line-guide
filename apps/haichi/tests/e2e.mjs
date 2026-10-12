@@ -141,6 +141,16 @@ await step('コーン：色・柄なし・ミニコーン', async () => {
   assert.ok(r.band.length > 50 && r.mini.length > 50); assert.notEqual(r.plain, r.band); assert.ok(r.plain.includes('70,185,122') || r.plain.length > 50);
 });
 
+await step('名称を直せる・引き出し線は細い曲線', async () => {
+  const k = async () => (await lastLayout()).top.find(q => q.item === 'kids');
+  if (!(await k()).label) await p.click('#selLabel');
+  await p.fill('#selLname', '3年1組');
+  assert.equal((await k()).lname, '3年1組');
+  const h = await p.innerHTML('#editSvg');
+  assert.ok(h.includes('>3年1組</text>') && /<path d="M[^"]*C[^"]*" class="lead"/.test(h));
+  await p.fill('#selLname', ''); assert.ok(!(await k()).lname, '空なら物の名前に戻る');
+});
+
 await step('拡大・縮小とグリッドの線', async () => {
   await p.click('#selBig'); assert.equal(await p.textContent('#selReal'), '125%');
   await p.click('#selReal'); assert.equal(await p.textContent('#selReal'), '100%');

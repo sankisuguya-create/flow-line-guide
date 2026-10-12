@@ -41,6 +41,8 @@ function renderEdit() {
       return '<button type="button" data-st="' + k + '" class="' + (k === stateOf(p) ? 'on' : '') + '">' + (STATE_NAMES[k] || k) + '</button>';
     }).join('');
     $('selLabel').setAttribute('aria-pressed', String(!!p.label));
+    $('selLnameBox').hidden = !p.label;
+    if (document.activeElement !== $('selLname')) { $('selLname').value = p.lname || ''; $('selLname').placeholder = plainName(it.name); }
     $('selReal').textContent = Math.round(scaleOf(p) * 100) + '%'; $('selReal').title = '実寸（100%）に戻す';
     $('selTextBox').hidden = !it.text;
     if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
@@ -196,6 +198,10 @@ $('selSize').onclick = function () {
 $('selColors').addEventListener('click', function (e) {
   var b = e.target.closest('[data-col]'); if (!b) return;
   cur.top[sel].color = +b.getAttribute('data-col'); save(); renderEdit();
+});
+$('selLname').addEventListener('input', function () {   // 名称を直す。空にすると物の名前に戻る
+  var p = cur.top[sel]; if (!p) return;
+  var v = this.value.trim(); if (v) p.lname = v; else delete p.lname; save(); renderEdit();
 });
 $('selText').addEventListener('input', function () {
   var p = cur.top[sel]; if (!p) return;

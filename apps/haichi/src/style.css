@@ -73,8 +73,8 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 .lb{fill:var(--ink);font-weight:700}
 .rb{fill:var(--ink-soft)}
 .lbox{fill:var(--sheet);stroke:var(--ink);stroke-width:3}
-.lead{stroke:var(--ink);stroke-width:4}
-.lead-halo{stroke:var(--sheet);stroke-width:10;stroke-linecap:round}
+.lead{stroke:var(--ink);stroke-width:4;fill:none;stroke-linecap:round}
+.lead-halo{stroke:var(--sheet);stroke-width:10;stroke-linecap:round;fill:none}
 .lead-dot{fill:var(--ink);stroke:var(--sheet);stroke-width:3}
 .cap{fill:var(--ink-soft);font-weight:700}
 .cut{stroke:var(--ink-faint);stroke-width:3;stroke-dasharray:14 10}
