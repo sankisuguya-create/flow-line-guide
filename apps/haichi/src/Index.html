@@ -69,10 +69,11 @@
       <label class="fld">読み<input id="eYomi" maxlength="30" placeholder="ふりがな"></label>
     </div>
     <div class="egroup">
+      <button type="button" id="eAdd" class="tbtn" aria-pressed="true" title="右に 置く物（用具・目印・人）を出す・しまう"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 14v7M14 17.5h7"/></svg><span>設置</span></button>
       <button type="button" id="eTurn" class="tbtn" title="場所を時計回りに90°回転（置いた物も一緒に回ります）"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>回転</span></button>
       <button type="button" id="eSelect" class="tbtn" aria-pressed="false" title="オン：ドラッグで囲んでまとめて選ぶ（ホイールの拡大縮小は止まる）"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="13" height="13" rx="1" stroke-dasharray="3 2.5"/><path d="M12 12l8.5 3.2-3.6 1.4-1.4 3.6z"/></svg><span>選択</span></button>
       <details class="dispmenu" id="eGridMenu">
-        <summary class="tbtn" title="グリッドの細かさ・線の表示"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg><span>グリッド<small id="eGridName">標準</small></span></summary>
+        <summary class="tbtn" title="グリッドの細かさ・線の表示"><span id="eGridIc"></span><span>グリッド</span></summary>
         <div class="dpanel">
           <div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div>
           <label class="chk"><input type="checkbox" id="eGridShow" checked>グリッド線を表示</label>

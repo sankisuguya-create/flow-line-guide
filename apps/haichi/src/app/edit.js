@@ -6,6 +6,7 @@ function openEdit(id) {
   sel = -1; msel = []; EZ.k = 1; EZ.cx = null;
   hist = { undo: [], redo: [], last: JSON.stringify(cur) };
   histButtons();
+  setPalette(S.prefs.palette !== false);
   $('eOutline').checked = OUTLINE; $('eGridShow').checked = S.prefs.gridShow !== false;
   $('eTextBox').hidden = !SCENE.space; $('eText').checked = SPACE_TEXT;
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
@@ -62,10 +63,10 @@ function renderEdit() {
     return '<button type="button" class="sw bg' + (on ? ' on' : '') + '" data-bg="' + f.id + '" aria-pressed="' + on + '" title="' + f.name + '"' +
       (f.c ? ' style="background:' + f.c + '"' : '') + '>' + f.name + '</button>';
   }).join('');
-  $('eGridName').textContent = S.prefs.grid === 'free' ? '自由配置' : gridLevel(S.prefs.grid).name;
+  var gid = S.prefs.grid === 'free' ? 'free' : gridLevel(S.prefs.grid).id;
+  $('eGridIc').innerHTML = gridIcon(gid); $('eGridIc').setAttribute('title', gridName(gid));
   $('eGrid').innerHTML = GRID_LEVELS.concat([{ id: 'free', name: '自由配置' }]).map(function (g) {
-    var on = S.prefs.grid === 'free' ? g.id === 'free' : g.id === gridLevel(S.prefs.grid).id;
-    return '<button type="button" data-grid="' + g.id + '" class="' + (on ? 'on' : '') + '">' + g.name + '</button>';
+    return '<button type="button" class="gbtn' + (g.id === gid ? ' on' : '') + '" data-grid="' + g.id + '" title="' + g.name + '" aria-label="' + g.name + '">' + gridIcon(g.id) + '</button>';
   }).join('');
 }
 $('eGrid').addEventListener('click', function (e) {
@@ -95,6 +96,15 @@ document.querySelector('.lists').addEventListener('click', function (e) {
   save(); renderEdit();
 });
 
+/* グリッドの細かさを 文字ではなく 目の数で示すアイコン（粗い2×2・標準3×3・細かい4×4・極細6×6、自由配置は十字の矢印） */
+function gridName(id) { var g = GRID_LEVELS.filter(function (x) { return x.id === id; })[0]; return id === 'free' ? '自由配置' : g ? g.name : ''; }
+function gridIcon(id) {
+  var s = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">';
+  if (id === 'free') return s + '<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>';
+  var n = { coarse: 2, normal: 3, fine: 4, xfine: 6 }[id] || 3, d = '';
+  for (var i = 1; i < n; i++) { var v = 3 + 18 * i / n; d += 'M' + v + ' 3v18M3 ' + v + 'h18'; }
+  return s + '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="' + d + '" stroke-width="' + (n > 4 ? 1.2 : 1.6) + '"/></svg>';
+}
 var PALETTE_GROUPS = [['thing', '用具・設備'], ['mark', '矢印・目印'], ['people', '人']];
 function renderPalette() {
   var deskMode = !!SCENE.desk;
@@ -122,7 +132,9 @@ function renderPalette() {
   // 場所：用具・設備／矢印・目印／人 に分けて並べる
   $('pItems').innerHTML = PALETTE_GROUPS.map(function (g) {
     var list = ids.filter(function (id) { return (ITEMS[id].group || 'thing') === g[0]; });
-    return list.length ? '<h3 class="pgroup">' + g[1] + '</h3>' + list.map(tile).join('') : '';
+    if (!list.length) return '';
+    var shut = (S.prefs.palShut || []).indexOf(g[0]) >= 0;   // 畳んだ分類（端末に保存）
+    return '<details class="pgrp" data-g="' + g[0] + '"' + (shut ? '' : ' open') + '><summary class="pgroup">' + g[1] + '<small>' + list.length + '</small></summary><div class="tiles in">' + list.map(tile).join('') + '</div></details>';
   }).join('');
 }
 document.querySelector('.tabs').addEventListener('click', function (e) {
@@ -361,3 +373,18 @@ function svgPoint(svg, e) {
   var pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
   return pt.matrixTransform(svg.getScreenCTM().inverse());
 }
+
+/* パレットの分類を畳む・開く（端末に保存） */
+$('pItems').addEventListener('toggle', function (e) {
+  var d = e.target; if (!d.matches || !d.matches('details.pgrp')) return;
+  var g = d.getAttribute('data-g'), s = (S.prefs.palShut || []).filter(function (x) { return x !== g; });
+  if (!d.open) s.push(g);
+  S.prefs.palShut = s; save();
+}, true);
+/* 「設置」：右のパレット（置く物）を出す・しまう。しまうと 図を広く使える（端末に保存） */
+function setPalette(on) {
+  S.prefs.palette = on;
+  $('eAdd').setAttribute('aria-pressed', String(on));
+  document.querySelector('.ebody').classList.toggle('nopal', !on);
+}
+$('eAdd').onclick = function () { setPalette(!(S.prefs.palette !== false)); save(); renderEdit(); };

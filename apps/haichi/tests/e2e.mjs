@@ -216,7 +216,23 @@ await step('選択モード：ホイールで拡大しない・拡大中でも�
 
 await step('パレット：用具・設備／矢印・目印／人 に分かれる', async () => {
   await p.click('[data-fix="g_shukai"]');
-  assert.deepEqual(await p.$$eval('#pItems .pgroup', els => els.map(e => e.textContent)), ['用具・設備', '矢印・目印', '人']);
+  assert.deepEqual(await p.$$eval('#pItems .pgroup', els => els.map(e => e.firstChild.textContent)), ['用具・設備', '矢印・目印', '人']);
+  // 畳む：「人」を畳むと 中の物が見えなくなり、開き直すまで覚えている
+  await p.click('.pgrp[data-g="people"] > summary');
+  assert.equal(await p.isVisible('[data-add="kids"]'), false);
+  await p.click('#eBack'); await p.click('[data-fix="g_shukai"]');
+  assert.equal(await p.isVisible('[data-add="kids"]'), false, '畳んだまま');
+  await p.click('.pgrp[data-g="people"] > summary'); assert.equal(await p.isVisible('[data-add="kids"]'), true);
+  // 設置：オフで パレットが消え、図が広がる
+  const w0 = (await p.locator('#editSvg').boundingBox()).width;
+  await p.click('#eAdd');
+  assert.equal(await p.isVisible('.palette'), false);
+  assert.ok((await p.locator('#editSvg').boundingBox()).width > w0 + 200, '図が広がる');
+  await p.click('#eAdd'); assert.equal(await p.isVisible('.palette'), true);
+  // グリッド：文字ではなくアイコン
+  await p.click('#eGridMenu summary');
+  assert.equal(await p.locator('#eGrid .gbtn svg').count(), 5); assert.equal((await p.textContent('#eGrid')).trim(), '');
+  await p.click('#eGridMenu summary');
   await p.click('#eBack');
 });
 
