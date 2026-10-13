@@ -248,6 +248,16 @@ function slot(side,q){                      // 列の q 番目の ばしょ
   if(side==="R"){ var f=150*Math.PI/180-ang; return [HR+0.3+r*Math.cos(f),Y0+r*Math.sin(f)]; }
   var f2=30*Math.PI/180+ang; return [HL-0.3+r*Math.cos(f2),Y0+r*Math.sin(f2)];
 }
+/* とんだ あと：出口から 8の字の 線（回し手の まわりの 弧）を 歩いて 列の うしろへ */
+function arcPath(side,from,q){
+  var c=side==="R"?[HR+0.3,Y0]:[HL-0.3,Y0], D=180/Math.PI, gp=+st.gap;
+  var a0=Math.atan2(from[1]-c[1],from[0]-c[0])*D, r0=Math.hypot(from[0]-c[0],from[1]-c[1]), r1=1.0+0.06*q, aT, pts=[];
+  if(side==="R"){ aT=150-gp/1.1*q*D; while(aT<=a0) aT+=360; while(aT-a0>360) aT-=360; }
+  else { aT=30+gp/1.1*q*D; while(aT>=a0) aT-=360; while(a0-aT>360) aT+=360; }
+  for(var i=0;i<=32;i++){ var f=i/32, a=(a0+(aT-a0)*f)/D, r=r0+(r1-r0)*f; pts.push([c[0]+r*Math.cos(a),c[1]+r*Math.sin(a)]); }
+  return pts;
+}
+function plen(pts){ var d=0; for(var i=1;i<pts.length;i++) d+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]); return d; }
 function geom(){
   var jx=jumpX(), a=(+st.angle)*Math.PI/180, D=+st.dist, cs=Math.cos(a), sn=Math.sin(a);
   function g1(dx){ var d=[dx*cs,-sn];   // とぶ むき
@@ -272,8 +282,8 @@ function makePlan(p,g){
     if(!Q[side].length) side=side==="R"?"L":"R";
     var j=Q[side].shift(), other=side==="R"?"L":"R", tc=(k+1)*p, gs=g[side];
     var t0=tc-TJ/2-appr()*p, tl=tc+TJ/2, te=tl+0.45*p;
-    var tail=slot(other,Q[other].length), walk=Math.hypot(tail[0]-gs.exit[0],tail[1]-gs.exit[1])+1.2, ta=te+walk/backSpeed();
-    ev[j].push({type:"go",side:side,other:other,t0:t0,tc:tc,tl:tl,te:te,ta:ta,tail:tail,q:Q[other].length});
+    var tail=slot(other,Q[other].length), path=arcPath(other,gs.exit,Q[other].length), ta=te+plen(path)/backSpeed();
+    ev[j].push({type:"go",side:side,other:other,t0:t0,tc:tc,tl:tl,te:te,ta:ta,tail:tail,path:path,q:Q[other].length});
     jumps.push({tc:tc,side:side,j:j});
     Q[other].push(j); arrive[other].push({j:j,at:ta,leave:null});
   }
@@ -299,8 +309,7 @@ function personAt(j,T,p,g){
     if(T<go.tc-TJ/2){ var head=slot(go.side,0); return {xy:lerp(head,gs.take,smooth((T-go.t0)/(go.tc-TJ/2-go.t0))),air:0}; }
     if(T<go.tl){ var f=(T-(go.tc-TJ/2))/TJ; return {xy:lerp(gs.take,gs.land,f),air:Math.sin(Math.PI*f)}; }
     if(T<go.te) return {xy:lerp(gs.land,gs.exit,(T-go.tl)/(go.te-go.tl)),air:0};
-    var top=[(gs.exit[0]+go.tail[0])/2,0.95];
-    return {xy:along([gs.exit,top,go.tail],(T-go.te)/(go.ta-go.te)),air:0};
+    return {xy:along(go.path,(T-go.te)/(go.ta-go.te)),air:0};
   }
   var xy=qPos("R",j,T,p)||qPos("L",j,T,p);
   return {xy:xy||slot("R",0),air:0};
@@ -331,6 +340,9 @@ function draw(){
       '<circle cx="'+n(a[0])+'" cy="'+n(Y0)+'" r="'+n(0.13)+'" fill="var(--paper)" stroke="var(--turner)" stroke-width="2"/>';
     out+='<text x="'+n(a[0])+'" y="'+n(Y0-0.45)+'" text-anchor="middle" font-size="12" fill="var(--ink-soft)">回し手('+a[1]+')</text>';
   });
+  // 8の字の 線（とぶ 道 ＋ 回し手の まわりの 弧）
+  [["R","L"],["L","R"]].forEach(function(pr){ var gs=g[pr[0]], pts=[slot(pr[0],0),gs.take,gs.land,gs.exit].concat(arcPath(pr[1],gs.exit,0));
+    out+='<polyline points="'+pts.map(function(q){return n(q[0])+','+n(q[1]);}).join(' ')+'" fill="none" stroke="var(--ink-faint)" stroke-width="1.5" stroke-dasharray="2 5" stroke-linejoin="round"/>'; });
   // ふみきり・ちゃくち（次に とぶ 列の むき）
   var pl=makePlan(p,g), nextJ=null;
   for(var i0=0;i0<pl.jumps.length;i0++) if(pl.jumps[i0].tc+TJ/2>=T){ nextJ=pl.jumps[i0]; break; }
