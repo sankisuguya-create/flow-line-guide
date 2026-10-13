@@ -2,7 +2,9 @@
 <style>
 /* 左＝うごきの図（上から・横から）、右＝かえるところ。下に はかった数。
    色と書体は assets/ui/base.css の中立トークンに合わせる */
+/* まとまりの 印の色（色覚シミュレーション 検査ずみ） */
 :root{
+  --g1:#0F5EA8; --g2:#C86A00; --g3:#6E4310; --g4:#7A7F86;
   --font-ja:"Hiragino Sans","Yu Gothic UI","BIZ UDPGothic","Noto Sans JP","Noto Sans CJK JP","Meiryo",sans-serif;
   --font-mono:"Consolas","Menlo","Roboto Mono","BIZ UDGothic","Noto Sans Mono CJK JP",monospace;
   --paper:#FCFBF7; --sheet:#FFFFFF; --ink:#1D2126;
@@ -13,11 +15,11 @@
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF; --ink-soft:#A0A9B4; --ink-faint:#6A727C;
   --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
-  --floor:#2A2620; --rope:#E3A06B; --mark:#FB923C; --kid:#7BAAE4; --kid-ink:#131619; --turner:#A0A9B4; color-scheme:dark } }
+  --floor:#2A2620; --rope:#E3A06B; --mark:#FB923C; --kid:#7BAAE4; --kid-ink:#131619; --turner:#A0A9B4; --g1:#6FA8E8; --g2:#F2A33A; --g3:#B07A45; --g4:#C4C9D0; color-scheme:dark } }
 :root[data-theme="dark"]{
   --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF; --ink-soft:#A0A9B4; --ink-faint:#6A727C;
   --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
-  --floor:#2A2620; --rope:#E3A06B; --mark:#FB923C; --kid:#7BAAE4; --kid-ink:#131619; --turner:#A0A9B4; color-scheme:dark }
+  --floor:#2A2620; --rope:#E3A06B; --mark:#FB923C; --kid:#7BAAE4; --kid-ink:#131619; --turner:#A0A9B4; --g1:#6FA8E8; --g2:#F2A33A; --g3:#B07A45; --g4:#C4C9D0; color-scheme:dark }
 *{box-sizing:border-box}
 body{background:var(--paper);color:var(--ink);font-family:var(--font-ja);font-size:16px;line-height:1.6;margin:0}
 body.big{font-size:21px}
@@ -64,6 +66,16 @@ td input{min-width:4.5em}
 .bar .track{height:16px;background:var(--rule-soft);border-radius:4px;overflow:hidden}
 .bar .fill{height:100%;background:var(--accent)}
 .empty{color:var(--ink-soft);font-size:.92em;margin:8px 0 0}
+.grp{border:1px solid var(--rule);border-radius:10px;margin-top:8px;background:var(--paper)}
+.grp>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 12px;font-weight:700}
+.grp>summary::-webkit-details-marker{display:none}
+.grp>summary::after{content:"＋";margin-left:auto;color:var(--ink-soft)}
+.grp[open]>summary::after{content:"−"}
+.grp .mk{font-size:1.1em;width:1.2em;text-align:center}
+.grp .cnt{font-weight:400;font-size:.85em;color:var(--ink-soft)}
+.grp .body{padding:0 12px 10px}
+.g-rope .mk{color:var(--g1)} .g-jump .mk{color:var(--g2)} .g-line .mk{color:var(--g3)} .g-voice .mk{color:var(--g4)}
+.g-rope[open]{border-color:var(--g1)} .g-jump[open]{border-color:var(--g2)} .g-line[open]{border-color:var(--g3)} .g-voice[open]{border-color:var(--g4)}
 .result{display:flex;flex-wrap:wrap;gap:8px 28px;align-items:baseline;margin-top:12px;padding:10px 12px;background:var(--rule-soft);border-radius:8px}
 .result .lbl{display:block;font-size:.85em;color:var(--ink-soft)}
 .result .big{font-size:2.4em;font-weight:800;font-variant-numeric:tabular-nums;color:var(--accent)}
@@ -177,10 +189,21 @@ var NUMS=[
 var st={}; LEVERS.forEach(function(l){ st[l.id]=l.def; }); NUMS.forEach(function(x){ st[x.id]=x.def; });
 var saved=load("levers",null); if(saved) for(var k in saved) if(k in st) st[k]=saved[k];
 
-$("levers").innerHTML=LEVERS.map(function(l){
-  return '<div class="lever" role="group" aria-label="'+l.name+'"><span class="name">'+l.name+'</span><div class="seg" data-l="'+l.id+'">'+
-    l.opts.map(function(o){ return '<button data-v="'+o[0]+'">'+o[1]+'</button>'; }).join("")+'</div></div>';
+/* 似た ものを まとめる。色は 印（記号つき）だけに つかい、名前でも 分かるように する */
+var GROUPS=[
+  {id:"rope",mk:"●",name:"なわと 回し手",ids:["radius","height","kankyu","cut","stance","help"]},
+  {id:"jump",mk:"▲",name:"とび方",ids:["jump","foot","hand","pos","dist","angle"]},
+  {id:"line",mk:"■",name:"ならび方・うごき",ids:["gap","order","cue","after"]},
+  {id:"voice",mk:"◆",name:"声",ids:["vfreq","vkind","voice","cheer","restart"]}
+];
+var openG=load("open",{rope:true});
+function leverHtml(l){ return '<div class="lever" role="group" aria-label="'+l.name+'"><span class="name">'+l.name+'</span><div class="seg" data-l="'+l.id+'">'+
+    l.opts.map(function(o){ return '<button data-v="'+o[0]+'">'+o[1]+'</button>'; }).join("")+'</div></div>'; }
+$("levers").innerHTML=GROUPS.map(function(g){
+  return '<details class="grp g-'+g.id+'" data-g="'+g.id+'"'+(openG[g.id]?' open':'')+'><summary><span class="mk" aria-hidden="true">'+g.mk+'</span>'+g.name+'<span class="cnt">'+g.ids.length+'こ</span></summary><div class="body">'+
+    g.ids.map(function(id){ return leverHtml(LEVERS.filter(function(l){return l.id===id;})[0]); }).join("")+'</div></details>';
 }).join("");
+Array.prototype.forEach.call(document.querySelectorAll("#levers details"),function(d){ d.addEventListener("toggle",function(){ openG[d.dataset.g]=d.open; save("open",openG); }); });
 function paintLevers(){
   Array.prototype.forEach.call(document.querySelectorAll("#levers .seg"),function(g){
     Array.prototype.forEach.call(g.children,function(b){ b.setAttribute("aria-pressed",b.dataset.v===st[g.dataset.l]); });
@@ -257,15 +280,16 @@ function curve(){
 }
 function buildCurve(sR,sL){
   var jx=jumpX(), a=(+st.angle)*Math.PI/180, cs=Math.cos(a), sn=Math.sin(a), H=1.35, q=0.7, C=[jx,Y0];
-  var RX=7.6, LX=0.4, cR=Math.max(jx+0.9,HR+0.3), cL=Math.min(jx-0.9,HL-0.3);
-  function sc(pt,k){ return [jx+(pt[0]-jx)*k,Y0+(pt[1]-Y0)*k]; }
-  var K=[C,[jx+cs*q,Y0-sn*q],sc([cR,Y0-H],sR),sc([RX,Y0],sR),sc([cR,Y0+H],sR),[jx+cs*q,Y0+sn*q],
-         C,[jx-cs*q,Y0-sn*q],sc([cL,Y0-H],sL),sc([LX,Y0],sL),sc([cL,Y0+H],sL),[jx-cs*q,Y0+sn*q]];
-  var n0=K.length, pts=[], idxC2=0;
-  for(var i=0;i<n0;i++){ var p0=K[(i-1+n0)%n0],p1=K[i],p2=K[(i+1)%n0],p3=K[(i+2)%n0];
-    if(i===6) idxC2=pts.length;
-    for(var k=0;k<24;k++){ var t=k/24,t2=t*t,t3=t2*t;
-      pts.push([0,1].map(function(d){ return 0.5*((2*p1[d])+(-p0[d]+p2[d])*t+(2*p0[d]-5*p1[d]+4*p2[d]-p3[d])*t2+(-p0[d]+3*p1[d]-3*p2[d]+p3[d])*t3); })); } }
+  var RX=7.6, LX=0.4;
+  /* 輪＝C からの 2本の まっすぐな 道 ＋ 外がわの 半円。
+     半円の 直径は たて。道の 角度＝入る角度 α になるよう 半けい r と 中心 xc を きめる。
+     外はしは 右 RX・左 LX で そろえるので、とぶ ばしょが 寄ると その がわの 半円が 小さくなる */
+  var ct=cs/sn, pts=[], idxC2=0, i;
+  function lobe(dir,X,k){ var r=Math.abs(X-jx)/(1+ct)*k, xc=jx+dir*r*ct, top=[xc,Y0-r], bot=[xc,Y0+r], i;
+    for(i=0;i<20;i++) pts.push(lerp(C,top,i/20));
+    for(i=0;i<60;i++){ var th=-Math.PI/2+Math.PI*i/60; pts.push([xc+dir*r*Math.cos(th),Y0+r*Math.sin(th)]); }
+    for(i=0;i<20;i++) pts.push(lerp(bot,C,i/20)); }
+  lobe(1,RX,sR); idxC2=pts.length; lobe(-1,LX,sL);
   pts.push(pts[0].slice());
   var cum=[0]; for(i=1;i<pts.length;i++) cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
   var bx=[1e9,1e9,-1e9,-1e9]; pts.forEach(function(p){ bx[0]=Math.min(bx[0],p[0]); bx[1]=Math.min(bx[1],p[1]); bx[2]=Math.max(bx[2],p[0]); bx[3]=Math.max(bx[3],p[1]); });
@@ -358,7 +382,7 @@ function draw(){
   out+='<line x1="'+n(HL)+'" y1="'+n(Y0)+'" x2="'+n(HR)+'" y2="'+n(Y0)+'" stroke="var(--rope)" stroke-linecap="round" stroke-width="'+(tk.stopped&&st.help==="yes"?1.5:(2+5*low)).toFixed(1)+'" opacity="'+(tk.stopped&&st.help==="yes"?0.35:(0.35+0.65*low)).toFixed(2)+'"/>';
   // 回し手
   [[HL-0.3,"左"],[HR+0.3,"右"]].forEach(function(a){
-    var rot=st.stance==="half"?(a[1]==="左"?-55:55):0;
+    var rot=st.stance==="half"?(a[1]==="左"?55:-55):0;
     out+='<ellipse cx="'+n(a[0])+'" cy="'+n(Y0)+'" rx="'+n(0.16)+'" ry="'+n(0.32)+'" transform="rotate('+rot+' '+n(a[0])+' '+n(Y0)+')" fill="var(--turner)"/>'+
       '<circle cx="'+n(a[0])+'" cy="'+n(Y0)+'" r="'+n(0.13)+'" fill="var(--paper)" stroke="var(--turner)" stroke-width="2"/>';
     out+='<text x="'+n(a[0])+'" y="'+n(Y0-0.45)+'" text-anchor="middle" font-size="12" fill="var(--ink-soft)">回し手('+a[1]+')</text>';
