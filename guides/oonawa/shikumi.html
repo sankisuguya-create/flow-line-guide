@@ -174,10 +174,8 @@ var LEVERS=[
   {id:"stance",name:"回し手の 体の むき",opts:[["front","正面"],["half","半身（通り道を あける）"]],def:"front"},
   {id:"help",name:"回し手の 助け（止まったとき なわを ぬく）",opts:[["no","なし"],["yes","あり"]],def:"no"},
   {id:"foot",name:"ふみきり",opts:[["both","両足"],["one","片足（またぎ）"]],def:"both"},
-  {id:"hand",name:"手の いち",opts:[["free","ふつう"],["chest","むねに つける"]],def:"free"},
   {id:"cue",name:"入る 合図",opts:[["rhythm","リズムで 入る"],["eye","目の前を 通ったら"],["chase","なわを 目で 追う"]],def:"rhythm"},
   {id:"after",name:"とんだ あと",opts:[["walk","歩いて もどる"],["dash","走って つめる"]],def:"walk"},
-  {id:"voice",name:"声の 高さ",opts:[["low","ひくい 声"],["high","高く はった 声"]],def:"high"},
   {id:"restart",name:"やり直しの 合図",opts:[["none","合図なし"],["seeno","「せーの」で 1回転目から"]],def:"none"}
 ];
 var NUMS=[
@@ -192,9 +190,9 @@ var saved=load("levers",null); if(saved) for(var k in saved) if(k in st) st[k]=s
 /* 似た ものを まとめる。色は 印（記号つき）だけに つかい、名前でも 分かるように する */
 var GROUPS=[
   {id:"rope",mk:"●",name:"なわと 回し手",ids:["radius","height","kankyu","cut","stance","help"]},
-  {id:"jump",mk:"▲",name:"とび方",ids:["jump","foot","hand","pos","dist","angle"]},
+  {id:"jump",mk:"▲",name:"とび方",ids:["jump","foot","pos","dist","angle"]},
   {id:"line",mk:"■",name:"ならび方・うごき",ids:["gap","order","cue","after"]},
-  {id:"voice",mk:"◆",name:"声",ids:["vfreq","vkind","voice","cheer","restart"]}
+  {id:"voice",mk:"◆",name:"声",ids:["vfreq","vkind","cheer","restart"]}
 ];
 var openG=load("open",{rope:true});
 function leverHtml(l){ return '<div class="lever" role="group" aria-label="'+l.name+'"><span class="name">'+l.name+'</span><div class="seg" data-l="'+l.id+'">'+
@@ -464,12 +462,12 @@ var POSE={
 };
 function picto(kind,X,Y){ var B=POSE[kind], P={h:B.h,l:B.l.slice()}, k=58*SC, hip=B.l[0][1];
   if(st.foot==="one") P.l[1]=[hip,[hip[0]-0.2,hip[1]-0.18],[hip[0]-0.34,hip[1]-0.05]];   // うしろ足を 上げる
-  if(st.hand==="chest"){ var sh=B.l[3][0]; P.l[3]=[sh,[sh[0]+0.12,sh[1]-0.12],[sh[0]+0.05,sh[1]-0.06]]; P.l[4]=[sh,[sh[0]+0.1,sh[1]-0.16],[sh[0]+0.02,sh[1]-0.12]]; }
+  if(false){ var sh=B.l[3][0]; P.l[3]=[sh,[sh[0]+0.12,sh[1]-0.12],[sh[0]+0.05,sh[1]-0.06]]; P.l[4]=[sh,[sh[0]+0.1,sh[1]-0.16],[sh[0]+0.02,sh[1]-0.12]]; }
   var o='<g stroke="var(--kid)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">';
   P.l.forEach(function(seg){ o+='<polyline points="'+seg.map(function(q){return (X+q[0]*k).toFixed(1)+','+(Y-q[1]*k).toFixed(1);}).join(' ')+'"/>'; });
   return o+'</g><circle cx="'+(X+P.h[0]*k).toFixed(1)+'" cy="'+(Y-P.h[1]*k).toFixed(1)+'" r="'+(6.5*SC).toFixed(1)+'" fill="var(--kid)"/>'; }
 function bubble(x,y,txt){
-  var lowV=st.voice==="low", w=txt.length*(lowV?0.24:0.34)+0.3, fs=lowV?10:15, col=lowV?"var(--ink-faint)":"var(--accent)";
+  var lowV=false, w=txt.length*(lowV?0.24:0.34)+0.3, fs=lowV?10:15, col=lowV?"var(--ink-faint)":"var(--accent)";
   return '<g><rect x="'+n(x)+'" y="'+n(y-0.32)+'" width="'+n(w)+'" height="'+n(0.5)+'" rx="8" fill="var(--sheet)" stroke="'+col+'" stroke-width="1.5"'+(lowV?' stroke-dasharray="3 3"':'')+'/>'+
     '<text x="'+n(x+w/2)+'" y="'+(n(y-0.07)+4.5)+'" text-anchor="middle" font-size="'+fs+'" font-weight="'+(lowV?400:800)+'" fill="'+col+'">'+txt+'</text></g>';
 }
