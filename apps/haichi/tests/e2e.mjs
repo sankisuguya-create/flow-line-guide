@@ -24,7 +24,8 @@ await step('保存の版：古い「跳び箱の準備」を捨て、新しい�
   await p.reload();
   const ids = (await saved()).layouts.map(l => l.id);
   assert.ok(!ids.includes('g_tobibako') && ids.includes('mine') && ids.includes('g_tobibako3') && ids.includes('g_shukai'), ids.join());
-  assert.equal((await saved()).ver, 2);
+  assert.ok(['g_mat4','g_beam4','g_nawa4','p_seiretsu'].every(id => ids.includes(id)), '版3の標準配置も足す');
+  assert.equal((await saved()).ver, 3);
 });
 
 await step('編集画面のズーム：ホイール・引きずり・全体に戻す', async () => {
