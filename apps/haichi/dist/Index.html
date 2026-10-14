@@ -1268,6 +1268,63 @@ var DEFAULT_LAYOUTS = [
       { item: 'pipechairs', state: 'c5', x: 11250, y: 20000, r: 270 }
     ],
     hooks: { left: [], right: [] }, away: [] },
+  /* 体育館：マット運動。東西に4コース（西で待ち、東へ転がる）。6号マットを2枚ずつ縦につなぐ */
+  { id: 'g_mat4', scene: 'gym', name: 'マット運動（4コース）', yomi: 'まっとうんどう', flip: true,
+    top: (function () {
+      var t = [];
+      [5000, 10000, 15000, 20000].forEach(function (y, k) {
+        t.push({ item: 'kids', state: 'closed', x: 11250, y: y, r: 0, nx: 4, ny: 1, color: k + 1 });
+        t.push({ item: 'startline', state: 'closed', x: 15000, y: y, r: 90 });
+        t.push({ item: 'gmat', state: 'hide', x: 18750, y: y, r: 90, size: 's', label: k === 0 });
+        t.push({ item: 'gmat', state: 'hide', x: 21250, y: y, r: 90, size: 's' });
+        t.push({ item: 'arrow', state: 'go', x: 26250, y: y, r: 90 });
+      });
+      t.push({ item: 'teacher', state: 'closed', x: 30000, y: 12500, r: 0 });
+      return t;
+    })(),
+    hooks: { left: [], right: [] }, away: [] },
+  /* 体育館：平均台。南北に4コース（南で待ち、北へ渡る）。落ちる側にマット */
+  { id: 'g_beam4', scene: 'gym', name: '平均台（4コース）', yomi: 'へいきんだい', flip: true,
+    top: (function () {
+      var t = [];
+      [13750, 18750, 23750, 28750].forEach(function (x, k) {
+        t.push({ item: 'gbeam', state: 'closed', x: x, y: 8750, r: 90, label: k === 0 });
+        t.push({ item: 'gmat', state: 'hide', x: x, y: 3750, r: 0, size: 's' });
+        t.push({ item: 'startline', state: 'closed', x: x, y: 13750, r: 0 });
+        t.push({ item: 'arrow', state: 'go', x: x, y: 16250, r: 0 });
+        t.push({ item: 'kids', state: 'closed', x: x, y: 21250, r: 0, nx: 2, ny: 4 });
+      });
+      t.push({ item: 'teacher', state: 'closed', x: 8750, y: 8750, r: 0 });
+      return t;
+    })(),
+    hooks: { left: [], right: [] }, away: [] },
+  /* 体育館：長なわとび。4組が四隅で、なわの横に1列で並ぶ（八の字に抜ける） */
+  { id: 'g_nawa4', scene: 'gym', name: '長なわとび（4組）', yomi: 'ながなわとび', flip: true,
+    top: (function () {
+      var t = [];
+      [[13750, 6250], [28750, 6250], [13750, 18750], [28750, 18750]].forEach(function (c, k) {
+        t.push({ item: 'longrope', state: 'closed', x: c[0], y: c[1], r: 0, label: k === 0 });
+        t.push({ item: 'kids', state: 'closed', x: c[0] - 5000, y: c[1], r: 0, nx: 1, ny: 6, color: k + 1 });
+        t.push({ item: 'arrow', state: 'zag', x: c[0], y: c[1] + 2500, r: 90 });
+      });
+      t.push({ item: 'teacher', state: 'closed', x: 21250, y: 12500, r: 0 });
+      return t;
+    })(),
+    hooks: { left: [], right: [] }, away: [] },
+  /* プール（場「プールエリア」。上が南、図の左が東。座標は「こまかい」の交点：x 1.25m・y 1.1875m）
+     整列：南に2組・北に2組（space.json の line.SE/SW/NE/NW）。見学は北東の隅、先生は南の中央と北西の角（死角を作らない） */
+  { id: 'p_seiretsu', scene: 'sp-pool-area', name: 'プール（整列）', yomi: 'ぷーる（せいれつ）', flip: false,
+    top: [
+      { item: 'classgroup', state: 'r2', x: 32500, y: 2375,  r: 90, color: 0 },
+      { item: 'classgroup', state: 'r2', x: 43750, y: 2375,  r: 90, color: 1 },
+      { item: 'classgroup', state: 'r2', x: 32500, y: 24937.5, r: 90, color: 2 },
+      { item: 'classgroup', state: 'r2', x: 43750, y: 24937.5, r: 90, color: 3 },
+      { item: 'teacher', state: 'closed', x: 38750, y: 4750, r: 0 },
+      { item: 'teacher', state: 'closed', x: 53750, y: 21375, r: 0 },
+      { item: 'kengaku', state: 'closed', x: 18750, y: 26125, r: 0 },
+      { item: 'kengaku', state: 'closed', x: 20000, y: 26125, r: 0 }
+    ],
+    hooks: { left: [], right: [] }, away: [] },
   { id: 'f_undoukai', scene: 'field', name: 'うんどうかい', yomi: 'うんどうかい', flip: true,
     top: [
       { item: 'fgoal',  state: 'closed', x: 20000, y: 1250,  r: 0 },
@@ -2667,8 +2724,9 @@ function freshState() {
   return { ver: SAVE_VER, layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk', outline: false, spaceText: true } };
 }
 /* 保存の版。ver が古ければ ここで読み替える（版を上げたら手順を1つ足す）
-   2：体育館の標準配置「跳び箱の準備」（古い床に合わせたもの）を捨て、新しい標準配置を足す */
-var SAVE_VER = 2;
+   2：体育館の標準配置「跳び箱の準備」（古い床に合わせたもの）を捨て、新しい標準配置を足す
+   3：標準配置（体育館3つ・プール1つ）を足す */
+var SAVE_VER = 3;
 function migrate(s) {
   var v = s.ver || 1;
   if (v < 2) {
@@ -2676,6 +2734,7 @@ function migrate(s) {
     s.recent = (s.recent || []).filter(function (id) { return id !== 'g_tobibako'; });
     DEFAULT_LAYOUTS.forEach(function (l) { if (/^g_(tobibako3|shukai)$/.test(l.id) && !s.layouts.some(function (x) { return x.id === l.id; })) s.layouts.push(clone(l)); });
   }
+  if (v < 3) DEFAULT_LAYOUTS.forEach(function (l) { if (/^(g_mat4|g_beam4|g_nawa4|p_seiretsu)$/.test(l.id) && !s.layouts.some(function (x) { return x.id === l.id; })) s.layouts.push(clone(l)); });
   s.ver = SAVE_VER;
   return s;
 }
