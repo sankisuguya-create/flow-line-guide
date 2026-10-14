@@ -2706,7 +2706,12 @@ var Store = (function () {
         res.rows.forEach(function (r) { if (r.del) return; base[r.id] = { json: r.json, ver: r.ver }; layouts.push(JSON.parse(r.json)); });
         S.layouts = sanitize({ layouts: layouts }).layouts;
         S.layouts.forEach(function (l) { if (base[l.id]) base[l.id].json = JSON.stringify(l); });   // 読み替え（sanitize）の結果を基準にする
+        // 後から足した標準の配置で、共有にまだ1度も無い物だけを送る（だれかが消した物＝削除の行がある物は 送らない）
+        var known = {}; res.rows.forEach(function (r) { known[r.id] = 1; }); (res.gone || []).forEach(function (id) { known[id] = 1; });
+        var added = sanitize({ layouts: DEFAULT_LAYOUTS.filter(function (l) { return !known[l.id]; }).map(clone) }).layouts;
+        added.forEach(function (l) { ensureUids(l); S.layouts.push(l); });
         ready = true; saveMine(); done();
+        if (added.length) schedule(10);
         setInterval(poll, POLL_MS);
       }, function (e) { toast('共有の配置を読めません：' + (e && e.message || e)); done(); });
     }

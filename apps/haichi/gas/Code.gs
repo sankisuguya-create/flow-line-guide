@@ -34,7 +34,9 @@ function haichiCore_(table, user, now) {
   function out(r) { return { id: r.id, json: r.del ? '' : r.json, ver: r.ver, by: r.by, at: r.at, del: !!r.del }; }
   return {
     list: function () {
-      return { now: now, me: user, rows: table.rows().filter(function (r) { return !r.del; }).map(out) };
+      var all = table.rows();   // gone：消した配置の id（後から足した標準の配置を 送り直さないため）
+      return { now: now, me: user, rows: all.filter(function (r) { return !r.del; }).map(out),
+               gone: all.filter(function (r) { return r.del; }).map(function (r) { return r.id; }) };
     },
     put: function (list) {
       return list.map(function (x) {

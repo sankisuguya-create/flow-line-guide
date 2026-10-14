@@ -72,6 +72,16 @@ await step('初めて開くと 標準の配置を共有に送る', async () => {
   assert.ok(table._rows.some(r => r.id === 'g_shukai'), '共有の表に標準の配置');
   assert.ok(rowOf('g_shukai').top.every(p => p.u), '物に名札 u');
 });
+await step('後から足した標準の配置だけを共有へ送る（消した物は送らない）', async () => {
+  const keep = table._rows.splice(0); const at = keep.map(r => ({...r}));
+  table._rows.push(...at.filter(r => r.id !== 'g_mat4' && r.id !== 'g_beam4'));
+  table._rows.find(r => r.id === 'g_nawa4').del = true;
+  const C = await open('sensei-c'); await wait(1500);
+  assert.ok(table._rows.some(r => r.id === 'g_mat4' && !r.del) && table._rows.some(r => r.id === 'g_beam4' && !r.del), '無い物は送る');
+  assert.ok(table._rows.find(r => r.id === 'g_nawa4').del, '消した物は送らない');
+  table._rows.find(r => r.id === 'g_nawa4').del = false;
+  await C.close();
+});
 const B = await open('sensei-b');
 await wait(800);
 await step('2人目は 共有の配置で開く', async () => {
