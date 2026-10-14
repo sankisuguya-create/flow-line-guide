@@ -8,8 +8,9 @@ function freshState() {
   return { ver: SAVE_VER, layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk', outline: false, spaceText: true } };
 }
 /* 保存の版。ver が古ければ ここで読み替える（版を上げたら手順を1つ足す）
-   2：体育館の標準配置「跳び箱の準備」（古い床に合わせたもの）を捨て、新しい標準配置を足す */
-var SAVE_VER = 2;
+   2：体育館の標準配置「跳び箱の準備」（古い床に合わせたもの）を捨て、新しい標準配置を足す
+   3：標準配置（体育館3つ・プール1つ）を足す */
+var SAVE_VER = 3;
 function migrate(s) {
   var v = s.ver || 1;
   if (v < 2) {
@@ -17,6 +18,7 @@ function migrate(s) {
     s.recent = (s.recent || []).filter(function (id) { return id !== 'g_tobibako'; });
     DEFAULT_LAYOUTS.forEach(function (l) { if (/^g_(tobibako3|shukai)$/.test(l.id) && !s.layouts.some(function (x) { return x.id === l.id; })) s.layouts.push(clone(l)); });
   }
+  if (v < 3) DEFAULT_LAYOUTS.forEach(function (l) { if (/^(g_mat4|g_beam4|g_nawa4|p_seiretsu)$/.test(l.id) && !s.layouts.some(function (x) { return x.id === l.id; })) s.layouts.push(clone(l)); });
   s.ver = SAVE_VER;
   return s;
 }
