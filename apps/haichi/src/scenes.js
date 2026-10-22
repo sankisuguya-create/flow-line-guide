@@ -43,7 +43,7 @@ function spaceFloorSvg(sp, bg, rot) {   // rot：場所を回したときの角�
     zs.forEach(function (b) { zoneEdges(b, zs).forEach(function (e) { s += ln(e[0], e[1], e[2], e[3], INKW, WALL, ' stroke-linecap="square"'); }); });
   });
   // 床のライン（space.json の floor：実寸 m の SVG パス）。壁ではないので細く、壁より下に描く
-  var LINE_C = { 白: '#FFFFFF', 青: '#4A90D9', 黄: '#E8B820', 緑: '#2E8B57', 黒: '#2B2B2B', 赤: '#C0392B' };
+  var LINE_C = { 白: '#FFFFFF', 青: '#4A90D9', 黄: '#E8B820', 緑: '#2E8B57', 黒: '#2B2B2B', 紺: '#1F2F5C', 赤: '#C0392B' };
   (sp.floor || []).forEach(function (f) {
     if (LINES_SHOW && LINES_SHOW.indexOf(f.c) < 0) return;   // 配置ごとに選んだ色だけ（topView が lay.lines を入れる）
     if (f.c === '白') s += '<path d="' + f.d + '" fill="none" stroke="#B9AE96" stroke-width="0.12"/>';   // 白は明るい床で消えるので、下に薄い縁
