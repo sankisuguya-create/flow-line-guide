@@ -223,12 +223,13 @@ function leadPath(l) {
   return 'M' + l.ax + ' ' + l.ay + 'C' + (l.ax + dx * 0.3 + nx) + ' ' + (l.ay + dy * 0.3 + ny) + ' ' +
          (l.ax + dx * 0.7 + nx) + ' ' + (l.ay + dy * 0.7 + ny) + ' ' + l.tx + ' ' + l.ty;
 }
-function layoutLabels(top, sides, ruby, bottomStart) {
+function layoutLabels(top, sides, ruby, bottomStart, F) {   // F：吹き出しを並べる枠（既定は床全体）
+  F = F || { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };
   var groups = { L: [], R: [], T: [], B: [] };
   top.forEach(function (p, i) {
     if (!p.label) return;
     var name = labelName(p), box = labelBoxSize(name, ruby);
-    var dist = { L: p.x, R: DESK.w - p.x, T: p.y, B: DESK.d - p.y }, best = null;
+    var dist = { L: p.x - F.x0, R: F.x1 - p.x, T: p.y - F.y0, B: F.y1 - p.y }, best = null;
     sides.forEach(function (s) { if (best == null || dist[s] < dist[best]) best = s; });
     var vert = best === 'L' || best === 'R';
     groups[best].push({ i: i, p: p, name: name, box: box, pref: vert ? p.y : p.x, size: vert ? box.h : box.w });
@@ -238,13 +239,13 @@ function layoutLabels(top, sides, ruby, bottomStart) {
     var g = groups[s];
     if (!g.length) return;
     var vert = s === 'L' || s === 'R';
-    var span = vert ? DESK.d : DESK.w;
-    spread(g, vert ? -40 * K : -200 * K, vert ? span + 40 * K : span + 200 * K, 12 * K);
+    var lo = vert ? F.y0 : F.x0, hi = vert ? F.y1 : F.x1;
+    spread(g, lo + (vert ? -40 : -200) * K, hi + (vert ? 40 : 200) * K, 12 * K);
     g.forEach(function (a) {
       var cx, cy;
-      if (s === 'L') { cx = -GAP - a.box.w / 2; cy = a.pos; m.L = Math.max(m.L, a.box.w + GAP); }
-      if (s === 'R') { cx = DESK.w + GAP + a.box.w / 2; cy = a.pos; m.R = Math.max(m.R, a.box.w + GAP); }
-      if (s === 'T') { cx = a.pos; cy = -GAP - a.box.h / 2; m.T = Math.max(m.T, a.box.h + GAP); }
+      if (s === 'L') { cx = F.x0 - GAP - a.box.w / 2; cy = a.pos; m.L = Math.max(m.L, a.box.w + GAP); }
+      if (s === 'R') { cx = F.x1 + GAP + a.box.w / 2; cy = a.pos; m.R = Math.max(m.R, a.box.w + GAP); }
+      if (s === 'T') { cx = a.pos; cy = F.y0 - GAP - a.box.h / 2; m.T = Math.max(m.T, a.box.h + GAP); }
       if (s === 'B') { cx = a.pos; cy = bottomStart + GAP + a.box.h / 2; m.B = Math.max(m.B, a.box.h + GAP); }
       var ax = s === 'L' ? cx + a.box.w / 2 : s === 'R' ? cx - a.box.w / 2 : cx;
       var ay = s === 'T' ? cy + a.box.h / 2 : s === 'B' ? cy - a.box.h / 2 : cy;
@@ -317,13 +318,29 @@ function drawOrder(top) {
   });
 }
 /* 上から見た机1台（場所では床一面）。返す box は描いた範囲（ラベル込み） */
+/* 場の主の部屋（space.json の main：区画の id）の範囲（mm・回した向き）。無ければ null */
+function mainFrame() {
+  var sp = SCENE.space, a = sp && sp.main && sp.areas.filter(function (b) { return b.id === sp.main; })[0];
+  if (!a) return null;
+  var x0 = a.rect[0] * 1000, y0 = a.rect[1] * 1000, x1 = x0 + a.rect[2] * 1000, y1 = y0 + a.rect[3] * 1000, b = SCENE.base || SCENE, r = SCENE.rot || 0;
+  if (r === 90) return { x0: b.d - y1, y0: x0, x1: b.d - y0, y1: x1 };
+  if (r === 180) return { x0: b.w - x1, y0: b.d - y1, x1: b.w - x0, y1: b.d - y0 };
+  if (r === 270) return { x0: y0, y0: b.w - x1, x1: y1, y1: b.w - x0 };
+  return { x0: x0, y0: y0, x1: x1, y1: y1 };
+}
 function topView(lay, o) {
   var sides = o.sides || ['L', 'R', 'T'].concat(o.chair ? [] : ['B']);
-  var bottom = DESK.d + (o.chair ? chairExtent() : 0);
-  var lab = o.noLabels ? { labels: [], margin: { L: 0, R: 0, T: 0, B: 0 } } : layoutLabels(lay.top, sides, o.ruby, bottom);
+  // o.frame：映す・印刷。配置の frame が 'all' でなければ 主の部屋だけを映す（置いた物がはみ出せば そこまで広げる）
+  var F = o.frame && lay.frame !== 'all' && mainFrame() || { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };
+  var bottom = F.y1 + (o.chair ? chairExtent() : 0);
+  var lab = o.noLabels ? { labels: [], margin: { L: 0, R: 0, T: 0, B: 0 } } : layoutLabels(lay.top, sides, o.ruby, bottom, F);
   LINES_SHOW = Array.isArray(lay.lines) ? lay.lines : SCENE.space && SCENE.space.floorDefault || null;   // 床のライン（場の floor）の色。配置ごと。無ければ場の標準（floorDefault）
   var s = floorTopSvg(SCENE.desk ? null : floorColor(lay.bg)) + (o.chair ? chairTopSvg() : '') + outlineDefs();
-  var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
+  if (F.x0 || F.y0 || F.x1 !== DESK.w || F.y1 !== DESK.d) {   // 主の部屋だけ：画面の縦横比で余った所に周りが見えないよう、床を枠で切る（壁の太さ分だけ外まで）
+    var cw = 300;
+    s = '<clipPath id="mainClip"><rect x="' + (F.x0 - cw) + '" y="' + (F.y0 - cw) + '" width="' + (F.x1 - F.x0 + cw * 2) + '" height="' + (F.y1 - F.y0 + cw * 2) + '"/></clipPath><g clip-path="url(#mainClip)">' + s + '</g>';
+  }
+  var ib = { x0: F.x0, y0: F.y0, x1: F.x1, y1: F.y1 };   // 物が床（枠）からはみ出す分も描画範囲に含める
   drawOrder(lay.top).forEach(function (i) {
     var p = lay.top[i];
     if (p.item === 'dim' && !DIM_SHOW) return;   // 寸法を隠しているとき
@@ -339,8 +356,8 @@ function topView(lay, o) {
   if (o.grid) s += gridSvg(o.grid);
   s += labelsSvg(lab.labels, o.ruby);
   var m = lab.margin, E = 20 * K;
-  if (SCENE.space) m = { L: m.L, R: m.R, T: Math.max(m.T, 1300), B: m.B };   // 場の外の方位（scenes.js）の分だけ上をあける
-  return { svg: s, labels: lab.labels, box: { x0: Math.min(-Math.max(m.L, E), ib.x0), y0: Math.min(-Math.max(m.T, E), ib.y0), x1: Math.max(DESK.w + Math.max(m.R, E), ib.x1), y1: Math.max(bottom + Math.max(m.B, E), ib.y1) } };
+  if (SCENE.space && F.y0 === 0) m = { L: m.L, R: m.R, T: Math.max(m.T, 1300), B: m.B };   // 場の外の方位（scenes.js）の分だけ上をあける
+  return { svg: s, labels: lab.labels, box: { x0: Math.min(F.x0 - Math.max(m.L, E), ib.x0), y0: Math.min(F.y0 - Math.max(m.T, E), ib.y0), x1: Math.max(F.x1 + Math.max(m.R, E), ib.x1), y1: Math.max(bottom + Math.max(m.B, E), ib.y1) } };
 }
 
 /* ---- 横から見た図 ----

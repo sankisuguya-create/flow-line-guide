@@ -13,7 +13,7 @@ function openShow(id) {
 function renderShow() { RUBY = true; try { renderShowIn(); } finally { RUBY = false; } }   // 児童が見る画面だけ ふりがな
 function renderShowIn() {
   var deskMode = !!SCENE.desk;
-  var o = { ruby: S.prefs.ruby, chair: deskMode && S.prefs.chair, flip: flip && cur.flip };
+  var o = { ruby: S.prefs.ruby, chair: deskMode && S.prefs.chair, flip: flip && cur.flip, frame: true };
   o.topOnly = S.prefs.topOnly || big;
   var c = deskMode && S.prefs.group ? composeGroup(cur, o) : composeSingle(cur, o);
   var svg = $('stageSvg');
@@ -28,6 +28,7 @@ function renderShowIn() {
   $('sSides').disabled = S.prefs.group;
   $('sRuby').setAttribute('aria-pressed', String(S.prefs.ruby));
   $('sOutline').setAttribute('aria-pressed', String(OUTLINE));
+  $('sFrame').hidden = !mainFrame(); $('sFrame').setAttribute('aria-pressed', String(cur.frame === 'all'));
   $('sText').hidden = !SCENE.space; $('sText').setAttribute('aria-pressed', String(SPACE_TEXT));
   renderAway();
 }
@@ -50,6 +51,7 @@ $('sFlip').onclick = function () { flip = !flip; renderShow(); };
 $('sSides').onclick = function () { S.prefs.topOnly = !S.prefs.topOnly; save(); renderShow(); };
 $('sChair').onclick = function () { S.prefs.chair = !S.prefs.chair; save(); renderShow(); };
 $('sRuby').onclick = function () { S.prefs.ruby = !S.prefs.ruby; save(); renderShow(); };
+$('sFrame').onclick = function () { if (cur.frame === 'all') delete cur.frame; else cur.frame = 'all'; save(); renderShow(); };   // 主の部屋だけ ⇔ 周りも（配置ごとに保存）
 $('sText').onclick = function () { SPACE_TEXT = S.prefs.spaceText = !SPACE_TEXT; save(); renderShow(); };
 $('sOutline').onclick = function () { OUTLINE = S.prefs.outline = !OUTLINE; save(); renderShow(); };
 /* 大きく映す：操作ボタンと「しまう物」を隠し、上に「机の上をこの形にしてね」、残りを真上からの図に使う */
@@ -71,6 +73,7 @@ var DATE_BLANK = '　　月　　日（　　）';
 function printPage(l, o) { return inLayout(l, function () { return printPageIn(l, o); }); }
 function printPageIn(l, o) {
   var deskMode = !!SCENE.desk;
+  o.frame = true;   // 刷るときも 映す画面と同じ範囲
   var c = deskMode && S.prefs.group ? composeGroup(l, o) : composeSingle(l, o);
   var vb = c.viewBox.split(' ').map(Number);
   var aw = deskMode ? awayHtml(l) : '';
