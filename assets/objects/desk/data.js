@@ -719,47 +719,47 @@ var DEFAULT_LAYOUTS = [
       return t;
     })(),
     hooks: { left: [], right: [] }, away: [] },
-  /* 体育館（場「体育館」の床。フロアは x 6.3〜36.3m・y 0〜25m、東が舞台）。座標は「こまかい」の交点（1.25m） */
+  /* 体育館（場「体育館」の床。フロアは x 6.3〜31.3m・y 0〜20m、東が舞台）。座標は「こまかい」の交点（1.25m） */
   { id: 'g_tobibako3', scene: 'gym', name: '跳び箱（3コース）', yomi: 'とびばこ', flip: true,
     top: (function () {
       var t = [];
-      [15000, 21250, 27500].forEach(function (x, k) {   // 南から北へ助走：待つ列→スタートライン→ロイター板→跳び箱→マット
-        t.push({ item: 'gmat', state: 'hide', x: x, y: 6250, r: 0, size: 'l' });
-        t.push({ item: 'gbox', state: ['dan4', 'dan5', 'dan6'][k], x: x, y: 8750, r: 0, label: k === 0 });
-        t.push({ item: 'gboard', state: 'closed', x: x, y: 10000, r: 0 });
-        t.push({ item: 'arrow', state: 'go', x: x, y: 15000, r: 0 });
-        t.push({ item: 'startline', state: 'closed', x: x, y: 18750, r: 0 });
-        t.push({ item: 'kids', state: 'closed', x: x, y: 22500, r: 0, nx: 2, ny: 4 });
+      [13750, 18750, 23750].forEach(function (x, k) {   // 南から北へ助走：待つ列→スタートライン→ロイター板→跳び箱→マット
+        t.push({ item: 'gmat', state: 'hide', x: x, y: 3750, r: 0, size: 'l' });
+        t.push({ item: 'gbox', state: ['dan4', 'dan5', 'dan6'][k], x: x, y: 6250, r: 0, label: k === 0 });
+        t.push({ item: 'gboard', state: 'closed', x: x, y: 8750, r: 0 });
+        t.push({ item: 'arrow', state: 'go', x: x, y: 12500, r: 0 });
+        t.push({ item: 'startline', state: 'closed', x: x, y: 15000, r: 0 });
+        t.push({ item: 'kids', state: 'closed', x: x, y: 17500, r: 0, nx: 2, ny: 4 });
       });
-      t.push({ item: 'teacher', state: 'closed', x: 10000, y: 10000, r: 0 });
+      t.push({ item: 'teacher', state: 'closed', x: 10000, y: 7500, r: 0 });
       return t;
     })(),
     hooks: { left: [], right: [] }, away: [] },
   { id: 'g_shukai', scene: 'gym', name: '体育館の集会', yomi: 'たいいくかんのしゅうかい', flip: false,
     top: [
-      { item: 'podium',     state: 'closed', x: 38750, y: 12500, r: 270 },   // 舞台の上、フロアを向く
-      { item: 'classgroup', state: 'r2', x: 22500, y: 6250,  r: 90, color: 0 },
-      { item: 'classgroup', state: 'r2', x: 22500, y: 10000, r: 90, color: 1 },
-      { item: 'classgroup', state: 'r2', x: 22500, y: 13750, r: 90, color: 2 },
-      { item: 'classgroup', state: 'r2', x: 22500, y: 17500, r: 90, color: 3 },
-      { item: 'teacher',    state: 'closed', x: 31250, y: 12500, r: 0 },
-      { item: 'broadcast',  state: 'closed', x: 32500, y: 2500, r: 0 },
-      { item: 'pipechairs', state: 'c5', x: 11250, y: 5000, r: 270 },    // 来賓席：舞台（東）を向く
-      { item: 'pipechairs', state: 'c5', x: 11250, y: 20000, r: 270 }
+      { item: 'podium',     state: 'closed', x: 33750, y: 10000, r: 270 },   // 舞台の上、フロアを向く
+      { item: 'classgroup', state: 'r2', x: 20000, y: 3750,  r: 90, color: 0 },
+      { item: 'classgroup', state: 'r2', x: 20000, y: 7500, r: 90, color: 1 },
+      { item: 'classgroup', state: 'r2', x: 20000, y: 11250, r: 90, color: 2 },
+      { item: 'classgroup', state: 'r2', x: 20000, y: 15000, r: 90, color: 3 },
+      { item: 'teacher',    state: 'closed', x: 27500, y: 10000, r: 0 },
+      { item: 'broadcast',  state: 'closed', x: 28750, y: 2500, r: 0 },
+      { item: 'pipechairs', state: 'c5', x: 10000, y: 3750, r: 270 },    // 来賓席：舞台（東）を向く
+      { item: 'pipechairs', state: 'c5', x: 10000, y: 16250, r: 270 }
     ],
     hooks: { left: [], right: [] }, away: [] },
   /* 体育館：マット運動。東西に4コース（西で待ち、東へ転がる）。6号マットを2枚ずつ縦につなぐ */
   { id: 'g_mat4', scene: 'gym', name: 'マット運動（4コース）', yomi: 'まっとうんどう', flip: true,
     top: (function () {
       var t = [];
-      [5000, 10000, 15000, 20000].forEach(function (y, k) {
-        t.push({ item: 'kids', state: 'closed', x: 11250, y: y, r: 0, nx: 4, ny: 1, color: k + 1 });
-        t.push({ item: 'startline', state: 'closed', x: 15000, y: y, r: 90 });
-        t.push({ item: 'gmat', state: 'hide', x: 18750, y: y, r: 90, size: 's', label: k === 0 });
-        t.push({ item: 'gmat', state: 'hide', x: 21250, y: y, r: 90, size: 's' });
-        t.push({ item: 'arrow', state: 'go', x: 26250, y: y, r: 90 });
+      [3750, 7500, 12500, 16250].forEach(function (y, k) {
+        t.push({ item: 'kids', state: 'closed', x: 10000, y: y, r: 0, nx: 4, ny: 1, color: k + 1 });
+        t.push({ item: 'startline', state: 'closed', x: 13750, y: y, r: 90 });
+        t.push({ item: 'gmat', state: 'hide', x: 16250, y: y, r: 90, size: 's', label: k === 0 });
+        t.push({ item: 'gmat', state: 'hide', x: 18750, y: y, r: 90, size: 's' });
+        t.push({ item: 'arrow', state: 'go', x: 22500, y: y, r: 90 });
       });
-      t.push({ item: 'teacher', state: 'closed', x: 30000, y: 12500, r: 0 });
+      t.push({ item: 'teacher', state: 'closed', x: 26250, y: 10000, r: 0 });
       return t;
     })(),
     hooks: { left: [], right: [] }, away: [] },
@@ -767,14 +767,14 @@ var DEFAULT_LAYOUTS = [
   { id: 'g_beam4', scene: 'gym', name: '平均台（4コース）', yomi: 'へいきんだい', flip: true,
     top: (function () {
       var t = [];
-      [13750, 18750, 23750, 28750].forEach(function (x, k) {
-        t.push({ item: 'gbeam', state: 'closed', x: x, y: 8750, r: 90, label: k === 0 });
-        t.push({ item: 'gmat', state: 'hide', x: x, y: 3750, r: 0, size: 's' });
-        t.push({ item: 'startline', state: 'closed', x: x, y: 13750, r: 0 });
-        t.push({ item: 'arrow', state: 'go', x: x, y: 16250, r: 0 });
-        t.push({ item: 'kids', state: 'closed', x: x, y: 21250, r: 0, nx: 2, ny: 4 });
+      [12500, 16250, 21250, 25000].forEach(function (x, k) {
+        t.push({ item: 'gbeam', state: 'closed', x: x, y: 7500, r: 90, label: k === 0 });
+        t.push({ item: 'gmat', state: 'hide', x: x, y: 2500, r: 0, size: 's' });
+        t.push({ item: 'startline', state: 'closed', x: x, y: 11250, r: 0 });
+        t.push({ item: 'arrow', state: 'go', x: x, y: 12500, r: 0 });
+        t.push({ item: 'kids', state: 'closed', x: x, y: 17500, r: 0, nx: 2, ny: 4 });
       });
-      t.push({ item: 'teacher', state: 'closed', x: 8750, y: 8750, r: 0 });
+      t.push({ item: 'teacher', state: 'closed', x: 8750, y: 7500, r: 0 });
       return t;
     })(),
     hooks: { left: [], right: [] }, away: [] },
@@ -782,12 +782,12 @@ var DEFAULT_LAYOUTS = [
   { id: 'g_nawa4', scene: 'gym', name: '長なわとび（4組）', yomi: 'ながなわとび', flip: true,
     top: (function () {
       var t = [];
-      [[13750, 6250], [28750, 6250], [13750, 18750], [28750, 18750]].forEach(function (c, k) {
+      [[13750, 5000], [26250, 5000], [13750, 15000], [26250, 15000]].forEach(function (c, k) {
         t.push({ item: 'longrope', state: 'closed', x: c[0], y: c[1], r: 0, label: k === 0 });
         t.push({ item: 'kids', state: 'closed', x: c[0] - 5000, y: c[1], r: 0, nx: 1, ny: 6, color: k + 1 });
         t.push({ item: 'arrow', state: 'zag', x: c[0], y: c[1] + 2500, r: 90 });
       });
-      t.push({ item: 'teacher', state: 'closed', x: 21250, y: 12500, r: 0 });
+      t.push({ item: 'teacher', state: 'closed', x: 18750, y: 10000, r: 0 });
       return t;
     })(),
     hooks: { left: [], right: [] }, away: [] },
