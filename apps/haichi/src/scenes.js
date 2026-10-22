@@ -44,7 +44,6 @@ function spaceFloorSvg(sp, bg, rot) {   // rot：場所を回したときの角�
   // 床のライン（space.json の floor：実寸 m の SVG パス）。壁ではないので細く、壁より下に描く
   var LINE_C = { 白: '#FFFFFF', 青: '#4A90D9', 黄: '#E8B820', 緑: '#2E8B57', 黒: '#2B2B2B', 赤: '#C0392B' };
   (sp.floor || []).forEach(function (f) {
-    if (f.c === '白') s += '<path d="' + f.d + '" fill="none" stroke="#B9AE96" stroke-width="0.12"/>';   // 白は明るい床で消えるので、下に薄い縁
     s += '<path d="' + f.d + '" fill="none" stroke="' + (LINE_C[f.c] || f.c) + '" stroke-width="0.07" opacity="0.85"/>';
   });
   sp.areas.forEach(function (a) {
