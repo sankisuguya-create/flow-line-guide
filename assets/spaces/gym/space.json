@@ -262,5 +262,6 @@
   "floorDefault": [
     "白",
     "黄"
-  ]
+  ],
+  "main": "floor"
 }
