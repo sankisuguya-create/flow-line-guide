@@ -25,6 +25,7 @@ SPACES.forEach(function (sp) {
   SPACE_ITEMS.forEach(function (it) { var sc = ITEMS[it].scenes; if (sc && sc.indexOf(id) < 0) sc.push(id); });
 });
 
+var LINES_SHOW = null;   // 床のラインのうち出す色（null＝全部）
 var SPACE_FILL = { deck: '#E4ECF1', water: '#A9D8EC', room: '#EFE9DC', box: '#FFFFFF', stairs: '#FFFFFF' };
 function spaceFloorSvg(sp, bg, rot) {   // rot：場所を回したときの角度。文字だけ逆に回して読める向きに保つ   // bg：床の色（部屋・通路・場の外）。水・舞台・階段の色は変えない
   var s = '', lab = '', defs = '', WALL = 0.16, INKW = '#3B4650';
@@ -40,6 +41,13 @@ function spaceFloorSvg(sp, bg, rot) {   // rot：場所を回したときの角�
     var zs = walled.filter(function (b) { return b.zone === a.zone; });
     zs.forEach(function (b) { s += rc(b, fillOf(b.kind)); });
     zs.forEach(function (b) { zoneEdges(b, zs).forEach(function (e) { s += ln(e[0], e[1], e[2], e[3], INKW, WALL, ' stroke-linecap="square"'); }); });
+  });
+  // 床のライン（space.json の floor：実寸 m の SVG パス）。壁ではないので細く、壁より下に描く
+  var LINE_C = { 白: '#FFFFFF', 青: '#4A90D9', 黄: '#E8B820', 緑: '#2E8B57', 黒: '#2B2B2B', 紺: '#1F2F5C', 赤: '#C0392B' };
+  (sp.floor || []).forEach(function (f) {
+    if (LINES_SHOW && LINES_SHOW.indexOf(f.c) < 0) return;   // 配置ごとに選んだ色だけ（topView が lay.lines を入れる）
+    if (f.c === '白') s += '<path d="' + f.d + '" fill="none" stroke="#B9AE96" stroke-width="0.12"/>';   // 白は明るい床で消えるので、下に薄い縁
+    s += '<path d="' + f.d + '" fill="none" stroke="' + (LINE_C[f.c] || f.c) + '" stroke-width="0.07" opacity="0.85"/>';
   });
   sp.areas.forEach(function (a) {
     var x = a.rect[0], y = a.rect[1], w = a.rect[2], h = a.rect[3];

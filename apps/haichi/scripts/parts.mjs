@@ -30,7 +30,7 @@ export function spacesJs() {
     const s = JSON.parse(fs.readFileSync(path.join(dir, d, "space.json"), "utf8"));
     if (s.extends) throw new Error(d + ": extends を持つ場は配置図に出さない（重ね書きは行事の側の物）");
     const keep = {};
-    for (const k of ["id", "title", "status", "up", "size", "areas", "walls", "doors"]) if (s[k] !== undefined) keep[k] = s[k];
+    for (const k of ["id", "title", "status", "up", "size", "areas", "walls", "doors", "floor", "floorDefault"]) if (s[k] !== undefined) keep[k] = s[k];
     keep.id = d;
     return keep;
   });

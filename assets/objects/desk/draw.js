@@ -321,6 +321,7 @@ function topView(lay, o) {
   var sides = o.sides || ['L', 'R', 'T'].concat(o.chair ? [] : ['B']);
   var bottom = DESK.d + (o.chair ? chairExtent() : 0);
   var lab = o.noLabels ? { labels: [], margin: { L: 0, R: 0, T: 0, B: 0 } } : layoutLabels(lay.top, sides, o.ruby, bottom);
+  LINES_SHOW = Array.isArray(lay.lines) ? lay.lines : SCENE.space && SCENE.space.floorDefault || null;   // 床のライン（場の floor）の色。配置ごと。無ければ場の標準（floorDefault）
   var s = floorTopSvg(SCENE.desk ? null : floorColor(lay.bg)) + (o.chair ? chairTopSvg() : '') + outlineDefs();
   var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
   drawOrder(lay.top).forEach(function (i) {

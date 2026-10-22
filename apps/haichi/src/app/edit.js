@@ -69,6 +69,13 @@ function renderEdit() {
   }
   renderChips();
   $('eBgBox').hidden = !!SCENE.desk; $('eTurn').hidden = !!SCENE.desk;   // 床の色は場所だけ（机の天板は木の色のまま）
+  var fc = SCENE.space && SCENE.space.floor ? SCENE.space.floor.map(function (f) { return f.c; }).filter(function (c, i, a) { return a.indexOf(c) === i; }) : [];
+  $('eLinesBox').hidden = !fc.length;
+  $('eLines').innerHTML = [['all', '全部'], ['none', 'なし']].concat(fc.map(function (c) { return [c, c]; })).map(function (b) {
+    var shown = Array.isArray(cur.lines) ? cur.lines : SCENE.space.floorDefault || fc;
+    var on = b[0] === 'all' ? shown.length === fc.length : b[0] === 'none' ? !shown.length : shown.indexOf(b[0]) >= 0;
+    return '<button type="button" data-line="' + b[0] + '" aria-pressed="' + on + '" class="' + (on ? 'on' : '') + '">' + b[1] + '</button>';
+  }).join('');
   $('eBg').innerHTML = FLOOR_COLORS.map(function (f) {
     var on = (cur.bg || '') === f.id;
     return '<button type="button" class="sw bg' + (on ? ' on' : '') + '" data-bg="' + f.id + '" aria-pressed="' + on + '" title="' + f.name + '"' +
@@ -171,6 +178,15 @@ $('pItems').addEventListener('click', function (e) {
 $('eName').oninput = function () { cur.name = this.value.trim() || '無題'; save(); };
 $('eYomi').oninput = function () { cur.yomi = this.value.trim(); save(); };
 $('eFlip').onchange = function () { cur.flip = this.checked; save(); };
+$('eLines').addEventListener('click', function (e) {   // 床のラインを色ごとに出す・隠す（全部・なし・各色の切り替え）
+  var b = e.target.closest('[data-line]'); if (!b) return;
+  var fc = SCENE.space.floor.map(function (f) { return f.c; }).filter(function (c, i, a) { return a.indexOf(c) === i; });
+  var id = b.getAttribute('data-line'), shown = (Array.isArray(cur.lines) ? cur.lines : SCENE.space.floorDefault || fc).slice();
+  if (id === 'all') shown = fc.slice(); else if (id === 'none') shown = [];
+  else if (shown.indexOf(id) >= 0) shown.splice(shown.indexOf(id), 1); else shown.push(id);
+  cur.lines = fc.filter(function (c) { return shown.indexOf(c) >= 0; });   // 選んだら いつも保存（標準＝場の floorDefault と区別する）
+  save(); renderEdit();
+});
 $('eBg').addEventListener('click', function (e) {
   var b = e.target.closest('[data-bg]'); if (!b) return;
   var id = b.getAttribute('data-bg'); if (id) cur.bg = id; else delete cur.bg; save(); renderEdit();
