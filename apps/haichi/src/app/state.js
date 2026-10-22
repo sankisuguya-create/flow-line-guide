@@ -49,6 +49,7 @@ function sanitize(s) {
     return {
       id: String(l.id), name: String(l.name || '無題'), yomi: String(l.yomi || ''), flip: l.flip !== false, scene: sc,
       bg: sc !== 'desk' && floorColor(l.bg) ? l.bg : undefined,
+      lines: Array.isArray(l.lines) ? l.lines.filter(function (c) { return typeof c === 'string'; }).slice(0, 12) : undefined,   // 床のラインの出す色
       rot: sc !== 'desk' && [90, 180, 270].indexOf(+l.rot) >= 0 ? +l.rot : undefined,   // 場所の向き（90°ずつ）
       top: l.top.filter(function (p) { return ok(p.item); }).map(function (p) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
