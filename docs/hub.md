@@ -49,6 +49,8 @@
   "paths": [ ["a","b"], ["a","b",{ "oneway": true }], ["a","b",{ "minutes": 3 }] ],
   "marks": [ { "kind": "oneway", "from", "to", "label" } ],
   "views": [ { "label": "プール", "rect": [x,y,w,h] } ]   // 「どこを見る？」で寄せて映す範囲
+  "floor": [ { "c": "白", "label", "d": "M.. L.." } ],   // 床のライン（色名・実寸 m の SVG パス）。配置図だけが描く。壁ではない
+  "floorDefault": ["白","黄"]   // 配置図で標準で出す色。配置ごとに「表示 → 床のライン」で変えられる
 }
 ```
 

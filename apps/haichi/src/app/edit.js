@@ -72,7 +72,7 @@ function renderEdit() {
   var fc = SCENE.space && SCENE.space.floor ? SCENE.space.floor.map(function (f) { return f.c; }).filter(function (c, i, a) { return a.indexOf(c) === i; }) : [];
   $('eLinesBox').hidden = !fc.length;
   $('eLines').innerHTML = [['all', '全部'], ['none', 'なし']].concat(fc.map(function (c) { return [c, c]; })).map(function (b) {
-    var shown = Array.isArray(cur.lines) ? cur.lines : fc;
+    var shown = Array.isArray(cur.lines) ? cur.lines : SCENE.space.floorDefault || fc;
     var on = b[0] === 'all' ? shown.length === fc.length : b[0] === 'none' ? !shown.length : shown.indexOf(b[0]) >= 0;
     return '<button type="button" data-line="' + b[0] + '" aria-pressed="' + on + '" class="' + (on ? 'on' : '') + '">' + b[1] + '</button>';
   }).join('');
@@ -181,10 +181,10 @@ $('eFlip').onchange = function () { cur.flip = this.checked; save(); };
 $('eLines').addEventListener('click', function (e) {   // 床のラインを色ごとに出す・隠す（全部・なし・各色の切り替え）
   var b = e.target.closest('[data-line]'); if (!b) return;
   var fc = SCENE.space.floor.map(function (f) { return f.c; }).filter(function (c, i, a) { return a.indexOf(c) === i; });
-  var id = b.getAttribute('data-line'), shown = Array.isArray(cur.lines) ? cur.lines.slice() : fc.slice();
+  var id = b.getAttribute('data-line'), shown = (Array.isArray(cur.lines) ? cur.lines : SCENE.space.floorDefault || fc).slice();
   if (id === 'all') shown = fc.slice(); else if (id === 'none') shown = [];
   else if (shown.indexOf(id) >= 0) shown.splice(shown.indexOf(id), 1); else shown.push(id);
-  if (shown.length === fc.length) delete cur.lines; else cur.lines = fc.filter(function (c) { return shown.indexOf(c) >= 0; });
+  cur.lines = fc.filter(function (c) { return shown.indexOf(c) >= 0; });   // 選んだら いつも保存（標準＝場の floorDefault と区別する）
   save(); renderEdit();
 });
 $('eBg').addEventListener('click', function (e) {
