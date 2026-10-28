@@ -28,7 +28,7 @@ SPACES.forEach(function (sp) {
 var LINES_SHOW = null;   // 床のラインのうち出す色（null＝全部）
 var SPACE_FILL = { deck: '#E4ECF1', water: '#A9D8EC', room: '#EFE9DC', box: '#FFFFFF', stairs: '#FFFFFF' };
 function spaceFloorSvg(sp, bg, rot) {   // rot：場所を回したときの角度。文字だけ逆に回して読める向きに保つ   // bg：床の色（部屋・通路・場の外）。水・舞台・階段の色は変えない
-  var s = '', lab = '', defs = '', WALL = 0.16, INKW = '#3B4650';
+  var s = '', lab = '', defs = '', INKW = '#3B4650', FS = Math.max(1, Math.max(sp.size[0], sp.size[1]) / 60), WALL = 0.16 * FS;   // FS：広い場（学校全体など）は文字と壁を大きく
   function rc(a, fill, extra) { return '<rect x="' + a.rect[0] + '" y="' + a.rect[1] + '" width="' + a.rect[2] + '" height="' + a.rect[3] + '" fill="' + fill + '"' + (extra || '') + '/>'; }
   function ln(x1, y1, x2, y2, st, sw, extra) { return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + st + '" stroke-width="' + sw + '"' + (extra || '') + '/>'; }
   function tx(x, y, t, fs, fill, anchor) { return '<text' + (rot ? ' transform="rotate(' + (-rot) + ' ' + x + ' ' + y + ')"' : '') + ' x="' + x + '" y="' + y + '" font-size="' + fs + '" font-weight="800" fill="' + (fill || '#5B6B78') + '" text-anchor="' + (anchor || 'middle') + '" dominant-baseline="middle">' + esc(t) + '</text>'; }
@@ -47,7 +47,7 @@ function spaceFloorSvg(sp, bg, rot) {   // rot：場所を回したときの角�
   (sp.floor || []).forEach(function (f) {
     if (LINES_SHOW && LINES_SHOW.indexOf(f.c) < 0) return;   // 配置ごとに選んだ色だけ（topView が lay.lines を入れる）
     if (f.c === '白') s += '<path d="' + f.d + '" fill="none" stroke="#B9AE96" stroke-width="0.12"/>';   // 白は明るい床で消えるので、下に薄い縁
-    s += '<path d="' + f.d + '" fill="none" stroke="' + (LINE_C[f.c] || f.c) + '" stroke-width="0.07" opacity="0.85"/>';
+    s += '<path d="' + f.d + '" fill="none" stroke="' + (LINE_C[f.c] || f.c) + '" stroke-width="' + 0.07 * FS + '" opacity="0.85"/>';
   });
   sp.areas.forEach(function (a) {
     var x = a.rect[0], y = a.rect[1], w = a.rect[2], h = a.rect[3];
@@ -64,7 +64,7 @@ function spaceFloorSvg(sp, bg, rot) {   // rot：場所を回したときの角�
       for (var j = 1; j < n; j++) s += hor ? ln(x + j * 0.6, y, x + j * 0.6, y + h, '#9AA6B0', 0.05) : ln(x, y + j * 0.6, x + w, y + j * 0.6, '#9AA6B0', 0.05);
       return;
     }
-    if (a.label) lab += tx(x + w / 2, a.kind === 'water' ? y + h / 2 : y + Math.min(0.8, h / 2), a.label, Math.min(0.9, h * 0.35, w / Math.max(1, a.label.length) * 0.9), a.kind === 'water' ? '#2E6F8E' : null);
+    if (a.label) lab += tx(x + w / 2, a.kind === 'water' ? y + h / 2 : y + Math.min(0.8 * FS, h / 2), a.label, Math.min(0.9 * FS, h * 0.35, w / Math.max(1, a.label.length) * 0.9), a.kind === 'water' ? '#2E6F8E' : null);
   });
   (sp.walls || []).forEach(function (wl) { s += ln(wl[0][0], wl[0][1], wl[1][0], wl[1][1], INKW, WALL, ' stroke-linecap="square"'); });
   (sp.doors || []).forEach(function (dr) {
@@ -73,8 +73,8 @@ function spaceFloorSvg(sp, bg, rot) {   // rot：場所を回したときの角�
     if (dr.kind !== 'open') [a, b].forEach(function (p) { s += v ? ln(p[0] - k, p[1], p[0] + k, p[1], INKW, WALL) : ln(p[0], p[1] - k, p[0], p[1] + k, INKW, WALL); });
   });
   if (!SPACE_TEXT) lab = '';
-  if (sp.up && !rot) lab += tx(sp.size[0], -0.6, '▲ ' + sp.up, 0.8, '#3B4650', 'end');   // 方位は場の外（右上の外がわ）。回したときは topView が描く
-  if (SPACE_TEXT && sp.status !== '確認済') lab += tx(0.3, sp.size[1] - 0.6, '※ 仮の地図', 0.7, '#B0392B', 'start');
+  if (sp.up && !rot) lab += tx(sp.size[0], -0.6 * FS, '▲ ' + sp.up, 0.8 * FS, '#3B4650', 'end');   // 方位は場の外（右上の外がわ）。回したときは topView が描く
+  if (SPACE_TEXT && sp.status !== '確認済') lab += tx(0.3 * FS, sp.size[1] - 0.6 * FS, '※ 仮の地図', 0.7 * FS, '#B0392B', 'start');
   return '<g transform="scale(1000)">' + (defs ? '<defs>' + defs + '</defs>' : '') + s + lab + '</g>';
 }
 // 矩形 b の4辺から、同じ zone の別の矩形と接している区間を引いた残り＝外まわりの壁（engine/player/flow.js と同じ）
