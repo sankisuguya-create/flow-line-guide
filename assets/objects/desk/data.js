@@ -805,23 +805,24 @@ var DEFAULT_LAYOUTS = [
       { item: 'kengaku', state: 'closed', x: 20000, y: 26125, r: 0 }
     ],
     hooks: { left: [], right: [] }, away: [] },
+  /* 運動場（場「運動場」。運動場は 配置図から 東西約78m×南北約43m。もとの縦長（40×60m）の配置を 左回りに90°回して当てた） */
   { id: 'f_undoukai', scene: 'field', name: 'うんどうかい', yomi: 'うんどうかい', flip: true,
     top: [
-      { item: 'fgoal',  state: 'closed', x: 20000, y: 1250,  r: 0 },
-      { item: 'fcone',  state: 'closed', x: 12500, y: 12500, r: 0 },
-      { item: 'fcone',  state: 'closed', x: 17500, y: 12500, r: 0 },
-      { item: 'fcone',  state: 'closed', x: 22500, y: 12500, r: 0 },
-      { item: 'fcone',  state: 'closed', x: 27500, y: 12500, r: 0 },
-      { item: 'fmark',  state: 'closed', x: 15000, y: 15000, r: 0 },
-      { item: 'fmark',  state: 'closed', x: 20000, y: 15000, r: 0 },
-      { item: 'fmark',  state: 'closed', x: 25000, y: 15000, r: 0 },
-      { item: 'fmark',  state: 'closed', x: 30000, y: 15000, r: 0 },
-      { item: 'funten', state: 'closed', x: 7500,  y: 45000, r: 0 },
-      { item: 'gbar',   state: 'closed', x: 15000, y: 47500, r: 0 },
-      { item: 'ftire',  state: 'closed', x: 6250,  y: 52500, r: 0 },
-      { item: 'fsand',  state: 'closed', x: 30000, y: 50000, r: 0 },
-      { item: 'gline',  state: 'closed', x: 20000, y: 40000, r: 0 },
-      { item: 'arrow',  state: 'flow',   x: 20000, y: 35000, r: 90 }
+      { item: 'fgoal',  state: 'closed', x: 10000, y: 30000, r: 270 },
+      { item: 'fcone',  state: 'closed', x: 25000, y: 37500, r: 270 },
+      { item: 'fcone',  state: 'closed', x: 25000, y: 32500, r: 270 },
+      { item: 'fcone',  state: 'closed', x: 25000, y: 27500, r: 270 },
+      { item: 'fcone',  state: 'closed', x: 25000, y: 21250, r: 270 },
+      { item: 'fmark',  state: 'closed', x: 28750, y: 35000, r: 270 },
+      { item: 'fmark',  state: 'closed', x: 28750, y: 30000, r: 270 },
+      { item: 'fmark',  state: 'closed', x: 28750, y: 25000, r: 270 },
+      { item: 'fmark',  state: 'closed', x: 28750, y: 18750, r: 270 },
+      { item: 'funten', state: 'closed', x: 67500, y: 43750, r: 270 },
+      { item: 'gbar',   state: 'closed', x: 70000, y: 35000, r: 270 },
+      { item: 'ftire',  state: 'closed', x: 77500, y: 45000, r: 270 },
+      { item: 'fsand',  state: 'closed', x: 73750, y: 18750, r: 270 },
+      { item: 'gline',  state: 'closed', x: 61250, y: 30000, r: 270 },
+      { item: 'arrow',  state: 'flow',   x: 55000, y: 30000, r: 0 }
     ],
     hooks: { left: [], right: [] }, away: [] }
 ];

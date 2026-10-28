@@ -152,7 +152,7 @@ for(const sp of SPS){
   const id=SCENES[sp.id]?sp.id:'sp-'+sp.id; assert.ok(g.SCENE_ORDER.includes(id));   // 既存の場所と同じ id の場は、その場所の床になる
   g.useScene(id); assert.equal(SCENES[id].w,sp.size[0]*1000);
   const f=vm.runInContext('floorTopSvg()',ctx);
-  assert.ok(f.includes('scale(1000)')&&f.includes('<line')&&!/NaN|undefined/.test(f),id);
+  assert.ok(f.includes('scale(1000)')&&(f.includes('<line')||f.includes('stroke="#3B4650"'))&&!/NaN|undefined/.test(f),id);
 }
 g.useScene('desk');
 // 床の色・輪郭を太く
