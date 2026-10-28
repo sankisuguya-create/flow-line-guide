@@ -195,8 +195,8 @@ await step('自由配置：交点に合わせない／ふりがなは映す画�
   const q = await p.evaluate(() => { const o = { x: 1234, y: 4567 }; clampP(o); return o; });
   assert.deepEqual([q.x, q.y], [1234, 4567], '自由配置では 交点に合わせない');
   await p.click('[data-grid="normal"]'); await p.click('#eGridMenu summary');
-  const q2 = await p.evaluate(() => { const o = { x: 1234, y: 4567 }; clampP(o); return o; });
-  assert.ok(q2.x % 1250 === 0 && q2.y % 1250 === 0, '標準に戻すと交点に合う');
+  const q2 = await p.evaluate(() => { const o = { x: 1234, y: 4567 }; clampP(o); const g = gridLevel('normal'); return { gx: o.x / (DESK.w / g.nx), gy: o.y / (DESK.d / g.ny) }; });
+  assert.ok(Math.abs(q2.gx - Math.round(q2.gx)) < 1e-6 && Math.abs(q2.gy - Math.round(q2.gy)) < 1e-6, '標準に戻すと交点に合う');   // 目の大きさは場の広さから（体育館は図面の寸法）
   await p.click('#eShow');
   assert.ok((await p.innerHTML('#sTitle')).includes('<ruby>'), '映す画面は ふりがな');
   await p.click('#sBack');
