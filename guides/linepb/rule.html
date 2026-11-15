@@ -48,10 +48,24 @@ var M=40, BAND=2;
 var START={ rA:[1.2,-2], rB:[3,-2], rC:[7,3], rD:[7,5], rE:[7,7],      // 赤＝守り。A・Bベンチ、C・D・Eコート
             bA:[1,5], bB:[10.5,5], bC:[13,2.5], bD:[13,7.5], bE:[16,5],
             j0:[10,11.2] };   // 緑＝しんぱん（点数・ファウル・ごうれい） // 青＝攻め。Aゴールマン
-var TEAM={r:"var(--red)",b:"var(--blue)",j:"var(--judge)"};
+var TEAM={r:"var(--red)",b:"var(--blue)",j:"var(--judge)",g:"var(--judge)"};
 var LINE={rA:[8.6,3],rB:[8.6,4],rC:[8.6,5],rD:[8.6,6],rE:[8.6,7],bA:[11.4,3],bB:[11.4,4],bC:[11.4,5],bD:[11.4,6],bE:[11.4,7],j0:[10,1.6]};
 function toLine(t0,t1){ var k={}; Object.keys(START).forEach(function(id){ k[id]=[[t0].concat(START[id]),[t1].concat(LINE[id])]; }); return k; }
+// 3グループの 役の まわり方：col＝コートに たて1列（x）、row＝コートの 下に よこ1列（しんぱんの 場所）
+function slot(kind,x,k){ return kind==="row"?[7.6+k*1.2,11.2]:[x,3+k]; }
+function rota(plan){ var K={},F={}; Object.keys(plan).forEach(function(c){ "ABCDE".split("").forEach(function(L,k){ var id=c+L, st=plan[c];
+    F[id]=slot(st[0][1],st[0][2],k); K[id]=[];
+    for(var i=1;i<st.length;i++){ var a=slot(st[i-1][1],st[i-1][2],k), b=slot(st[i][1],st[i][2],k);
+      K[id].push([st[i][0]-2].concat(a),[st[i][0]].concat(b)); } }); }); return {keys:K,from:F}; }
+var ROT=rota({ r:[[0,"col",4],[6,"col",6],[12,"row"],[18,"col",14]],
+               g:[[0,"col",10],[6,"row"],[12,"col",6]],
+               b:[[0,"col",16],[6,"col",14],[18,"row"]] });
 var SCENES=[
+ {name:"3つのグループ", dur:24, only:Object.keys(ROT.from), from:ROT.from, keys:ROT.keys, noball:1, nolbl:1,
+  bigs:[[6,11,"1ゲームめ","var(--ink)"],[12,17,"2ゲームめ","var(--ink)"],[18,24,"3ゲームめ","var(--ink)"]],
+  cap:[[0,"{赤|あか}・{青|あお}・{緑|みどり}の 3つの グループ。"],[3,"2つが しあいを して、1つが しんぱん。"],
+       [6,"1ゲームめは {赤|あか}と {青|あお}が しあい。"],[8.5,"{緑|みどり}は しんぱん。"],[12,"つぎは {赤|あか}が しんぱん。"],
+       [18,"その つぎは {青|あお}が しんぱん。"],[21.5,"じゅんばんに どの {役|やく}も する。"]]},
  {name:"めあて", dur:12, from:LINE, keys:{}, noball:1,
   bigs:[[2,12,"きょう力・うんどう・せい長","var(--ink)"]],
   cap:[[0,"ラインポートボールの めあて。"],[2,"みんなで きょう{力|りょく}し、{体|からだ}を うごかし、"],[6,"チームで いっしょに せい{長|ちょう}する。"]]},
@@ -153,7 +167,7 @@ function draw(si,t){
      '<text class="lbl" x="'+(W+30)+'" y="'+H/2+'">10m</text><text class="lbl" x="'+2*M+'" y="-118">赤ベンチ</text><text class="lbl" x="'+18*M+'" y="-118">青ベンチ</text>';
   var b=sc.noball?null:ballAt(sc,t), touched={};
   if(sc.score) sc.ball.forEach(function(x){ if(x[0]<=t&&x[1]!=="bA") touched[x[1]]=1; });
-  Object.keys(START).forEach(function(id){ if((sc.hide||[]).indexOf(id)>=0) return; var p=pos(sc,id,t), x=p[0]*M, y=p[1]*M;
+  (sc.only||Object.keys(START)).forEach(function(id){ if((sc.hide||[]).indexOf(id)>=0) return; var p=pos(sc,id,t), x=p[0]*M, y=p[1]*M;
     s+='<g class="kid"><circle cx="'+x+'" cy="'+y+'" r="20" fill="'+TEAM[id[0]]+'" stroke="#fff" stroke-width="3"/><text x="'+x+'" y="'+y+'"'+(id[0]==="j"?' style="font-size:16px"':'')+'>'+(id[0]==="j"?"しん":id[1])+'</text>';
     if(touched[id]) s+='<circle cx="'+(x+18)+'" cy="'+(y-18)+'" r="11" fill="var(--ok)" stroke="#fff" stroke-width="2"/><path d="M'+(x+12)+' '+(y-18)+'l4 4 l8 -8" stroke="#fff" stroke-width="3" fill="none"/>';
     s+='</g>'; });
