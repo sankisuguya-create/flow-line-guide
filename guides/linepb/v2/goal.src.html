@@ -132,7 +132,7 @@ const CATCH=SC.ball[SC.ball.length-1][0];
 /* ===== マスコット（銀色。別の 場面を 左下に 重ねて 描く） ===== */
 const ms=new THREE.Scene(); ms.environment=ENV; ms.add(new THREE.HemisphereLight("#ffffff","#8a93a6",1.8));
 const ml=new THREE.DirectionalLight("#ffffff",2.4); ml.position.set(2,3,4); ms.add(ml);
-const mcam=new THREE.PerspectiveCamera(30,1,0.1,50); mcam.position.set(0,1.2,9); mcam.lookAt(0,0.9,0);
+const mcam=new THREE.PerspectiveCamera(30,1,0.1,50); mcam.position.set(0,1.7,10.5); mcam.lookAt(0,1.6,0);
 const SILVER=new THREE.MeshStandardMaterial({color:"#eef1f5",metalness:.55,roughness:.28,envMapIntensity:1.6});
 const GUN=new THREE.MeshStandardMaterial({color:"#3c424c",metalness:.7,roughness:.35});
 const WHITE=new THREE.MeshStandardMaterial({color:"#ffffff",roughness:.4});
@@ -145,10 +145,16 @@ function bellyTex(){ const c=document.createElement("canvas"); c.width=c.height=
 const MAS=new THREE.Group(); ms.add(MAS);
 const head=new THREE.Mesh(new THREE.SphereGeometry(1,40,28),SILVER); head.scale.set(1.25,1,0.95); head.position.y=2.35; MAS.add(head);
 const ET=eyeTex(); [-0.42,0.42].forEach(x=>{ const e=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.68),new THREE.MeshBasicMaterial({map:ET,transparent:true})); e.position.set(x,2.5,0.93); MAS.add(e); });
-const chin=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.62,0.4),WHITE); chin.position.set(0,1.62,0.55); MAS.add(chin);
-const strip=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.16,0.42),new THREE.MeshStandardMaterial({color:"#1f6fe0"})); strip.position.set(0,1.86,0.56); MAS.add(strip);
-const ant=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.7),GUN); ant.position.set(-0.55,3.45,0); ant.rotation.z=0.5; MAS.add(ant);
-const antB=new THREE.Mesh(new THREE.SphereGeometry(0.17,20,14),SILVER); antB.position.set(-0.75,3.78,0); MAS.add(antB);
+// 顎の 模様：頭の 下の 前に 描く（白い 四角と 上の 青い 帯）。頭の 面に そわせて 少し 下向きに 貼る
+function chinTex(){ const c=document.createElement("canvas"); c.width=128; c.height=128; const g=c.getContext("2d");
+  g.fillStyle="#fff"; g.fillRect(8,8,112,112); g.fillStyle="#1f6fe0"; g.fillRect(8,8,112,30); g.strokeStyle="#1b1f27"; g.lineWidth=6; g.strokeRect(8,8,112,112);
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
+const chin=new THREE.Mesh(new THREE.PlaneGeometry(0.58,0.58),new THREE.MeshBasicMaterial({map:chinTex(),transparent:true,polygonOffset:true,polygonOffsetFactor:-2}));
+chin.position.set(0,1.93,0.875); chin.rotation.x=0.45; MAS.add(chin);
+// アンテナ：頭の 左上から 曲がって のびる 細い 線と、先の 玉
+const antCurve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(-0.45,3.2,0),new THREE.Vector3(-0.6,3.75,0.05),new THREE.Vector3(-0.98,3.95,0.05));
+MAS.add(new THREE.Mesh(new THREE.TubeGeometry(antCurve,20,0.035,8),GUN));
+const antB=new THREE.Mesh(new THREE.SphereGeometry(0.2,24,16),SILVER); antB.position.set(-1.1,4.02,0.05); MAS.add(antB);
 const torso=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.15,0.8),[SILVER,SILVER,SILVER,SILVER,new THREE.MeshStandardMaterial({map:bellyTex(),metalness:.6,roughness:.3}),SILVER]);
 torso.position.y=0.95; MAS.add(torso);
 function limb(x,y,rotZ){ const g=new THREE.Group(); for(let i=0;i<3;i++){ const s=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,0.24,16),GUN); s.position.y=-i*0.26; g.add(s); }
