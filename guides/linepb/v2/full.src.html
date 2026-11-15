@@ -17,22 +17,23 @@ html,body{margin:0;height:100%;background:#05070f;overflow:hidden;color:var(--in
   background:rgba(8,14,30,.72);border:1px solid rgba(140,190,255,.35);box-shadow:0 0 24px rgba(80,140,255,.25)}
 #minilbl{position:absolute;right:30px;top:214px;font-size:15px;font-weight:800;color:#9fb6e0;letter-spacing:.08em}
 #board{position:absolute;left:28px;top:22px;font-size:38px;font-weight:900;letter-spacing:.04em;text-shadow:0 0 12px rgba(0,0,0,.8)}
-#cap{position:absolute;left:0;right:0;bottom:0;height:128px;padding:34px 260px 0 260px;text-align:center;white-space:nowrap;
-  font-size:46px;font-weight:900;background:linear-gradient(transparent,rgba(3,5,12,.88) 45%);text-shadow:0 2px 10px #000}
+#cap{position:absolute;left:0;right:0;bottom:0;height:150px;padding:38px 30px 0 240px;text-align:center;white-space:nowrap;
+  font-size:58px;font-weight:900;background:linear-gradient(transparent,rgba(3,5,12,.88) 45%);text-shadow:0 2px 10px #000}
 #cap span{display:inline-block;transform-origin:center}
 rt{font-size:.42em;font-weight:800;color:#cfe0ff}
-#title{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding-left:540px;pointer-events:none;background:linear-gradient(90deg,rgba(5,7,15,.15),rgba(5,7,15,.75) 45%)}
+#title{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding-left:540px;pointer-events:none;background:linear-gradient(90deg,transparent 34%,rgba(5,7,15,.78) 52%)}
 #title .ch{font-size:20px;letter-spacing:.5em;color:var(--gold);font-weight:800}
 #title .t{font-size:84px;font-weight:900;text-shadow:0 0 28px rgba(255,207,90,.55)}
 #title .s{font-size:30px;color:#b9c8ea;font-weight:800;margin-top:6px}
-#ban{position:absolute;left:0;right:0;top:26px;text-align:center;pointer-events:none}
+#ban{position:absolute;left:28px;top:16px;text-align:left;pointer-events:none;padding:6px 22px 8px;border-radius:16px;background:rgba(5,8,18,.72)}
 #ban .ch{font-size:16px;letter-spacing:.5em;color:var(--gold);font-weight:800}
 #ban .t{font-size:44px;font-weight:900;text-shadow:0 0 18px rgba(255,207,90,.5),0 2px 8px #000}
-.lab{position:absolute;transform:translate(-50%,-100%);font-size:30px;font-weight:900;padding:6px 18px;border-radius:999px;
+.lab{position:absolute;transform:translate(-50%,-100%);font-size:34px;line-height:1.9;font-weight:900;padding:6px 18px;border-radius:999px;
   background:rgba(8,14,30,.85);border:3px solid currentColor;white-space:nowrap}
-.lab rt{color:inherit}
-#big{position:absolute;left:0;right:0;top:120px;text-align:center;font-weight:900;text-shadow:0 0 30px rgba(255,207,90,.7),0 0 60px rgba(0,0,0,.8);white-space:nowrap}
-#tsvg{position:absolute;left:140px;top:40px;width:1000px;height:560px;display:none}
+.lab rt{color:inherit;font-size:.5em}
+#big{position:absolute;left:0;right:0;top:12px;text-align:center;font-weight:900;white-space:nowrap;transform-origin:top center}
+#big span{display:inline-block;padding:2px 34px 6px;border-radius:22px;background:rgba(5,8,18,.78);box-shadow:0 0 24px rgba(0,0,0,.6);text-shadow:0 0 18px rgba(255,207,90,.45)}
+#tsvg{position:absolute;left:140px;top:6px;width:1000px;height:600px;display:none}
 #fin{position:absolute;inset:0 0 60px 180px;display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;
   font-size:84px;font-weight:900;line-height:1.7;text-shadow:0 0 30px rgba(255,207,90,.6),0 2px 12px #000}
 #play{position:absolute;left:16px;bottom:140px;width:56px;height:56px;border-radius:14px;border:2px solid #9fb6e0;background:rgba(8,14,30,.8);color:#fff;font-size:22px;cursor:pointer}
@@ -43,7 +44,7 @@ body.rec #play{display:none}
 <body>
 <div id="wrap">
   <canvas id="gl" width="1280" height="720"></canvas>
-  <svg id="tsvg" viewBox="-60 -150 920 520"></svg>
+  <svg id="tsvg" viewBox="-60 -150 920 640"></svg>
   <canvas id="mini" width="320" height="190"></canvas><div id="minilbl">上から 見た 図</div>
   <div id="board"></div>
   <div id="labs"></div>
@@ -122,7 +123,7 @@ function letterTex(ch,col){ const c=document.createElement("canvas"); c.width=c.
 const PEOPLE={}, ALLIDS=Object.keys(START).concat(["gA","gB","gC","gD","gE"]);
 ALLIDS.forEach(id=>{ const col=COL[id[0]], side=new THREE.MeshStandardMaterial({map:letterTex(id[1],col),roughness:.35,metalness:.1,emissive:col,emissiveIntensity:.04});
   const plain=new THREE.MeshStandardMaterial({color:col,roughness:.35,metalness:.1,emissive:col,emissiveIntensity:.04});
-  const m=new THREE.Mesh(new THREE.BoxGeometry(0.7,1.5,0.7),[side,side,side,plain,side,side]); m.castShadow=true; m.receiveShadow=true;
+  const m=new THREE.Mesh(new THREE.BoxGeometry(0.7,1.5,0.7),[plain,plain,side,plain,side,plain]); m.castShadow=true; m.receiveShadow=true;
   const g=new THREE.Group(); m.position.y=0.75; g.add(m);
   const ring=new THREE.Mesh(new THREE.RingGeometry(0.6,0.8,48),new THREE.MeshBasicMaterial({color:"#ffae3b",transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));
   ring.rotation.x=-Math.PI/2; ring.position.y=0.03; g.add(ring);
@@ -202,13 +203,13 @@ const smoothBall=(sc,t)=>{ const v=V(0,0,0); for(let k=0;k<8;k++) v.add(ballWorl
 function camFor(sc,ts,T){
   if(sc.name==="ゴール"){ const shots=[
       [-99,()=>[V(9,13,15),V(-1,0,0)]],
-      [4.5,t=>{ const b=smoothBall(sc,t); return [V(b.x+7,7.5,b.z+10),V(b.x-2,0.8,b.z)]; }],
+      [4.5,t=>{ const b=smoothBall(sc,t); return [V(b.x*0.5+5,12.5,b.z*0.4+14),V(b.x*0.6-1.5,0.4,b.z*0.4)]; }],
       [12.3,t=>{ const a=(t-12.3)*0.12; return [V(-1+Math.sin(a)*2,9.5,11),V(-8,0.6,0)]; }],
       [15.5,()=>[V(0,17,12),V(-3,0,0.5)]],
       [20.3,t=>{ const a=(t-20.3)*0.15; return [V(2+Math.sin(a)*3,11,13),V(-2,0.5,0)]; }]];
     let i=0; while(i<shots.length-1&&ts>=shots[i+1][0]) i++; let [p,l]=shots[i][1](ts);
     if(i>0&&ts<shots[i][0]+1.3){ const [p0,l0]=shots[i-1][1](ts), u=sm((ts-shots[i][0])/1.3); p=p0.lerp(p,u); l=l0.lerp(l,u); } return [p,l]; }
-  if(sc.nocourt) return [V(Math.sin(T*0.05)*1.5,23,7.5),V(0,0,1.6)];
+  if(sc.nocourt) return [V(Math.sin(T*0.05)*1.5,26,7),V(0,0,0.4)];
   if(isLine(sc)) return [V(7+Math.sin(T*0.15)*1.5,10,9),V(0,0.4,0)];
   if(sc.custom||sc.finale) return [V(Math.sin(T*0.1)*24,12,Math.cos(T*0.1)*24),V(0,0,0)];
   if(sc.ball&&sc.ball.length>1&&sc.adv!==undefined){ const b=smoothBall(sc,ts), L=V(b.x*0.5-1.5,0.5,b.z*0.4); return [V(L.x+5,11,L.z+12.5),L]; }
@@ -229,7 +230,8 @@ function drawMini(sc,ts,foc,ids){ const S=13.5, ox=25, oy=27; mc.clearRect(0,0,3
 /* ===== 字幕 ===== */
 let lastCap=null, capAt=0;
 function setCap2(c,T){ if(c===lastCap) return; lastCap=c; capAt=T; const cp=el("cap"); cp.innerHTML="<span>"+ruby(c)+"</span>";
-  const sp=cp.firstChild, avail=1280-520, w=sp.offsetWidth; sp.style.transform=w>avail?"scaleX("+Math.max(.72,avail/w)+")":""; }
+  const sp=cp.firstChild, avail=1280-270-20; let fs=58; cp.style.fontSize=""; sp.style.transform=""; let w=sp.offsetWidth;
+  if(w>avail){ const k=Math.max(.78,avail/w); sp.style.transform="scaleX("+k+")"; while(sp.offsetWidth*k>avail&&fs>30){ fs-=2; cp.style.fontSize=fs+"px"; } } }
 const plain=s=>String(s).replace(/\{([^|}]+)\|[^}]+\}/g,"$1");
 
 /* ===== 音の きっかけ（audio.py が 使う）：時刻と 種類 ===== */
@@ -283,7 +285,7 @@ function renderAt(T){
   // 光の つぶ
   const bu=burstOf(sc), fin=!intro&&sc.finale;
   SPARK.forEach((m,k)=>{ let u=-1,ox=0,oy=0,oz=0; if(bu&&!intro){ u=ts-bu.t; ox=bu.x; oy=bu.y; oz=bu.z; } if(fin){ u=((ts+k*0.07)%2.2); oy=0.5; }
-    if(u<0||u>1.8){ m.material.opacity=0; return; } m.position.set(ox+m.userData.v.x*u*0.5,oy+m.userData.v.y*u-4.9*u*u,oz+m.userData.v.z*u*0.5); m.material.opacity=1-u/1.8; });
+    if(u<0||u>1.8){ m.material.opacity=0; return; } m.position.set(ox+m.userData.v.x*u*0.5,oy+m.userData.v.y*u-4.9*u*u,oz+m.userData.v.z*u*0.5); m.material.opacity=1-u/1.8; m.scale.setScalar(fin?2.4:1); });
   bloom.strength=0.38+(bu&&ts>bu.t&&ts<bu.t+1?0.6*(1-(ts-bu.t)):0)+(fin?0.25:0);
   // カメラ
   let cp,cl; if(intro){ const a=T*0.12; cp=V(Math.sin(a)*22,10,Math.cos(a)*22); cl=V(0,0,0); }
@@ -311,10 +313,10 @@ function renderAt(T){
   if(banOn){ el("ban").firstChild.textContent="CHAPTER "+String(si+1).padStart(2,"0"); el("ban").lastChild.innerHTML=ruby(TITLES[si]||sc.name); }
   let c=""; if(!intro) (sc.cap||[]).forEach(x=>{ if(ts>=x[0]) c=x[1]; }); setCap2(c,T); el("cap").style.opacity=intro||fin?0:1;
   let bd=null; if(sc.board&&!intro){ bd=sc.board[0]; sc.board.forEach(x=>{ if(ts>=x[0]) bd=x; }); }
-  el("board").innerHTML=bd?'<span style="color:var(--red)">赤 '+bd[1]+'</span> − <span style="color:var(--blue)">'+bd[2]+' 青</span>':"";
+  el("board").innerHTML=bd&&!banOn?'<span style="color:var(--red)">赤 '+bd[1]+'</span> − <span style="color:var(--blue)">'+bd[2]+' 青</span>':"";
   let big="",bcol="var(--gold)",b0=0; if(!intro&&!banOn) (sc.bigs||[]).forEach(g=>{ if(ts>=g[0]&&ts<g[1]){ big=g[2]; bcol=g[3]==="var(--ink)"?"var(--ink)":g[3]==="var(--ok)"?"var(--gold)":g[3]; b0=g[0]; } });
-  if(!intro&&sc.timer&&ts<sc.timer[1]+2){ const u=Math.max(0,Math.min(1,(ts-sc.timer[0])/(sc.timer[1]-sc.timer[0]))), r=Math.round(180*(1-u)); big=Math.floor(r/60)+":"+("0"+r%60).slice(-2); bcol="var(--ink)"; b0=-9; }
-  const BG=el("big"); BG.innerHTML=ruby(big); BG.style.color=bcol; BG.style.fontSize=(sc.nocourt?72:(plain(big).length>6?84:140))+"px"; BG.style.top=(sc.nocourt?"18px":"120px");
+  if(!intro&&!banOn&&sc.timer&&ts<sc.timer[1]+2){ const u=Math.max(0,Math.min(1,(ts-sc.timer[0])/(sc.timer[1]-sc.timer[0]))), r=Math.round(180*(1-u)); big=Math.floor(r/60)+":"+("0"+r%60).slice(-2); bcol="var(--ink)"; b0=-9; }
+  const BG=el("big"); BG.innerHTML=big?"<span>"+ruby(big)+"</span>":""; BG.style.color=bcol; BG.style.fontSize=(plain(big).length>6?62:104)+"px";
   BG.style.transform="scale("+(big&&b0>-9?1+0.35*Math.max(0,1-(ts-b0)*3):1)+")";
   // 地面の 上の 吹き出し（3D の 位置を 画面へ 写す）
   let labs=""; const lab=(x,y,z,txt,col)=>{ const v=V(x,y,z).project(cam); if(v.z>1) return;
@@ -322,10 +324,10 @@ function renderAt(T){
   if(!intro&&showPeople) (sc.marks||[]).forEach(m=>{ if(ts<m[0]||ts>=m[1]) return; lab(wx(m[2]),2.4,wz(m[3]),m[4],m[5]);
     if(m[5]==="var(--red)"&&/！$/.test(plain(m[4]))&&ts<m[0]+1.6){ let best=null,bd2=1e9; ["jA","jB","jC","jD","jE"].forEach(j=>{ const p=pos(sc,j,ts), d=Math.hypot(p[0]-m[2],p[1]-m[3]); if(d<bd2){bd2=d;best=p;} });
       lab(wx(best[0]),2.6,wz(best[1]),"ピッ！","var(--green)"); } });
-  if(f&&f.op>0.3){ lab(wx(f.cx),0.6,wz(f.cy),"{試合|しあい}","var(--marker)"); lab(wx(f.jx),2.4,wz(f.jy+2.4),"しんぱん","var(--ink)"); }
+  if(f&&f.op>0.3){ lab(wx(f.cx),0.6,wz(f.cy),"{試合|しあい}","var(--marker)"); const jy=f.jy+2.4; if(jy>5) lab(wx(f.jx+5),0.2,wz(jy+0.6),"しんぱん","var(--ink)"); else lab(wx(f.jx+(f.jx<10?-4.6:4.6)),0.2,wz(jy+0.6),"しんぱん","var(--ink)"); }
   el("labs").innerHTML=labs;
   // 首より上の 図（v1 と 同じ 絵を 重ねる）・まとめ
-  const TS=el("tsvg"); if(!intro&&sc.custom==="throw"){ TS.style.display="block"; TS.innerHTML=drawThrow(ts); } else TS.style.display="none";
+  const TS=el("tsvg"); if(!intro&&sc.custom==="throw"){ TS.style.display="block"; TS.innerHTML=drawThrow(Math.max(ts,2.99)); } else TS.style.display="none";
   const FN=el("fin"); if(fin){ FN.style.display="flex"; FN.style.opacity=Math.min(1,ts/0.8); FN.innerHTML=sc.finale.map(l=>"<div>"+ruby(l)+"</div>").join(""); } else FN.style.display="none";
   const miniOn=!intro&&court_; el("mini").style.opacity=el("minilbl").style.opacity=miniOn?1:0; if(miniOn) drawMini(sc,ts,foc,ids);
 }
