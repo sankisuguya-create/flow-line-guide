@@ -306,6 +306,7 @@ let seed=7; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
 const SPARK=[...Array(90)].map(()=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(0.06,6,4),new THREE.MeshBasicMaterial({color:rnd()<.5?"#ffd36b":"#ffffff",transparent:true,opacity:0,depthWrite:false}));
   m.userData.v=new THREE.Vector3((rnd()-.5)*7,rnd()*7+2,(rnd()-.5)*7); scene.add(m); return m; });
 const CATCH=SC.ball[SC.ball.length-1][0];
+const POINT=[[2.5,4.5],[12.5,14.5],[15.5,18],[20.5,23]];   // マスコットが 指さす 場面の 秒
 
 /* ===== マスコット（銀色。別の 場面を 左下に 重ねて 描く） ===== */
 const ms=new THREE.Scene(); ms.environment=ENV; ms.add(new THREE.HemisphereLight("#ffffff","#8a93a6",1.8));
@@ -324,10 +325,13 @@ const MAS=new THREE.Group(); ms.add(MAS);
 const head=new THREE.Mesh(new THREE.SphereGeometry(1,40,28),SILVER); head.scale.set(1.25,1,0.95); head.position.y=2.35; MAS.add(head);
 const ET=eyeTex(); [-0.42,0.42].forEach(x=>{ const e=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.68),new THREE.MeshBasicMaterial({map:ET,transparent:true})); e.position.set(x,2.5,0.93); MAS.add(e); });
 // 顎の 模様：頭の 下の 前に 描く（白い 四角と 上の 青い 帯）。頭の 面に そわせて 少し 下向きに 貼る
-function chinTex(){ const c=document.createElement("canvas"); c.width=128; c.height=128; const g=c.getContext("2d");
-  g.fillStyle="#fff"; g.fillRect(8,8,112,112); g.fillStyle="#1f6fe0"; g.fillRect(8,8,112,30); g.strokeStyle="#1b1f27"; g.lineWidth=6; g.strokeRect(8,8,112,112);
+function chinTex(open){ const c=document.createElement("canvas"); c.width=128; c.height=128; const g=c.getContext("2d");
+  g.fillStyle="#fff"; g.fillRect(8,8,112,112); g.fillStyle="#1f6fe0"; g.fillRect(8,8,112,30);
+  if(open){ g.fillStyle="#2a1a22"; g.beginPath(); g.ellipse(64,82,30,20,0,0,7); g.fill(); g.fillStyle="#ff7a8a"; g.beginPath(); g.ellipse(64,92,16,8,0,0,7); g.fill(); }
+  g.strokeStyle="#1b1f27"; g.lineWidth=6; g.strokeRect(8,8,112,112);
   const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
-const chin=new THREE.Mesh(new THREE.PlaneGeometry(0.58,0.58),new THREE.MeshBasicMaterial({map:chinTex(),transparent:true,polygonOffset:true,polygonOffsetFactor:-2}));
+const CHIN0=chinTex(false), CHIN1=chinTex(true);
+const chin=new THREE.Mesh(new THREE.PlaneGeometry(0.58,0.58),new THREE.MeshBasicMaterial({map:CHIN0,transparent:true,polygonOffset:true,polygonOffsetFactor:-2}));
 chin.position.set(0,1.93,0.875); chin.rotation.x=0.45; MAS.add(chin);
 // アンテナ：頭の 左上から 曲がって のびる 細い 線と、先の 玉
 const antCurve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(-0.45,3.2,0),new THREE.Vector3(-0.6,3.75,0.05),new THREE.Vector3(-0.98,3.95,0.05));
@@ -397,8 +401,15 @@ function renderAt(T){
   cam.position.copy(cp); cam.lookAt(cl);
   composer.render();
   // マスコット：題の 間は 大きく 左に、あとは 左下で 話す
-  const talk=T-INTRO-capAt; MAS.position.y=Math.sin(T*2.2)*0.06+(talk>=0&&talk<0.6?Math.abs(Math.sin(talk*Math.PI*5))*0.12:0);
-  MAS.rotation.y=Math.sin(T*0.8)*0.25; armR.rotation.z=intro?2.3+Math.sin(T*7)*0.35:0.7+Math.sin(T*1.5)*0.08;
+  // 話す：字幕が 出てから 字数に あわせた 時間だけ 口が 開け閉め（1秒に 約7回）
+  const talk=T-INTRO-capAt, talkLen=(lastCap||"").replace(/\{([^|}]+)\|[^}]+\}/g,"$1").length*0.11, talking=!intro&&talk>=0&&talk<talkLen;
+  const mouth=intro?(Math.sin(T*14)>0&&T>0.4&&T<2.2):talking&&Math.sin(talk*Math.PI*14)>-0.2;
+  chin.material.map=mouth?CHIN1:CHIN0;
+  MAS.position.y=Math.sin(T*2.2)*0.06+(talking?Math.abs(Math.sin(talk*Math.PI*3))*0.06:0);
+  // 指さし：大事な 所で 右手を 画面の 中へ 向け、体も そちらへ 向く
+  let pt=0; POINT.forEach(q=>{ if(ts>=q[0]-0.4&&ts<q[1]+0.4&&!intro) pt=Math.max(pt,sm((ts-(q[0]-0.4))/0.4)*sm(((q[1]+0.4)-ts)/0.4)); });
+  MAS.rotation.y=Math.sin(T*0.8)*0.2*(1-pt)+0.45*pt; head.rotation.z=-0.12*pt;
+  armR.rotation.z=intro?2.3+Math.sin(T*7)*0.35:(0.7+Math.sin(T*1.5)*0.08)*(1-pt)+(2.05+Math.sin(T*6)*0.05)*pt;
   renderer.autoClear=false; renderer.clearDepth();
   const vp=intro?[40,110,400,500]:[18,20,210,250]; mcam.aspect=vp[2]/vp[3]; mcam.updateProjectionMatrix();
   renderer.setScissorTest(true); renderer.setScissor(...vp); renderer.setViewport(...vp); renderer.toneMapping=THREE.NoToneMapping; renderer.render(ms,mcam);
