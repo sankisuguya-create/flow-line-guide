@@ -51,17 +51,31 @@ var START={ rA:[1.2,-2], rB:[3,-2], rC:[7,3], rD:[7,5], rE:[7,7],      // 赤＝
 var TEAM={r:"var(--red)",b:"var(--blue)",j:"var(--judge)",g:"var(--judge)"};
 var LINE={rA:[8.6,3],rB:[8.6,4],rC:[8.6,5],rD:[8.6,6],rE:[8.6,7],bA:[11.4,3],bB:[11.4,4],bC:[11.4,5],bD:[11.4,6],bE:[11.4,7],j0:[10,1.6]};
 function toLine(t0,t1){ var k={}; Object.keys(START).forEach(function(id){ k[id]=[[t0].concat(START[id]),[t1].concat(LINE[id])]; }); return k; }
-// 3グループの 役の まわり方：col＝コートに たて1列（x）、row＝コートの 下に よこ1列（しんぱんの 場所）
-function slot(kind,x,k){ return kind==="row"?[7.6+k*1.2,11.2]:[x,3+k]; }
-function rota(plan){ var K={},F={}; Object.keys(plan).forEach(function(c){ "ABCDE".split("").forEach(function(L,k){ var id=c+L, st=plan[c];
-    F[id]=slot(st[0][1],st[0][2],k); K[id]=[];
-    for(var i=1;i<st.length;i++){ var a=slot(st[i-1][1],st[i-1][2],k), b=slot(st[i][1],st[i][2],k);
-      K[id].push([st[i][0]-2].concat(a),[st[i][0]].concat(b)); } }); }); return {keys:K,from:F}; }
-var ROT=rota({ r:[[0,"col",4],[6,"col",6],[12,"row"],[18,"col",14]],
-               g:[[0,"col",10],[6,"row"],[12,"col",6]],
-               b:[[0,"col",16],[6,"col",14],[18,"row"]] });
+// 3グループの 役の まわり方（コートは 見せない）。3グループは 三角に 置いたまま、「試合」の わくが 2グループを かこみ、外の 1グループが しんぱん
+var GC={r:[3.5,2.6],b:[16.5,2.6],g:[10,9.2]}, GOFF=[[-2,-1],[0,-1],[2,-1],[-1,1],[1,1]];
+var ROT={from:{}}; Object.keys(GC).forEach(function(c){ "ABCDE".split("").forEach(function(L,k){ ROT.from[c+L]=[GC[c][0]+GOFF[k][0],GC[c][1]+GOFF[k][1]]; }); });
+// わくの 動き：[秒, 試合の 2グループ, しんぱん]。前の 2秒で 次へ うつる
+var FRAME=[[3,"r","b","g"],[12,"g","b","r"],[18,"g","r","b"]];
+function frameGeo(p){ var A=GC[p[1]],B=GC[p[2]],J=GC[p[3]], dx=B[0]-A[0], dy=B[1]-A[1], ang=Math.atan2(dy,dx)*180/Math.PI;
+  if(ang>90) ang-=180; if(ang<-90) ang+=180;
+  return {cx:(A[0]+B[0])/2, cy:(A[1]+B[1])/2, ang:ang, len:Math.hypot(dx,dy)+5.6, jx:J[0], jy:J[1]-2.4}; }
+// 次の わくへは、前の わくが 1秒で 消えてから 1秒で 出る（わくが ほかの グループの 上を 通らないように）
+function frameAt(t){ if(t<FRAME[0][0]-1) return null; var i=0; while(i<FRAME.length-1&&t>=FRAME[i+1][0]-2) i++;
+  var g=frameGeo(FRAME[i]), nx=FRAME[i+1];
+  if(i===0&&t<FRAME[0][0]) g.op=Math.max(0,t-(FRAME[0][0]-1));
+  else if(t<FRAME[i][0]) g=Object.assign(t<FRAME[i][0]-1?frameGeo(FRAME[i-1]):g,{op:Math.abs(t-(FRAME[i][0]-1))});
+  else g.op=1;
+  return g; }
+var CEN=[10,4.6];
+function pill(str,x,y,col){ var plain=str.replace(/\{([^|}]+)\|[^}]+\}/g,"$1"), w=plain.length*36+48;
+  return '<rect x="'+(x-w/2)+'" y="'+(y-36)+'" width="'+w+'" height="72" rx="36" fill="#fff" stroke="'+col+'" stroke-width="4"/>'+rb(str,x,y+13,36,"font-weight:900;fill:"+col); }
+function drawRot(t){ var f=frameAt(t), s=""; if(!f) return s;
+  s+='<g opacity="'+f.op+'"><g transform="translate('+f.cx*M+' '+f.cy*M+') rotate('+f.ang+')"><rect x="'+(-f.len/2*M)+'" y="'+(-3.2*M)+'" width="'+f.len*M+'" height="'+6.4*M+'" rx="18" fill="var(--marker)" fill-opacity=".10" stroke="var(--marker)" stroke-width="10"/></g>';
+  var J=[f.jx,f.jy+2.4];
+  s+=pill("{試合|しあい}",f.cx*M,f.cy*M,"var(--marker)")+pill("しんぱん",J[0]*M,(J[1]+(J[1]>5?2.6:-2.6))*M,"var(--ink)")+'</g>';
+  return s; }
 var SCENES=[
- {name:"3つのグループ", dur:24, only:Object.keys(ROT.from), from:ROT.from, keys:ROT.keys, noball:1, nolbl:1,
+ {name:"3つのグループ", dur:24, only:Object.keys(ROT.from), from:ROT.from, noball:1, nolbl:1, nocourt:1,
   bigs:[[6,11,"1ゲームめ","var(--ink)"],[12,17,"2ゲームめ","var(--ink)"],[18,24,"3ゲームめ","var(--ink)"]],
   cap:[[0,"{赤|あか}・{青|あお}・{緑|みどり}の 3つの グループ。"],[3,"2つが {試合|しあい}を して、1つが しんぱん。"],
        [6,"1ゲームめは {赤|あか}と {青|あお}が {試合|しあい}。"],[8.5,"{緑|みどり}は しんぱん。"],[12,"つぎは {赤|あか}が しんぱん。"],
@@ -182,10 +196,12 @@ function draw(si,t){
   [[BAND,0],[BAND,10],[20-BAND,0],[20-BAND,10]].forEach(function(c){ s+='<path d="M'+(c[0]*M-10)+' '+(c[1]*M+8)+'L'+c[0]*M+' '+(c[1]*M-22)+'L'+(c[0]*M+10)+' '+(c[1]*M+8)+'z" fill="var(--marker)" stroke="var(--ink)" stroke-width="2"/>'; });
   if(sc.from!==LINE&&!sc.nolbl) s+=''+rb("ゴールマンの{帯|おび}",BAND/2*M+30,H+36,20,"fill:var(--ink-soft);font-weight:800")+'<text class="lbl" x="'+W*0.25+'" y="'+(H+60)+'">20m</text>'+
      '<text class="lbl" x="'+(W+30)+'" y="'+H/2+'">10m</text><text class="lbl" x="'+2*M+'" y="-118">赤ベンチ</text><text class="lbl" x="'+18*M+'" y="-118">青ベンチ</text>';
+  if(sc.nocourt) s=drawRot(t);
+  svg.setAttribute("viewBox",sc.nocourt?"-40 -135 880 690":"-60 -150 920 640");
   var b=sc.noball?null:ballAt(sc,t), touched={};
   if(sc.score) sc.ball.forEach(function(x){ if(x[0]<=t&&x[1]!=="bA") touched[x[1]]=1; });
   (sc.only||Object.keys(START)).forEach(function(id){ if((sc.hide||[]).indexOf(id)>=0) return; var p=pos(sc,id,t), x=p[0]*M, y=p[1]*M;
-    s+='<g class="kid"><circle cx="'+x+'" cy="'+y+'" r="20" fill="'+TEAM[id[0]]+'" stroke="#fff" stroke-width="3"/><text x="'+x+'" y="'+y+'"'+(id[0]==="j"?' style="font-size:16px"':'')+'>'+(id[0]==="j"?"しん":id[1])+'</text>';
+    var kr=sc.nocourt?32:20; s+='<g class="kid"><circle cx="'+x+'" cy="'+y+'" r="'+kr+'" fill="'+TEAM[id[0]]+'" stroke="#fff" stroke-width="3"/><text x="'+x+'" y="'+y+'"'+(id[0]==="j"?' style="font-size:16px"':(sc.nocourt?' style="font-size:32px"':''))+'>'+(id[0]==="j"?"しん":id[1])+'</text>';
     if(touched[id]) s+='<circle cx="'+(x+18)+'" cy="'+(y-18)+'" r="11" fill="var(--ok)" stroke="#fff" stroke-width="2"/><path d="M'+(x+12)+' '+(y-18)+'l4 4 l8 -8" stroke="#fff" stroke-width="3" fill="none"/>';
     s+='</g>'; });
   if(!sc.noball){ var bx=b.p[0]*M+(b.fly?0:16), by=b.p[1]*M+(b.fly?0:14);
@@ -196,7 +212,7 @@ function draw(si,t){
     s+='<text x="'+q[0]*M+'" y="'+(q[1]*M-34)+'" style="font-size:30px;font-weight:900;text-anchor:middle;fill:var(--judge);paint-order:stroke;stroke:#fff;stroke-width:6px">ピッ！</text>'; });
   if(sc.board){ var bd=sc.board[0]; sc.board.forEach(function(x){ if(t>=x[0]) bd=x; });
     s+='<text class="board" x="'+W*0.72+'" y="'+(H+66)+'"><tspan style="fill:var(--red)">赤 '+bd[1]+'</tspan> − <tspan style="fill:var(--blue)">'+bd[2]+' 青</tspan></text>'; }
-  (sc.bigs||[]).forEach(function(g){ if(t>=g[0]&&t<g[1]) s+=rb(g[2],(g[2].replace(/\{([^|}]+)\|[^}]+\}/g,"$1").length>8?W/2:W*0.66),-60,64,"font-weight:900;fill:"+g[3]+";paint-order:stroke;stroke:#fff;stroke-width:10px"); });
+  (sc.bigs||[]).forEach(function(g){ if(t>=g[0]&&t<g[1]) s+=rb(g[2],sc.nocourt?W/2:(g[2].replace(/\{([^|}]+)\|[^}]+\}/g,"$1").length>8?W/2:W*0.66),sc.nocourt?-50:-60,64,"font-weight:900;fill:"+g[3]+";paint-order:stroke;stroke:#fff;stroke-width:10px"); });
   if(sc.timer&&t<sc.timer[1]+2){ var u=Math.max(0,Math.min(1,(t-sc.timer[0])/(sc.timer[1]-sc.timer[0]))), r=Math.round(180*(1-u));
     s+='<text class="big" x="'+W*0.66+'" y="-60" style="fill:var(--ink)">'+Math.floor(r/60)+':'+('0'+r%60).slice(-2)+'</text>'; }
   svg.innerHTML=s;
