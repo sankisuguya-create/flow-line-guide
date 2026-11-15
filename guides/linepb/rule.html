@@ -150,7 +150,7 @@ function rb(str,cx,y,size,style){
   var W=0; seg.forEach(function(g){ g.w=0; for(var i=0;i<g[0].length;i++) g.w+=cw(g[0][i])*size; W+=g.w; });
   var x=cx-W/2, out="";
   seg.forEach(function(g){ out+='<text x="'+x+'" y="'+y+'" textLength="'+g.w+'" lengthAdjust="spacingAndGlyphs" style="text-anchor:start;font-size:'+size+'px;'+style+'">'+g[0]+'</text>';
-    if(g[1]) out+='<text x="'+(x+g.w/2)+'" y="'+(y-size*0.92)+'" style="text-anchor:middle;font-size:'+(size*0.42)+'px;font-weight:700;'+style+'">'+g[1]+'</text>';
+    if(g[1]) out+='<text x="'+(x+g.w/2)+'" y="'+(y-size*0.92-(size<30?3:0))+'" style="text-anchor:middle;font-size:'+Math.max(13,size*0.42)+'px;font-weight:700;'+style+'">'+g[1]+'</text>';
     x+=g.w; });
   return out;
 }
