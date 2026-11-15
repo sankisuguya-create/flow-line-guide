@@ -147,12 +147,16 @@ const MAS=new THREE.Group(); ms.add(MAS);
 const head=new THREE.Mesh(new THREE.SphereGeometry(1,40,28),SILVER); head.scale.set(1.25,1,0.95); head.position.y=2.35; MAS.add(head);
 const ET=eyeTex(); [-0.42,0.42].forEach(x=>{ const e=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.68),new THREE.MeshBasicMaterial({map:ET,transparent:true})); e.position.set(x,2.5,0.93); MAS.add(e); });
 // 顎の 模様：頭の 下の 前に 描く（白い 四角と 上の 青い 帯）。頭の 面に そわせて 少し 下向きに 貼る
+// 口＝シャッター：上の 青い 帯が 箱。白い 板が 下へ 下がって 中（暗い）が 見える。open＝0（閉）〜1（全開）
 function chinTex(open){ const c=document.createElement("canvas"); c.width=128; c.height=128; const g=c.getContext("2d");
-  g.fillStyle="#fff"; g.fillRect(8,8,112,112); g.fillStyle="#1f6fe0"; g.fillRect(8,8,112,30);
-  if(open){ g.fillStyle="#2a1a22"; g.beginPath(); g.ellipse(64,82,30,20,0,0,7); g.fill(); g.fillStyle="#ff7a8a"; g.beginPath(); g.ellipse(64,92,16,8,0,0,7); g.fill(); }
-  g.strokeStyle="#1b1f27"; g.lineWidth=6; g.strokeRect(8,8,112,112);
+  const top=38, bot=120, h=(bot-top)*(1-open*0.8);
+  g.fillStyle="#1b1420"; g.fillRect(8,top,112,bot-top);
+  g.fillStyle="#fff"; g.fillRect(8,bot-h,112,h);
+  g.strokeStyle="#c9ced6"; g.lineWidth=2; for(let y=bot-h+10;y<bot;y+=12){ g.beginPath(); g.moveTo(12,y); g.lineTo(116,y); g.stroke(); }
+  g.fillStyle="#1f6fe0"; g.fillRect(8,8,112,30);
+  g.strokeStyle="#1b1f27"; g.lineWidth=6; g.strokeRect(8,8,112,112); g.lineWidth=3; g.beginPath(); g.moveTo(8,top); g.lineTo(120,top); g.stroke();
   const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
-const CHIN0=chinTex(false), CHIN1=chinTex(true);
+const CHINS=[0,1,2,3,4,5].map(k=>chinTex(k/5)), CHIN0=CHINS[0];
 const chin=new THREE.Mesh(new THREE.PlaneGeometry(0.58,0.58),new THREE.MeshBasicMaterial({map:CHIN0,transparent:true,polygonOffset:true,polygonOffsetFactor:-2}));
 chin.position.set(0,1.93,0.875); chin.rotation.x=0.45; MAS.add(chin);
 // アンテナ：頭の 左上から 曲がって のびる 細い 線と、先の 玉
@@ -225,8 +229,8 @@ function renderAt(T){
   // マスコット：題の 間は 大きく 左に、あとは 左下で 話す
   // 話す：字幕が 出てから 字数に あわせた 時間だけ 口が 開け閉め（1秒に 約7回）
   const talk=T-INTRO-capAt, talkLen=(lastCap||"").replace(/\{([^|}]+)\|[^}]+\}/g,"$1").length*0.11, talking=!intro&&talk>=0&&talk<talkLen;
-  const mouth=intro?(Math.sin(T*14)>0&&T>0.4&&T<2.2):talking&&Math.sin(talk*Math.PI*14)>-0.2;
-  chin.material.map=mouth?CHIN1:CHIN0;
+  const op=intro?(T>0.4&&T<2.2?(1-Math.cos(T*Math.PI*6))/2:0):(talking?(1-Math.cos(talk*Math.PI*12))/2:0);   // シャッターの 開き（なめらかに 上下）
+  chin.material.map=CHINS[Math.round(op*5)];
   MAS.position.y=Math.sin(T*2.2)*0.06+(talking?Math.abs(Math.sin(talk*Math.PI*3))*0.06:0);
   // 指さし：大事な 所で 右手を 画面の 中へ 向け、体も そちらへ 向く
   let pt=0; POINT.forEach(q=>{ if(ts>=q[0]-0.4&&ts<q[1]+0.4&&!intro) pt=Math.max(pt,sm((ts-(q[0]-0.4))/0.4)*sm(((q[1]+0.4)-ts)/0.4)); });
