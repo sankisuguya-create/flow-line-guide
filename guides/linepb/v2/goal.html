@@ -316,7 +316,7 @@ const SILVER=new THREE.MeshStandardMaterial({color:"#eef1f5",metalness:.55,rough
 const GUN=new THREE.MeshStandardMaterial({color:"#3c424c",metalness:.7,roughness:.35});
 const WHITE=new THREE.MeshStandardMaterial({color:"#ffffff",roughness:.4});
 function eyeTex(){ const c=document.createElement("canvas"); c.width=64; c.height=128; const g=c.getContext("2d");
-  g.fillStyle="#fff"; g.beginPath(); g.ellipse(32,64,28,60,0,0,7); g.fill(); g.save(); g.clip(); g.fillStyle="#222"; for(let y=14;y<128;y+=18) g.fillRect(0,y,64,6); g.restore();
+  g.fillStyle="#ffd21f"; g.beginPath(); g.ellipse(32,64,28,60,0,0,7); g.fill(); /* 目は 黄色（しまは 黒） */ g.save(); g.clip(); g.fillStyle="#222"; for(let y=14;y<128;y+=18) g.fillRect(0,y,64,6); g.restore();
   g.strokeStyle="#111"; g.lineWidth=6; g.beginPath(); g.ellipse(32,64,28,60,0,0,7); g.stroke(); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
 function bellyTex(){ const c=document.createElement("canvas"); c.width=c.height=256; const g=c.getContext("2d"); g.fillStyle="#cfd5de"; g.fillRect(0,0,256,256);
   g.strokeStyle="#fff"; g.lineWidth=26; g.lineCap="round"; g.beginPath(); g.moveTo(60,120); g.quadraticCurveTo(80,190,128,150); g.quadraticCurveTo(176,190,196,120); g.stroke();
