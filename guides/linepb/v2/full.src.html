@@ -230,8 +230,10 @@ function drawMini(sc,ts,foc,ids){ const S=13.5, ox=25, oy=27; mc.clearRect(0,0,3
 /* ===== 字幕 ===== */
 let lastCap=null, capAt=0;
 function setCap2(c,T){ if(c===lastCap) return; lastCap=c; capAt=T; const cp=el("cap"); cp.innerHTML="<span>"+ruby(c)+"</span>";
-  const sp=cp.firstChild, avail=1280-270-20; let fs=58; cp.style.fontSize=""; sp.style.transform=""; let w=sp.offsetWidth;
-  if(w>avail){ const k=Math.max(.78,avail/w); sp.style.transform="scaleX("+k+")"; while(sp.offsetWidth*k>avail&&fs>30){ fs-=2; cp.style.fontSize=fs+"px"; } } }
+  const sp=cp.firstChild, avail=1280-270-20; let fs=58; cp.style.fontSize=""; cp.style.textAlign=""; sp.style.transform=""; sp.style.transformOrigin=""; sp.style.marginLeft=""; let w=sp.offsetWidth;
+  if(w>avail){ const k=Math.max(.78,avail/w); while(sp.offsetWidth*k>avail&&fs>30){ fs-=2; cp.style.fontSize=fs+"px"; }
+    /* 左を 基点に ちぢめ、自分で 中央に 置く（中央基点だと 右へ はみ出す） */
+    cp.style.textAlign="left"; sp.style.transformOrigin="left center"; sp.style.transform="scaleX("+k+")"; sp.style.marginLeft=Math.max(0,(1010-sp.offsetWidth*k)/2)+"px"; (window.LONGCAPS=window.LONGCAPS||[]).push(T); } }
 const plain=s=>String(s).replace(/\{([^|}]+)\|[^}]+\}/g,"$1");
 
 /* ===== 音の きっかけ（audio.py が 使う）：時刻と 種類 ===== */
