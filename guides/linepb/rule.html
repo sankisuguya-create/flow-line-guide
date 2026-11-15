@@ -180,7 +180,7 @@ function draw(si,t){
   [BAND,10,20-BAND].forEach(function(x){ s+='<line x1="'+x*M+'" x2="'+x*M+'" y1="0" y2="'+H+'" stroke="var(--ink)" stroke-width="3"/>'; });
   s+='<circle cx="'+10*M+'" cy="'+5*M+'" r="14" fill="none" stroke="var(--ink)" stroke-width="3"/>';
   [[BAND,0],[BAND,10],[20-BAND,0],[20-BAND,10]].forEach(function(c){ s+='<path d="M'+(c[0]*M-10)+' '+(c[1]*M+8)+'L'+c[0]*M+' '+(c[1]*M-22)+'L'+(c[0]*M+10)+' '+(c[1]*M+8)+'z" fill="var(--marker)" stroke="var(--ink)" stroke-width="2"/>'; });
-  if(sc.from!==LINE&&!sc.nolbl) s+=''+rb("ゴールマンの{帯|おび}",BAND/2*M,-40,20,"fill:var(--ink-soft);font-weight:800")+'<text class="lbl" x="'+W*0.25+'" y="'+(H+60)+'">20m</text>'+
+  if(sc.from!==LINE&&!sc.nolbl) s+=''+rb("ゴールマンの{帯|おび}",BAND/2*M+30,H+36,20,"fill:var(--ink-soft);font-weight:800")+'<text class="lbl" x="'+W*0.25+'" y="'+(H+60)+'">20m</text>'+
      '<text class="lbl" x="'+(W+30)+'" y="'+H/2+'">10m</text><text class="lbl" x="'+2*M+'" y="-118">赤ベンチ</text><text class="lbl" x="'+18*M+'" y="-118">青ベンチ</text>';
   var b=sc.noball?null:ballAt(sc,t), touched={};
   if(sc.score) sc.ball.forEach(function(x){ if(x[0]<=t&&x[1]!=="bA") touched[x[1]]=1; });
