@@ -58,7 +58,7 @@ var ROT={from:{}}; Object.keys(GC).forEach(function(c){ "ABCDE".split("").forEac
 var FRAME=[[3,"r","b","g"],[12,"g","b","r"],[18,"g","r","b"]];
 function frameGeo(p){ var A=GC[p[1]],B=GC[p[2]],J=GC[p[3]], dx=B[0]-A[0], dy=B[1]-A[1], ang=Math.atan2(dy,dx)*180/Math.PI;
   if(ang>90) ang-=180; if(ang<-90) ang+=180;
-  return {cx:(A[0]+B[0])/2, cy:(A[1]+B[1])/2, ang:ang, len:Math.hypot(dx,dy)+5.6, jx:J[0], jy:J[1]-2.4}; }
+  return {cx:(A[0]+B[0])/2, cy:(A[1]+B[1])/2, ang:ang, len:Math.hypot(dx,dy)+6.6, jx:J[0], jy:J[1]-2.4}; }
 // 次の わくへは、前の わくが 1秒で 消えてから 1秒で 出る（わくが ほかの グループの 上を 通らないように）
 function frameAt(t){ if(t<FRAME[0][0]-1) return null; var i=0; while(i<FRAME.length-1&&t>=FRAME[i+1][0]-2) i++;
   var g=frameGeo(FRAME[i]), nx=FRAME[i+1];
@@ -72,7 +72,7 @@ function pill(str,x,y,col){ var plain=str.replace(/\{([^|}]+)\|[^}]+\}/g,"$1"), 
 function drawRot(t){ var f=frameAt(t), s=""; if(!f) return s;
   s+='<g opacity="'+f.op+'"><g transform="translate('+f.cx*M+' '+f.cy*M+') rotate('+f.ang+')"><rect x="'+(-f.len/2*M)+'" y="'+(-3.2*M)+'" width="'+f.len*M+'" height="'+6.4*M+'" rx="18" fill="var(--marker)" fill-opacity=".10" stroke="var(--marker)" stroke-width="10"/></g>';
   var J=[f.jx,f.jy+2.4];
-  s+=pill("{試合|しあい}",f.cx*M,f.cy*M,"var(--marker)")+pill("しんぱん",J[0]*M,(J[1]+(J[1]>5?2.6:-2.6))*M,"var(--ink)")+'</g>';
+  s+=pill("{試合|しあい}",f.cx*M,f.cy*M,"var(--marker)")+pill("しんぱん",J[0]*M,(J[1]+(J[1]>5?3:-2.6))*M,"var(--ink)")+'</g>';
   return s; }
 var SCENES=[
  {name:"3つのグループ", dur:24, only:Object.keys(ROT.from), from:ROT.from, noball:1, nolbl:1, nocourt:1,
