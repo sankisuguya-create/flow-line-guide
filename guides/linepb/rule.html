@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ラインポートボール ルール</title>
+<style>
+:root{--paper:#EEF3F7;--ink:#143242;--ink-soft:#4B6C80;--marker:#F0912B;--marker-soft:#FBD9AE;
+  --court:#F6F1E4;--band:#FFE7B8;--red:#D7263D;--blue:#1F5FBF;--ok:#0B7A3E}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);
+  font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif}
+.app{display:flex;flex-direction:column;height:100%}
+.top{display:flex;gap:8px;padding:8px;flex-wrap:wrap;align-items:center}
+.top h1{font-size:18px;margin:0 8px 0 0}
+button{font:inherit;font-weight:700;color:var(--ink);background:#fff;border:2px solid var(--ink);
+  border-radius:10px;min-height:48px;padding:0 14px;cursor:pointer;touch-action:manipulation}
+button[aria-pressed="true"]{background:var(--marker);border-color:var(--marker)}
+#play{width:64px;font-size:20px}
+svg{flex:1;min-height:0;width:100%;display:block}
+.cap{min-height:3.4em;padding:6px 16px 10px;font-size:clamp(22px,3.6vw,40px);font-weight:800;
+  text-align:center;line-height:1.5}
+rt{font-size:.45em;font-weight:700}
+input[type=range]{flex:1;min-width:120px;height:32px}
+body.rec .top{display:none}
+.kid text{font-weight:900;font-size:22px;fill:#fff;text-anchor:middle;dominant-baseline:central}
+.lbl{font-size:16px;font-weight:800;fill:var(--ink-soft);text-anchor:middle}
+.big{font-size:44px;font-weight:900;fill:var(--ok);text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:8px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <h1>ラインポートボール</h1>
+    <button id="play" aria-label="再生">▶</button>
+    <span id="scenes" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+    <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="時間">
+  </div>
+  <svg id="svg" viewBox="-60 -150 920 640"></svg>
+  <div class="cap" id="cap"></div>
+</div>
+<script>
+/* 中身：場面ごとに 人の動き（keys:[秒,x,y]）・ボール（ball:[秒,持つ人] 持ち替えの間はパスで飛ぶ）・字幕（cap:[秒,文]）。
+   座標は m。コート 20m×10m、左右の端 2m がゴールマンの帯（仮）。上の y<0 はベンチ。
+   {漢字|かな} は ふりがな。この試作は 3場面（コート／はじめ／ゴール）。 */
+var M=40, BAND=2;
+var START={ rA:[1.2,-2], rB:[3,-2], rC:[7,3], rD:[7,5], rE:[7,7],      // 赤＝守り。A・Bベンチ、C・D・Eコート
+            bA:[1,5], bB:[10.5,5], bC:[13,2.5], bD:[13,7.5], bE:[16,5] }; // 青＝攻め。Aゴールマン
+var TEAM={r:"var(--red)",b:"var(--blue)"};
+var SCENES=[
+ {name:"コート", dur:9, keys:{}, ball:[[0,"bB"]],
+  hi:[[0,9,"band"]],
+  cap:[[0,"コートは たて10m、よこ20m。"],[3,"はしの {帯|おび}に ゴールマンが 立つ。"],[6,"{赤|あか}・{青|あお}とも 5人。A〜Eの {字|じ}で 見分ける。"]]},
+ {name:"はじめ", dur:9, from:{bC:[16,1],bD:[17,8],bE:[18,4],rC:[4,2],rD:[3,8],rE:[5,5],bB:[12,5]},
+  keys:{bC:[[1,16,1],[4,13,2.5]],bD:[[1,17,8],[4,13,7.5]],bE:[[1,18,4],[4,16,5]],bB:[[1,12,5],[4,10.5,5]],
+        rC:[[1,4,2],[4,7,3]],rD:[[1,3,8],[4,7,5]],rE:[[1,5,5],[4,7,7]]},
+  ball:[[0,"bB"]], hi:[[0,9,"half"]],
+  cap:[[0,"スタートの ときは {自分|じぶん}の {陣|じん}に いる。"],[5,"{攻|せ}めは {真|ま}ん{中|なか}から ボールを {出|だ}す。"]]},
+ {name:"ゴール", dur:13,
+  keys:{bC:[[1,13,2.5],[3,6,2]], bD:[[1,13,7.5],[3,9,8],[5,4,7.6]], bE:[[1,16,5],[4,12,5]],
+        rC:[[1,7,3],[3,6.5,3.6],[5,6.2,4]], rD:[[1,7,5],[5,5,6]], rE:[[1,7,7],[3,8,7.5],[5,4.8,8.6]]},
+  ball:[[0,"bB"],[3.2,"bC"],[6.2,"bD"],[8.6,"bA"]],
+  hi:[[8.6,13,"band"]], score:true,
+  cap:[[0,"ボールを {持|も}ったら 1{歩|ぽ}も うごかない。"],[3.2,"パスを つないで…"],
+       [8.6,"{帯|おび}の {中|なか}で ゴールマンが キャッチ！"],[10.5,"さわった {人|ひと}は B・C・D の 3{人|にん}。3{点|てん}！"]]}
+];
+
+var $=function(i){return document.getElementById(i)}, svg=$("svg");
+function ruby(s){return s.replace(/\{([^|}]+)\|([^}]+)\}/g,"<ruby>$1<rt>$2</rt></ruby>")}
+function pos(sc,id,t){
+  var base=(sc.from&&sc.from[id])||START[id], K=(sc.keys[id])||[];
+  if(!K.length||t<=K[0][0]) return K.length&&t>=K[0][0]?[K[0][1],K[0][2]]:base;
+  for(var i=0;i<K.length-1;i++) if(t<K[i+1][0]){var a=K[i],b=K[i+1],u=(t-a[0])/(b[0]-a[0]);u=u*u*(3-2*u);
+    return [a[1]+(b[1]-a[1])*u,a[2]+(b[2]-a[2])*u];}
+  var z=K[K.length-1]; return [z[1],z[2]];
+}
+// ボールは 持ち替えの 0.8秒前に 手を はなれて 飛ぶ
+function ballAt(sc,t){
+  var B=sc.ball,i=0; while(i<B.length-1&&t>=B[i+1][0]) i++;
+  var h=pos(sc,B[i][1],t); if(i<B.length-1&&t>B[i+1][0]-0.8){var g=pos(sc,B[i+1][1],t),u=(t-(B[i+1][0]-0.8))/0.8;
+    return {p:[h[0]+(g[0]-h[0])*u,h[1]+(g[1]-h[1])*u],fly:true};}
+  return {p:h,holder:B[i][1]};
+}
+function draw(si,t){
+  var sc=SCENES[si], s="", W=20*M, H=10*M, hi="";
+  (sc.hi||[]).forEach(function(h){ if(t>=h[0]&&t<h[1]) hi=h[2]; });
+  s+='<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="var(--court)" stroke="var(--ink)" stroke-width="4"/>';
+  var bandFill=hi==="band"?"var(--band)":"none";
+  s+='<rect x="0" y="0" width="'+BAND*M+'" height="'+H+'" fill="'+bandFill+'"/><rect x="'+(W-BAND*M)+'" y="0" width="'+BAND*M+'" height="'+H+'" fill="'+bandFill+'"/>';
+  if(hi==="half"){ s+='<rect x="'+BAND*M+'" y="0" width="'+(10-BAND)*M+'" height="'+H+'" fill="var(--red)" opacity=".10"/>'+
+     '<rect x="'+10*M+'" y="0" width="'+(10-BAND)*M+'" height="'+H+'" fill="var(--blue)" opacity=".10"/>'+
+     '<text class="lbl" x="'+6*M+'" y="'+(H+34)+'" style="font-size:24px;fill:var(--red)">赤の陣</text><text class="lbl" x="'+14*M+'" y="'+(H+34)+'" style="font-size:24px;fill:var(--blue)">青の陣</text>'; }
+  [BAND,10,20-BAND].forEach(function(x){ s+='<line x1="'+x*M+'" x2="'+x*M+'" y1="0" y2="'+H+'" stroke="var(--ink)" stroke-width="3"/>'; });
+  s+='<circle cx="'+10*M+'" cy="'+5*M+'" r="14" fill="none" stroke="var(--ink)" stroke-width="3"/>';
+  [[BAND,0],[BAND,10],[20-BAND,0],[20-BAND,10]].forEach(function(c){ s+='<path d="M'+(c[0]*M-10)+' '+(c[1]*M+8)+'L'+c[0]*M+' '+(c[1]*M-22)+'L'+(c[0]*M+10)+' '+(c[1]*M+8)+'z" fill="var(--marker)" stroke="var(--ink)" stroke-width="2"/>'; });
+  s+='<text class="lbl" x="'+BAND/2*M+'" y="-40">ゴールマンの帯</text><text class="lbl" x="'+W/2+'" y="'+(H+60)+'">20m</text>'+
+     '<text class="lbl" x="'+(W+30)+'" y="'+H/2+'">10m</text><text class="lbl" x="'+2*M+'" y="-118">赤ベンチ</text>';
+  var b=ballAt(sc,t), touched={};
+  if(sc.score) sc.ball.forEach(function(x){ if(x[0]<=t&&x[1]!=="bA") touched[x[1]]=1; });
+  Object.keys(START).forEach(function(id){ var p=pos(sc,id,t), x=p[0]*M, y=p[1]*M;
+    s+='<g class="kid"><circle cx="'+x+'" cy="'+y+'" r="20" fill="'+TEAM[id[0]]+'" stroke="#fff" stroke-width="3"/><text x="'+x+'" y="'+y+'">'+id[1]+'</text>';
+    if(touched[id]) s+='<circle cx="'+(x+18)+'" cy="'+(y-18)+'" r="11" fill="var(--ok)" stroke="#fff" stroke-width="2"/><path d="M'+(x+12)+' '+(y-18)+'l4 4 l8 -8" stroke="#fff" stroke-width="3" fill="none"/>';
+    s+='</g>'; });
+  var bx=b.p[0]*M+(b.fly?0:16), by=b.p[1]*M+(b.fly?0:14);
+  s+='<circle cx="'+bx+'" cy="'+by+'" r="10" fill="#fff" stroke="var(--ink)" stroke-width="3"/>';
+  if(sc.score&&t>=10.5) s+='<text class="big" x="'+W/2+'" y="-60">3点</text>';
+  svg.innerHTML=s;
+  var c=""; sc.cap.forEach(function(x){ if(t>=x[0]) c=x[1]; }); $("cap").innerHTML=ruby(c);
+}
+// 時間の通し番号：全場面を 1本につなぐ
+var TOTAL=SCENES.reduce(function(a,s){return a+s.dur},0), clock=0, paused=true, last=null;
+function locate(T){ var a=0; for(var i=0;i<SCENES.length;i++){ if(T<a+SCENES[i].dur||i===SCENES.length-1) return [i,Math.min(T-a,SCENES[i].dur)]; a+=SCENES[i].dur; } }
+function render(){ var l=locate(clock); draw(l[0],l[1]); $("scrub").value=Math.round(clock/TOTAL*1000);
+  Array.prototype.forEach.call($("scenes").children,function(b,i){b.setAttribute("aria-pressed",i===l[0])}); }
+function frame(now){ if(last!==null&&!paused){ clock+=Math.min(.1,(now-last)/1000); if(clock>=TOTAL){clock=TOTAL;paused=true;$("play").textContent="▶";document.title="DONE";} render(); }
+  last=now; requestAnimationFrame(frame); }
+$("scenes").innerHTML=SCENES.map(function(s,i){return '<button data-i="'+i+'">'+(i+1)+' '+s.name+'</button>'}).join("");
+$("scenes").onclick=function(e){var b=e.target.closest("button"); if(!b) return; var a=0; for(var i=0;i<+b.dataset.i;i++) a+=SCENES[i].dur; clock=a; render();};
+$("play").onclick=function(){ if(clock>=TOTAL) clock=0; paused=!paused; this.textContent=paused?"▶":"❚❚"; };
+$("scrub").oninput=function(){ paused=true; $("play").textContent="▶"; clock=TOTAL*this.value/1000; render(); };
+if(/rec/.test(location.search)){ document.body.classList.add("rec"); setTimeout(function(){paused=false;},800); }
+render(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
