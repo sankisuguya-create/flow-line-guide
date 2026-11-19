@@ -32,11 +32,34 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"BIZ UDPGothic",
 .chip:not(.on) i{opacity:.25}
 .eye{border:none;background:none;font-size:20px;padding:0 4px}
 .grp.off{opacity:.45}
+.scr{display:none;flex:1;flex-direction:column;min-height:0}.scr.on{display:flex}
+#home{align-items:center;justify-content:center;gap:28px}
+#home h1{margin:0 0 8px;font-size:40px}
+.card{font:inherit;width:min(560px,90vw);padding:22px 28px;border-radius:24px;border:4px solid #444;background:#fff;font-size:34px;font-weight:700;display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:20px;text-align:left}
+.card .ic{grid-row:span 2;font-size:56px}.card small{font-size:20px;font-weight:400;color:#555}
+.qbar{display:flex;align-items:center;gap:14px;padding:8px 12px}
+#qno{font-size:20px;color:#666}#qq{font-size:30px;font-weight:700}#qscore{font-size:22px;font-weight:700}
+#qsvg{flex:1;min-height:0}
+.qfoot{display:flex;align-items:center;gap:12px;padding:6px 14px 12px;min-height:76px}
+#qfb{flex:1;font-size:24px;font-weight:700;line-height:1.6}
+#qnext{visibility:hidden}
+rt{font-size:.5em}
 #hint{padding:0 12px 6px;font-size:17px;min-height:26px}
 #cut{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);font-size:64px;font-weight:700;color:#fff;background:var(--red);
  padding:8px 28px;border-radius:20px;display:none}
 </style></head><body>
-<div id="bar">
+<div id="home" class="scr">
+  <h1>ラインポートボール</h1>
+  <button class="card" data-go="boardScr"><span class="ic">📋</span>作戦ボード<small>線を 書いて <ruby>動<rt>うご</rt></ruby>きを <ruby>考<rt>かんが</rt></ruby>える</small></button>
+  <button class="card" data-go="quiz"><span class="ic">💡</span>はんだん トレーニング<small>どこに パス？ どこへ <ruby>動<rt>うご</rt></ruby>く？</small></button>
+</div>
+<div id="quiz" class="scr">
+  <div class="qbar"><button class="tool back">◀ もどる</button><div id="qno"></div><div id="qq"></div><span class="sep"></span><div id="qscore"></div></div>
+  <svg id="qsvg" viewBox="-1.5 -1.2 23 12.4"></svg>
+  <div class="qfoot"><div id="qfb"></div><button class="tool" id="qnext">つぎへ ▶</button></div>
+</div>
+<div id="boardScr" class="scr">
+<div id="bar"><button class="tool back">◀</button>
   <button class="tool on" data-m="move">🚶 移動</button>
   <button class="tool" data-m="pass">⚽ パス</button>
   <button class="tool" data-m="drag">✋ 置く</button>
@@ -57,6 +80,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"BIZ UDPGothic",
 <div id="main">
   <svg id="svg" viewBox="-1.5 -1.5 23 13"></svg>
   <div id="side"><h3>じゅんばん</h3><div id="steps"></div></div>
+</div>
 </div>
 <div id="cut">カット！</div>
 <script>
@@ -220,5 +244,96 @@ document.getElementById("reset").onclick=()=>{ if(confirm("線を ぜんぶ 消�
 document.getElementById("save").onclick=()=>{ try{ localStorage.setItem("pb-mock2",JSON.stringify(st)); hint("保存した（モックは この 端末の 中だけ）。"); }catch(e){ hint("保存できなかった。"); } };
 document.querySelectorAll(".tool[data-m]").forEach(b=>b.onclick=()=>{ mode=b.dataset.m; document.querySelectorAll(".tool[data-m]").forEach(x=>x.classList.toggle("on",x===b)); hint(HINT[mode]); draw(); });
 function hint(s){ document.getElementById("hint").textContent=s; }
-hint(HINT.move); draw();
+hint(HINT.move);
+
+/* ===== 画面の 切り替え ===== */
+function go(id){ document.querySelectorAll(".scr").forEach(x=>x.classList.toggle("on",x.id===id)); if(id==="boardScr") draw(); if(id==="quiz") startQuiz(); }
+document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go));
+document.querySelectorAll(".back").forEach(b=>b.onclick=()=>go("home"));
+
+/* ===== はんだん トレーニング =====
+ 問題：type "pass"＝ボールを 持つ 人が だれに パス？（味方を タップ）
+       type "move"＝me が どこへ 動く？（場所を タップ）
+ 見きわめ（だれでも 同じ 結果になる 決まり）：
+   パスの 道と いちばん 近い 守りの きょり  1.6m以上＝○  0.9〜1.6m＝△  0.9m未満＝×
+   動く 先は さらに「守りから 1.6m以上」「持つ人から 2m以上」「今の 場所から 5m以内」 */
+const ruby=t=>t.replace(/\{([^|}]+)\|([^}]+)\}/g,"<ruby>$1<rt>$2</rt></ruby>");
+const QS=[
+ {type:"pass",h:"bB",p:{bA:[1,5],bB:[12,5],bC:[5,1.2],bD:[5,8.6],bE:[13.6,7],rC:[6.6,5],rD:[8.4,6.8],rE:[5.6,7.7]}},
+ {type:"move",h:"bB",me:"bD",p:{bA:[1,5],bB:[12,5],bC:[6,1.2],bD:[11,7.8],bE:[11,4],rC:[7,2],rD:[7,5],rE:[5,7.5]}},
+ {type:"pass",h:"bC",p:{bA:[1,6],bB:[11,5],bC:[4.5,2],bD:[7,5],bE:[4,8.6],rC:[2.6,4.4],rD:[6.4,5.8],rE:[6.5,8.4]}},
+ {type:"pass",h:"bD",p:{bA:[1,4],bB:[11,5],bC:[4,1.2],bD:[5,8],bE:[8,6],rC:[3.2,2.2],rD:[6.8,6.4],rE:[7,9]}},
+ {type:"move",h:"bE",me:"bC",p:{bA:[1,5],bB:[11,5],bC:[6,1],bD:[8,8.5],bE:[5,6],rC:[6.6,1.8],rD:[3.6,4.4],rE:[7,7.6]}},
+ {type:"move",h:"bC",me:"bA",p:{bA:[1,4.5],bB:[11,5],bC:[4.5,8.4],bD:[7,3],bE:[8,6],rC:[3,6.6],rD:[6,4],rE:[6,8]}},
+ {type:"pass",h:"bB",p:{bA:[1,5],bB:[11,5],bC:[8,1],bD:[8,9],bE:[4,5],rC:[7.6,2],rD:[6,6.6],rE:[6,5]}},
+ {type:"move",h:"bB",me:"bE",p:{bA:[1,5],bB:[12,2],bC:[7,1],bD:[11,8.5],bE:[11,5],rC:[8,2.6],rD:[7,5],rE:[6,8]}},
+];
+const qsvg=document.getElementById("qsvg");
+const QE=(t,a,par)=>{const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); (par||qsvg).appendChild(e); return e;};
+function segDist(P,A,B){ const vx=B[0]-A[0],vy=B[1]-A[1],L2=vx*vx+vy*vy; let u=L2?((P[0]-A[0])*vx+(P[1]-A[1])*vy)/L2:0; u=Math.max(0,Math.min(1,u)); return dist(P,[A[0]+vx*u,A[1]+vy*u]); }
+/* 投げた 直後の 1mは 数えない（守りは 持つ人から 2歩 はなれて いるので、いつも 近く なって しまう） */
+function laneClear(q,F0,T){ const L=dist(F0,T), k=L?Math.min(1,L/2)/L:0, F=[F0[0]+(T[0]-F0[0])*k,F0[1]+(T[1]-F0[1])*k]; let m=1e9, who=null; for(const id in q.p) if(id[0]==="r"){ const d=segDist(q.p[id],F,T); if(d<m){m=d;who=id;} } return [m,who]; }
+const isBack=(q,to)=>q.p[to][0]>q.p[q.h][0]+1&&q.p[to][0]>MID;
+function passRate(q,to){ const r=rate(laneClear(q,q.p[q.h],q.p[to])[0]); return r==="o"&&isBack(q,to)?"t":r; }
+const rate=m=>m>=1.6?"o":m>=0.9?"t":"x";
+const RC={o:"#1a9b4b",t:"#e0a100",x:"#d02a2a"}, RM={o:"○",t:"△",x:"×"};
+function moveJudge(q,P){ const me=q.p[q.me], H=q.p[q.h], gm=q.me===GOALMAN;
+  if(P[0]<0||P[0]>20||P[1]<0||P[1]>10) return {r:"x",why:"コートの 外。"};
+  if(gm&&P[0]>2) return {r:"x",why:"ゴールマンは {帯|おび}の 中で {動|うご}く。"};
+  if(!gm&&P[0]<2) return {r:"x",why:"{帯|おび}には ゴールマンしか 入れない。"};
+  if(!gm&&P[0]>MID) return {r:"t",why:"自分の じんに いると、{前|まえ}に すすめない。{相手|あいて}の じんへ 入ろう。"};
+  if(dist(me,P)>5) return {r:"x",why:"{遠|とお}すぎて、まに あわない。"};
+  if(dist(H,P)<2) return {r:"t",why:"ボールの 人に {近|ちか}すぎる。守りも あつまる。"};
+  let dm=1e9; for(const id in q.p) if(id[0]==="r") dm=Math.min(dm,dist(q.p[id],P));
+  const [m]=laneClear(q,H,P);
+  if(m<0.9) return {r:"x",why:"パスの {道|みち}に {守|まも}りが いる。"};
+  if(dm<1.6) return {r:"t",why:"{守|まも}りが すぐ そばに いる。"};
+  if(m<1.6) return {r:"t",why:"パスの {道|みち}の {近|ちか}くに {守|まも}りが いる。"};
+  return {r:"o",why:"ボールの 人との {間|あいだ}に {守|まも}りが いない！"}; }
+let qi=0, qok=0, answered=false;
+function startQuiz(){ qi=0; qok=0; showQ(); }
+function courtQ(){ qsvg.innerHTML="";
+  QE("rect",{x:0,y:0,width:20,height:10,fill:"#e9d9b4",stroke:"#555","stroke-width":.08});
+  QE("rect",{x:0,y:0,width:2,height:10,fill:"#f2c86a",opacity:.6}); QE("rect",{x:18,y:0,width:2,height:10,fill:"#f2c86a",opacity:.6});
+  QE("line",{x1:MID,y1:0,x2:MID,y2:10,stroke:"#555","stroke-width":.08}); }
+function piecesQ(q){ for(const id in q.p){ const [x,y]=q.p[id];
+    if(q.type==="move"&&id===q.me) QE("circle",{cx:x,cy:y,r:.75,fill:"none",stroke:"#ffd84d","stroke-width":.2});
+    QE("circle",{cx:x,cy:y,r:.45,fill:COL(id),stroke:id===GOALMAN?"#f2a400":"#fff","stroke-width":id===GOALMAN?.14:.08,"data-id":id});
+    const t=QE("text",{x,y:y+.17,"font-size":.5,"text-anchor":"middle",fill:"#fff","font-weight":700,"pointer-events":"none"}); t.textContent=id[1]; }
+  const H=q.p[q.h]; QE("circle",{cx:H[0]+.45,cy:H[1]-.45,r:.25,fill:"#fff",stroke:"#222","stroke-width":.06}); }
+function showQ(){ const q=QS[qi]; answered=false; courtQ(); piecesQ(q);
+  document.getElementById("qno").textContent=(qi+1)+" / "+QS.length;
+  document.getElementById("qq").innerHTML=ruby(q.type==="pass"?q.h[1]+" が ボールを {持|も}って いる。どこに パス？":"あなたは "+q.me[1]+"。"+q.h[1]+" から パスを もらうには、どこへ {動|うご}く？");
+  document.getElementById("qscore").textContent="○ "+qok;
+  document.getElementById("qfb").innerHTML=ruby(q.type==="pass"?"パスする {味方|みかた}を タップ。":"{動|うご}く {場所|ばしょ}を タップ。");
+  document.getElementById("qnext").style.visibility="hidden"; }
+function arrowQ(F,T,c,dash){ QE("line",{x1:F[0],y1:F[1],x2:T[0],y2:T[1],stroke:c,"stroke-width":.14,"stroke-dasharray":dash?".35 .25":"none","stroke-linecap":"round"}); }
+function markQ(P,r,big){ QE("circle",{cx:P[0],cy:P[1]-(big?0:.95),r:big?.55:.4,fill:RC[r]}); const t=QE("text",{x:P[0],y:P[1]-(big?0:.95)+.17,"font-size":big?.6:.5,"text-anchor":"middle",fill:"#fff","font-weight":700}); t.textContent=RM[r]; }
+qsvg.addEventListener("pointerdown",ev=>{ if(answered) return; const q=QS[qi];
+  const pp=qsvg.createSVGPoint(); pp.x=ev.clientX; pp.y=ev.clientY; const c=pp.matrixTransform(qsvg.getScreenCTM().inverse()), P=[c.x,c.y];
+  const H=q.p[q.h], fb=document.getElementById("qfb"); let r, why;
+  if(q.type==="pass"){ let to=null,bd=.9; for(const id in q.p) if(id[0]==="b"&&id!==q.h&&dist(q.p[id],P)<bd){bd=dist(q.p[id],P);to=id;}
+    if(!to) return; answered=true; courtQ();
+    // すべての パス先を 色で 見せる
+    for(const id in q.p) if(id[0]==="b"&&id!==q.h){ arrowQ(H,q.p[id],RC[passRate(q,id)],true); }
+    piecesQ(q); for(const id in q.p) if(id[0]==="b"&&id!==q.h) markQ(q.p[id],passRate(q,id));
+    QE("circle",{cx:q.p[to][0],cy:q.p[to][1],r:.8,fill:"none",stroke:"#222","stroke-width":.14});
+    r=passRate(q,to);
+    if(r==="t"&&isBack(q,to)){ why=to[1]+" へは {通|とお}る。でも うしろへ もどる パス。{前|まえ}に いる {味方|みかた}は？"; }
+    else why=to[1]+" へ："+(r==="o"?(to===GOALMAN?"ゴールマンへの {道|みち}が あいて いる！":"パスの {道|みち}に {守|まも}りが いない！"):r==="t"?"{守|まも}りの {近|ちか}くを {通|とお}る。あぶない。":"{守|まも}りが {道|みち}に いる。カットされる。");
+  } else { answered=true; const J=moveJudge(q,P); r=J.r; why=J.why; courtQ();
+    // よい 場所を 緑の 点で 見せる
+    for(let x=.25;x<20;x+=.5) for(let y=.25;y<10;y+=.5) if(moveJudge(q,[x,y]).r==="o") QE("circle",{cx:x,cy:y,r:.12,fill:RC.o,opacity:.55});
+    QE("line",{x1:q.p[q.me][0],y1:q.p[q.me][1],x2:P[0],y2:P[1],stroke:"var(--mv)","stroke-width":.12,"stroke-dasharray":".2 .15"});
+    arrowQ(H,P,RC[r],true); piecesQ(q); markQ(P,r,true); }
+  if(r==="o") qok++;
+  fb.innerHTML=`<span style="color:${RC[r]}">${RM[r]}</span> `+ruby(why)+(q.type==="move"?ruby("<br><small style='font-size:18px;color:#555'>{緑|みどり}の 点＝よい {場所|ばしょ}</small>"):"");
+  document.getElementById("qscore").textContent="○ "+qok;
+  const nx=document.getElementById("qnext"); nx.style.visibility="visible"; nx.textContent=qi<QS.length-1?"つぎへ ▶":"おわり"; });
+document.getElementById("qnext").onclick=()=>{ if(qi<QS.length-1){ qi++; showQ(); }
+  else { courtQ(); document.getElementById("qq").textContent="おしまい！"; document.getElementById("qfb").innerHTML="○ は "+qok+" / "+QS.length+"。もう {一度|いちど} やる？".replace(/\{([^|}]+)\|([^}]+)\}/g,"<ruby>$1<rt>$2</rt></ruby>");
+    const nx=document.getElementById("qnext"); nx.textContent="もう 一度"; nx.onclick=()=>{ nx.onclick=null; location.hash=""; startQuiz(); bindNext(); }; } };
+function bindNext(){ document.getElementById("qnext").onclick=arguments.callee.orig; }
+bindNext.orig=document.getElementById("qnext").onclick;
+go("home");
 </script></body></html>
