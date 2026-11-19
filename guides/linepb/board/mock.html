@@ -74,9 +74,9 @@ rt{font-size:.5em}
   <button class="tool" data-m="pass">⚽ パス</button>
   <button class="tool" data-m="drag">✋ 置く</button>
   <button class="tool" data-m="erase">🧽 消す</button>
-  <button class="tool" id="same">🔗 同時に</button>
+  <button class="tool" id="next">➕ つぎの 番号</button>
   <span class="sep"></span>
-  <button class="tool on" id="def">🛡 守り 動く</button>
+  <button class="tool on" id="def">🛡 マーク</button>
   <button class="tool" id="play">▶ 再生</button>
   <button class="tool" id="reset">↺ はじめ</button>
   <button class="tool" id="save">💾 保存</button>
@@ -115,11 +115,11 @@ let st={pieces:clone(START),holder:"bB",groups:[]};
 try{const s=localStorage.getItem("pb-mock2"); if(s) st=JSON.parse(s);}catch(e){}
 let curName="";
 let SHOW={mv:true,ps:true,df:true,num:true}, HIDE=new Set();
-let mode="move", drawing=null, cur=null, playing=false, defOn=true, lastAdded=null;
-let cursor={kind:"new",at:st.groups.length};
+let mode="move", drawing=null, cur=null, playing=false, lastAdded=null;
+let cursor=st.groups.length?{kind:"join",g:st.groups.length-1}:{kind:"new",at:0};
 const svg=document.getElementById("svg"), NS="http://www.w3.org/2000/svg";
 const E=(t,a,p)=>{const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); (p||svg).appendChild(e); return e;};
-const HINT={move:"駒から 指で 線を 引くと、その道を 歩く（青い線）。",
+const HINT={move:"駒から 指で 線を 引くと、その道を 歩く（青い線）。同じ 番号は 同時に 動く。",
  pass:"ボールを 持つ 駒から 線を 引く（赤い 点線）か、受ける 駒を タップ。",
  drag:"駒や ボールを はじめの 場所に 置く。",erase:"線を さわると 消える。"};
 const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
@@ -140,17 +140,26 @@ function passPoly(a,from,to){ const o=[]; for(let i=0;i<=24;i++) o.push(passPos(
 function clampDef(p,holderPos){ let x=Math.min(MID-0.3,Math.max(2.3,p[0])), y=Math.min(9.7,Math.max(0.3,p[1]));
   if(holderPos){ const d=dist([x,y],holderPos); if(d<1.5){ const k=1.5/(d||1); x=holderPos[0]+(x-holderPos[0])*k; y=holderPos[1]+(y-holderPos[1])*k; } }
   return [Math.min(MID-0.3,Math.max(2.3,x)),Math.min(9.7,Math.max(0.3,y))]; }
-function defTargets(S,E2,pass,holder){ // S=始め E2=攻めの 終わり
+/* 守りの 動き方（どれも パスの 行き先は 知らない。攻めが 動いた 先を 見て 動く）
+   mark …… マーク：1人ずつ 近い 攻めに つく（ゴール側・ボール寄り）
+   goal …… ゴールまもり：帯の 前に 3人で ならび、ボールの 方へ ずれる
+   lane …… パスコース：ボールの 人と 受けそうな 人の 間に 入る */
+const DEFS=[["off","🛡 守り 止まる"],["mark","🛡 マーク"],["goal","🛡 ゴールまもり"],["lane","🛡 パスコース"]];
+let defMode="mark";
+function defTargets(S,E2,holder){
   const defs=Object.keys(S.p).filter(k=>k[0]==="r"), T={}, free=defs.slice();
   const take=pt=>{ let b=null,bd=1e9; free.forEach(d=>{ const dd=dist(S.p[d],pt); if(dd<bd){bd=dd;b=d;} }); if(b) free.splice(free.indexOf(b),1); return b; };
-  const hp=E2[holder];
-  if(pass&&hp){ const to=E2[pass.to]; const d=take(lerp(hp,to,.62)); if(d) T[d]=lerp(hp,to,.62); }      // パスの 通り道
-  if(E2[GOALMAN]&&holder!==GOALMAN){ const g=[3.0,E2[GOALMAN][1]]; if(hp) g[1]=E2[GOALMAN][1]+(hp[1]-E2[GOALMAN][1])*.25; const d=take(g); if(d) T[d]=g; } // ゴールマンの 前
-  const cands=Object.keys(E2).filter(k=>k[0]==="b"&&k!==holder&&k!==GOALMAN&&E2[k][0]<MID+1)
-    .sort((a,b)=>dist(E2[a],hp||[0,5])-dist(E2[b],hp||[0,5]));
-  cands.forEach(k=>{ if(!free.length) return; const t=hp?lerp(E2[k],hp,.25):E2[k]; const d=take(t); if(d) T[d]=t; });  // 受けそうな 人の そば
+  const hp=E2[holder]||[MID,5], gm=E2[GOALMAN];
+  const atk=Object.keys(E2).filter(k=>k[0]==="b"&&k!==holder&&k!==GOALMAN&&E2[k][0]<MID+1).sort((a,b)=>E2[a][0]-E2[b][0]); // ゴールに 近い 順
+  if(defMode==="mark"){
+    atk.forEach(k=>{ if(!free.length) return; const a=E2[k], t=[a[0]-1.0,a[1]+(hp[1]-a[1])*.15]; const d=take(t); if(d) T[d]=t; });
+    if(gm&&free.length){ const t=[3.0,gm[1]+(hp[1]-gm[1])*.3]; const d=take(t); if(d) T[d]=t; } }
+  if(defMode==="goal"){ const c=Math.min(7.5,Math.max(2.5,(gm?gm[1]:5)+(hp[1]-(gm?gm[1]:5))*.35));
+    [[3.4,c],[3.8,c-2.4],[3.8,c+2.4]].forEach(t=>{ const d=take(t); if(d) T[d]=t; }); }
+  if(defMode==="lane"){ const rc=atk.concat(gm&&holder!==GOALMAN?[GOALMAN]:[]).sort((a,b)=>dist(E2[a],hp)-dist(E2[b],hp));
+    rc.forEach(k=>{ if(!free.length) return; const t=lerp(hp,E2[k],.6); const d=take(t); if(d) T[d]=t; }); }
   free.forEach(d=>T[d]=S.p[d]);
-  for(const d in T){ let t=T[d]; const s=S.p[d], L=dist(s,t), MAX=3.2; if(L>MAX) t=lerp(s,t,MAX/L); T[d]=clampDef(t,hp); }
+  for(const d in T){ let t=T[d]; const s=S.p[d], L=dist(s,t), MAX=3.2; if(L>MAX) t=lerp(s,t,MAX/L); T[d]=clampDef(t,E2[holder]); }
   return T; }
 
 /* ===== 番号ごとの 位置を 順に 計算（始めの 位置の 一覧） ===== */
@@ -158,7 +167,7 @@ function simulate(){ const S=[{p:clone(st.pieces),h:st.holder}];
   st.groups.forEach((g,gi)=>{ const s=S[gi], e={p:clone(s.p),h:s.h};
     g.forEach(a=>{ if(a.type==="move"&&s.p[a.id]){ const P=movePath(a,s.p[a.id]); e.p[a.id]=P[P.length-1]; } });
     const ps=g.find(a=>a.type==="pass"&&a.to!==s.h&&s.p[a.to]);
-    if(defOn){ const T=defTargets(s,e.p,ps,s.h); for(const d in T) e.p[d]=T[d]; }
+    if(defMode!=="off"){ const T=defTargets(s,e.p,s.h); for(const d in T) e.p[d]=T[d]; }
     if(ps) e.h=ps.to; S.push(e); });
   return S; }
 function baseState(S){ return cursor.kind==="new"?S[cursor.at]:S[cursor.g]; }
@@ -170,7 +179,7 @@ function draw(anim){ svg.innerHTML=""; const S=simulate();
   E("line",{x1:MID,y1:0,x2:MID,y2:10,stroke:"#555","stroke-width":.08});
   const d=E("defs",{}); [["mv","var(--mv)"],["ps","var(--ps)"],["df","#c77"]].forEach(([k,c])=>{ const mk=E("marker",{id:"ar"+k,viewBox:"0 0 10 10",refX:8,refY:5,markerWidth:4,markerHeight:4,orient:"auto"},d); E("path",{d:"M0,0L10,5L0,10z",fill:c},mk); });
   st.groups.forEach((g,gi)=>{ const s=S[gi], e=S[gi+1], marks=[];
-    if(defOn&&SHOW.df&&!HIDE.has(gi)) for(const id in s.p) if(id[0]==="r"&&dist(s.p[id],e.p[id])>.2)
+    if(defMode!=="off"&&SHOW.df&&!HIDE.has(gi)) for(const id in s.p) if(id[0]==="r"&&dist(s.p[id],e.p[id])>.2)
       E("line",{x1:s.p[id][0],y1:s.p[id][1],x2:e.p[id][0],y2:e.p[id][1],stroke:"#c77","stroke-width":.06,"stroke-dasharray":".15 .15","marker-end":"url(#ardf)",opacity:.7});
     if(HIDE.has(gi)) return;
     g.forEach((a,ai)=>{ let P, isMv=a.type==="move"; if(!SHOW[isMv?"mv":"ps"]) return; const G=E("g",{"data-g":gi,"data-a":ai});
@@ -191,13 +200,13 @@ function draw(anim){ svg.innerHTML=""; const S=simulate();
   listSteps(anim?anim.k:null); }
 
 function gapEl(k){ const g=document.createElement("div"); const on=cursor.kind==="new"&&cursor.at===k;
-  g.className="gap"+(on?" on":""); g.textContent=on?"▶ ここに 書く":"＋ ここに 入れる";
+  g.className="gap"+(on?" on":""); g.textContent=on?"▶ ここに 新しい 番号":"＋ ここに 入れる";
   g.onclick=()=>{ cursor={kind:"new",at:k}; draw(); }; return g; }
 function listSteps(now){ const box=document.getElementById("steps"); box.innerHTML=""; const S=simulate();
   box.appendChild(gapEl(0));
   st.groups.forEach((g,gi)=>{ const r=document.createElement("div");
     r.className="grp"+(HIDE.has(gi)?" off":"")+(cursor.kind==="join"&&cursor.g===gi?" join":"")+(now===gi?" now":"");
-    r.innerHTML=`<div class="hd"><span class="num">${gi+1}</span><button class="eye">${HIDE.has(gi)?"🙈":"👁"}</button><span style="margin-left:auto;white-space:nowrap">${cursor.kind==="join"&&cursor.g===gi?"▶ ここに 同時に 書く":"🔗 同時に 足す"}</span></div>`;
+    r.innerHTML=`<div class="hd"><span class="num">${gi+1}</span><button class="eye">${HIDE.has(gi)?"🙈":"👁"}</button><span style="margin-left:auto;white-space:nowrap">${cursor.kind==="join"&&cursor.g===gi?"▶ いま ここ":"タップで ここに 足す"}</span></div>`;
     r.querySelector(".eye").onclick=()=>{ HIDE.has(gi)?HIDE.delete(gi):HIDE.add(gi); draw(); };
     r.onclick=e=>{ if(e.target.classList.contains("x")||e.target.classList.contains("eye")) return; cursor={kind:"join",g:gi}; draw(); };
     g.forEach((a,ai)=>{ const s=S[gi], ok=a.type==="move"||(s.h&&a.to!==s.h);
@@ -212,9 +221,9 @@ function addAct(a){
   if(cursor.kind==="join"){ const g=st.groups[cursor.g];
     if(a.type==="pass"&&g.some(x=>x.type==="pass")) return hint("1つの 番号に パスは 1つだけ。");
     if(a.type==="move"){ const i=g.findIndex(x=>x.type==="move"&&x.id===a.id); if(i>=0) g.splice(i,1); }
-    g.push(a); lastAdded=cursor.g; cursor={kind:"new",at:cursor.g+1}; }
-  else { HIDE=new Set([...HIDE].map(x=>x>=cursor.at?x+1:x)); st.groups.splice(cursor.at,0,[a]); lastAdded=cursor.at; cursor={kind:"new",at:cursor.at+1}; }
-  hint("次は "+(cursor.at+1)+" 番。同時に したい ときは 🔗。"); }
+    g.push(a); lastAdded=cursor.g; }
+  else { HIDE=new Set([...HIDE].map(x=>x>=cursor.at?x+1:x)); st.groups.splice(cursor.at,0,[a]); lastAdded=cursor.at; cursor={kind:"join",g:cursor.at}; }
+  hint((cursor.g+1)+" 番に 足した。同じ 番号は 同時に 動く。次の 番号は ➕。"); }
 function removeAct(gi,ai){ const shift=()=>{ HIDE=new Set([...HIDE].filter(x=>x!==gi).map(x=>x>gi?x-1:x)); }; st.groups[gi].splice(ai,1); if(!st.groups[gi].length){ st.groups.splice(gi,1); shift();
     if(cursor.kind==="join") cursor={kind:"new",at:Math.min(gi,st.groups.length)}; else if(cursor.at>gi) cursor.at--; }
   draw(); }
@@ -226,7 +235,7 @@ svg.addEventListener("pointerdown",ev=>{ if(playing) return; svg.setPointerCaptu
   if(mode==="erase"){ const g=ev.target.closest("g[data-g]"); if(g) removeAct(+g.dataset.g,+g.dataset.a); return; }
   if(mode==="drag"){ const id=ev.target.dataset.id; if(id) drawing={drag:id}; return; }
   const B=baseState(simulate()), id=near(p,B.p); if(!id) return;
-  if(mode==="move"){ if(id[0]==="r"&&defOn) return hint("守りは 自動で 動く。手で 動かす ときは 🛡 を 切る。");
+  if(mode==="move"){ if(id[0]==="r"&&defMode!=="off") return hint("守りは 自動で 動く。手で 動かす ときは 🛡 を「止まる」に。");
     cur={type:"move",id,path:[B.p[id].slice()]}; drawing=cur; return; }
   if(id===B.h){ cur={type:"pass",path:[B.p[id].slice()]}; drawing=cur; }      // ボールを 持つ 人から 引く
   else drawing={tap:id};                                                        // 受ける 人の タップ
@@ -256,9 +265,11 @@ document.getElementById("play").onclick=async()=>{ if(playing||!st.groups.length
   setTimeout(()=>{ playing=false; draw(); },900); };
 
 document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{ const k=c.dataset.v; SHOW[k]=!SHOW[k]; c.classList.toggle("on",SHOW[k]); draw(); });
-document.getElementById("same").onclick=()=>{ if(lastAdded===null||!st.groups[lastAdded]) return hint("先に 動きを 1つ 書いてね。");
-  cursor={kind:"join",g:lastAdded}; hint((lastAdded+1)+" 番と 同時に 動く 線を 書いてね。"); draw(); };
-document.getElementById("def").onclick=e=>{ defOn=!defOn; e.currentTarget.classList.toggle("on",defOn); draw(); };
+document.getElementById("next").onclick=()=>{ const at=cursor.kind==="join"?cursor.g+1:cursor.at;
+  if(cursor.kind==="new") return hint((at+1)+" 番を 書いてね。");
+  cursor={kind:"new",at}; hint((at+1)+" 番の 動きを 書いてね。"); draw(); };
+document.getElementById("def").onclick=e=>{ const i=(DEFS.findIndex(x=>x[0]===defMode)+1)%DEFS.length; defMode=DEFS[i][0];
+  e.currentTarget.textContent=DEFS[i][1]; e.currentTarget.classList.toggle("on",defMode!=="off"); hint({off:"守りは 動かない（手で 動かせる）。",mark:"守りは 近くの 攻めに 1人ずつ つく。",goal:"守りは ゴールマンの 前を かためる。",lane:"守りは パスの 道に 入る。"}[defMode]); draw(); };
 document.getElementById("reset").onclick=()=>{ if(confirm("線を ぜんぶ 消して、はじめの 並びに もどす？")){ st={pieces:clone(START),holder:"bB",groups:[]}; HIDE=new Set(); curName=""; cursor={kind:"new",at:0}; lastAdded=null; draw(); } };
 /* ===== セーブデータ（モックは この 端末の 中に 保存。本番は Web アプリの 保存先へ） ===== */
 const SKEY="pb-saves";
@@ -284,7 +295,7 @@ function listSaves(){ const box=document.getElementById("saves"); box.innerHTML=
     b.innerHTML=`📋 ${r.name}<small>${d.getMonth()+1}/${d.getDate()} ・ ${r.data.groups.length} 手</small><span class="del" title="消す">🗑</span>`;
     b.onclick=e=>{ if(e.target.classList.contains("del")){ if(confirm("「"+r.name+"」を 消す？")){ const a=loadSaves(); a.splice(i,1); putSaves(a); listSaves(); } return; }
       if(st.groups.length&&!confirm("いまの 線は 消えて、「"+r.name+"」に なる。いい？")) return;
-      st=clone(r.data); curName=r.name; HIDE=new Set(); cursor={kind:"new",at:st.groups.length}; lastAdded=null; closeDlg(); draw(); hint("「"+r.name+"」を ひらいた。▶ 再生で 見られる。"); };
+      st=clone(r.data); curName=r.name; HIDE=new Set(); cursor=st.groups.length?{kind:"join",g:st.groups.length-1}:{kind:"new",at:0}; lastAdded=null; closeDlg(); draw(); hint("「"+r.name+"」を ひらいた。▶ 再生で 見られる。"); };
     box.appendChild(b); }); }
 document.querySelectorAll(".tool[data-m]").forEach(b=>b.onclick=()=>{ mode=b.dataset.m; document.querySelectorAll(".tool[data-m]").forEach(x=>x.classList.toggle("on",x===b)); hint(HINT[mode]); draw(); });
 function hint(s){ document.getElementById("hint").textContent=s; }
