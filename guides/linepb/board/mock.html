@@ -25,6 +25,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"BIZ UDPGothic",
 .grp.now{outline:4px solid var(--sel)}
 .gap{height:30px;margin:3px 0;border:2px dashed transparent;border-radius:10px;display:grid;place-items:center;font-size:15px;color:#aaa}
 .gap.on{border-color:#222;color:#222;background:#fff7cf;font-weight:700}
+#vis{display:flex;gap:8px;align-items:center;padding:0 12px 6px;font-size:17px}
+.chip{font:inherit;font-size:17px;font-weight:700;height:40px;padding:0 12px;border-radius:20px;border:2px solid #bbb;background:#eee;color:#999;display:flex;align-items:center;gap:6px}
+.chip.on{background:#fff;color:#222;border-color:#444}
+.chip i{display:inline-block;width:22px;height:5px;border-radius:3px}
+.chip:not(.on) i{opacity:.25}
+.eye{border:none;background:none;font-size:20px;padding:0 4px}
+.grp.off{opacity:.45}
 #hint{padding:0 12px 6px;font-size:17px;min-height:26px}
 #cut{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);font-size:64px;font-weight:700;color:#fff;background:var(--red);
  padding:8px 28px;border-radius:20px;display:none}
@@ -41,6 +48,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"BIZ UDPGothic",
   <button class="tool" id="reset">↺ はじめ</button>
   <button class="tool" id="save">💾 保存</button>
 </div>
+<div id="vis"><span>線を 見せる：</span>
+  <button class="chip on" data-v="mv"><i style="background:var(--mv)"></i>動く</button>
+  <button class="chip on" data-v="ps"><i style="background:var(--ps);height:4px;border-top:2px dashed #fff"></i>パス</button>
+  <button class="chip on" data-v="df"><i style="background:#c77"></i>守り</button>
+  <button class="chip on" data-v="num">番号</button></div>
 <div id="hint"></div>
 <div id="main">
   <svg id="svg" viewBox="-1.5 -1.5 23 13"></svg>
@@ -59,6 +71,7 @@ const COL=id=>id[0]==="b"?"var(--blue)":"var(--red)";
 const clone=o=>JSON.parse(JSON.stringify(o));
 let st={pieces:clone(START),holder:"bB",groups:[]};
 try{const s=localStorage.getItem("pb-mock2"); if(s) st=JSON.parse(s);}catch(e){}
+let SHOW={mv:true,ps:true,df:true,num:true}, HIDE=new Set();
 let mode="move", drawing=null, cur=null, playing=false, defOn=true, lastAdded=null;
 let cursor={kind:"new",at:st.groups.length};
 const svg=document.getElementById("svg"), NS="http://www.w3.org/2000/svg";
@@ -114,16 +127,17 @@ function draw(anim){ svg.innerHTML=""; const S=simulate();
   E("line",{x1:MID,y1:0,x2:MID,y2:10,stroke:"#555","stroke-width":.08});
   const d=E("defs",{}); [["mv","var(--mv)"],["ps","var(--ps)"],["df","#c77"]].forEach(([k,c])=>{ const mk=E("marker",{id:"ar"+k,viewBox:"0 0 10 10",refX:8,refY:5,markerWidth:4,markerHeight:4,orient:"auto"},d); E("path",{d:"M0,0L10,5L0,10z",fill:c},mk); });
   st.groups.forEach((g,gi)=>{ const s=S[gi], e=S[gi+1], marks=[];
-    if(defOn) for(const id in s.p) if(id[0]==="r"&&dist(s.p[id],e.p[id])>.2)
+    if(defOn&&SHOW.df&&!HIDE.has(gi)) for(const id in s.p) if(id[0]==="r"&&dist(s.p[id],e.p[id])>.2)
       E("line",{x1:s.p[id][0],y1:s.p[id][1],x2:e.p[id][0],y2:e.p[id][1],stroke:"#c77","stroke-width":.06,"stroke-dasharray":".15 .15","marker-end":"url(#ardf)",opacity:.7});
-    g.forEach((a,ai)=>{ const G=E("g",{"data-g":gi,"data-a":ai}); let P, isMv=a.type==="move";
+    if(HIDE.has(gi)) return;
+    g.forEach((a,ai)=>{ let P, isMv=a.type==="move"; if(!SHOW[isMv?"mv":"ps"]) return; const G=E("g",{"data-g":gi,"data-a":ai});
       if(isMv){ if(!s.p[a.id]) return; P=movePath(a,s.p[a.id]); }
       else { if(!s.h||a.to===s.h) return; P=passPoly(a,s.p[s.h],e.p[a.to]); }
       E("polyline",{points:P.map(q=>q.join(",")).join(" "),fill:"none",stroke:"transparent","stroke-width":.8},G);
       E("polyline",{points:P.map(q=>q.join(",")).join(" "),fill:"none",stroke:isMv?"var(--mv)":"var(--ps)","stroke-width":.12,
         "stroke-dasharray":isMv?"none":".35 .25","stroke-linecap":"round","marker-end":"url(#ar"+(isMv?"mv":"ps")+")",opacity:anim&&anim.k!==gi&&anim.k>=0?.35:1},G);
       marks.push(P[Math.floor(P.length/2)]); });
-    marks.forEach(m=>{ E("circle",{cx:m[0],cy:m[1],r:.38,fill:"#333"}); const t=E("text",{x:m[0],y:m[1]+.14,"font-size":.42,"text-anchor":"middle",fill:"#fff","font-weight":700}); t.textContent=gi+1; }); });
+    if(SHOW.num) marks.forEach(m=>{ E("circle",{cx:m[0],cy:m[1],r:.38,fill:"#333"}); const t=E("text",{x:m[0],y:m[1]+.14,"font-size":.42,"text-anchor":"middle",fill:"#fff","font-weight":700}); t.textContent=gi+1; }); });
   if(cur){ const P=cur.path; E("polyline",{points:P.map(q=>q.join(",")).join(" "),fill:"none",stroke:cur.type==="move"?"var(--mv)":"var(--ps)","stroke-width":.12,"stroke-dasharray":cur.type==="pass"?".35 .25":"none"}); }
   const V=anim||(mode==="drag"?{p:st.pieces,h:st.holder}:baseState(S));
   for(const id in V.p){ const [x,y]=V.p[id];
@@ -139,9 +153,10 @@ function gapEl(k){ const g=document.createElement("div"); const on=cursor.kind==
 function listSteps(now){ const box=document.getElementById("steps"); box.innerHTML=""; const S=simulate();
   box.appendChild(gapEl(0));
   st.groups.forEach((g,gi)=>{ const r=document.createElement("div");
-    r.className="grp"+(cursor.kind==="join"&&cursor.g===gi?" join":"")+(now===gi?" now":"");
-    r.innerHTML=`<div class="hd"><span class="num">${gi+1}</span><span style="margin-left:auto;white-space:nowrap">${cursor.kind==="join"&&cursor.g===gi?"▶ ここに 同時に 書く":"🔗 同時に 足す"}</span></div>`;
-    r.onclick=e=>{ if(e.target.classList.contains("x")) return; cursor={kind:"join",g:gi}; draw(); };
+    r.className="grp"+(HIDE.has(gi)?" off":"")+(cursor.kind==="join"&&cursor.g===gi?" join":"")+(now===gi?" now":"");
+    r.innerHTML=`<div class="hd"><span class="num">${gi+1}</span><button class="eye">${HIDE.has(gi)?"🙈":"👁"}</button><span style="margin-left:auto;white-space:nowrap">${cursor.kind==="join"&&cursor.g===gi?"▶ ここに 同時に 書く":"🔗 同時に 足す"}</span></div>`;
+    r.querySelector(".eye").onclick=()=>{ HIDE.has(gi)?HIDE.delete(gi):HIDE.add(gi); draw(); };
+    r.onclick=e=>{ if(e.target.classList.contains("x")||e.target.classList.contains("eye")) return; cursor={kind:"join",g:gi}; draw(); };
     g.forEach((a,ai)=>{ const s=S[gi], ok=a.type==="move"||(s.h&&a.to!==s.h);
       const row=document.createElement("div"); row.className="act";
       row.innerHTML=`<span class="dot" style="background:${a.type==="move"?"var(--mv)":"var(--ps)"}"></span>`+
@@ -155,9 +170,9 @@ function addAct(a){
     if(a.type==="pass"&&g.some(x=>x.type==="pass")) return hint("1つの 番号に パスは 1つだけ。");
     if(a.type==="move"){ const i=g.findIndex(x=>x.type==="move"&&x.id===a.id); if(i>=0) g.splice(i,1); }
     g.push(a); lastAdded=cursor.g; cursor={kind:"new",at:cursor.g+1}; }
-  else { st.groups.splice(cursor.at,0,[a]); lastAdded=cursor.at; cursor={kind:"new",at:cursor.at+1}; }
+  else { HIDE=new Set([...HIDE].map(x=>x>=cursor.at?x+1:x)); st.groups.splice(cursor.at,0,[a]); lastAdded=cursor.at; cursor={kind:"new",at:cursor.at+1}; }
   hint("次は "+(cursor.at+1)+" 番。同時に したい ときは 🔗。"); }
-function removeAct(gi,ai){ st.groups[gi].splice(ai,1); if(!st.groups[gi].length){ st.groups.splice(gi,1);
+function removeAct(gi,ai){ const shift=()=>{ HIDE=new Set([...HIDE].filter(x=>x!==gi).map(x=>x>gi?x-1:x)); }; st.groups[gi].splice(ai,1); if(!st.groups[gi].length){ st.groups.splice(gi,1); shift();
     if(cursor.kind==="join") cursor={kind:"new",at:Math.min(gi,st.groups.length)}; else if(cursor.at>gi) cursor.at--; }
   draw(); }
 
@@ -197,10 +212,11 @@ document.getElementById("play").onclick=async()=>{ if(playing||!st.groups.length
     await new Promise(r=>setTimeout(r,350)); }
   setTimeout(()=>{ playing=false; draw(); },900); };
 
+document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{ const k=c.dataset.v; SHOW[k]=!SHOW[k]; c.classList.toggle("on",SHOW[k]); draw(); });
 document.getElementById("same").onclick=()=>{ if(lastAdded===null||!st.groups[lastAdded]) return hint("先に 動きを 1つ 書いてね。");
   cursor={kind:"join",g:lastAdded}; hint((lastAdded+1)+" 番と 同時に 動く 線を 書いてね。"); draw(); };
 document.getElementById("def").onclick=e=>{ defOn=!defOn; e.currentTarget.classList.toggle("on",defOn); draw(); };
-document.getElementById("reset").onclick=()=>{ if(confirm("線を ぜんぶ 消して、はじめの 並びに もどす？")){ st={pieces:clone(START),holder:"bB",groups:[]}; cursor={kind:"new",at:0}; lastAdded=null; draw(); } };
+document.getElementById("reset").onclick=()=>{ if(confirm("線を ぜんぶ 消して、はじめの 並びに もどす？")){ st={pieces:clone(START),holder:"bB",groups:[]}; HIDE=new Set(); cursor={kind:"new",at:0}; lastAdded=null; draw(); } };
 document.getElementById("save").onclick=()=>{ try{ localStorage.setItem("pb-mock2",JSON.stringify(st)); hint("保存した（モックは この 端末の 中だけ）。"); }catch(e){ hint("保存できなかった。"); } };
 document.querySelectorAll(".tool[data-m]").forEach(b=>b.onclick=()=>{ mode=b.dataset.m; document.querySelectorAll(".tool[data-m]").forEach(x=>x.classList.toggle("on",x===b)); hint(HINT[mode]); draw(); });
 function hint(s){ document.getElementById("hint").textContent=s; }
