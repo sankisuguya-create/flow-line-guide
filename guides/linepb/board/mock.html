@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>作戦ボード（モック）</title>
+<style>
+:root{--bg:#f4f1ea;--ink:#222;--red:#d63a3a;--blue:#2f6fd6;--mv:#1f5fd0;--ps:#d02a2a;--ui:#fff;--sel:#ffd84d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"BIZ UDPGothic","Hiragino Sans","Noto Sans JP",sans-serif;
+ height:100vh;display:flex;flex-direction:column;touch-action:none;user-select:none}
+#bar{display:flex;gap:8px;padding:8px 12px;align-items:center;flex-wrap:wrap}
+.tool{font:inherit;font-size:20px;font-weight:700;min-width:96px;height:52px;border-radius:12px;border:3px solid #999;background:var(--ui)}
+.tool.on{border-color:#222;background:var(--sel)}
+.sep{flex:1}
+#main{flex:1;display:flex;min-height:0}
+#svg{flex:1;min-width:0}
+#side{width:220px;padding:8px;overflow:auto}
+#side h3{margin:4px 0 8px;font-size:18px}
+.step{display:flex;align-items:center;gap:6px;background:#fff;border-radius:10px;padding:6px 8px;margin-bottom:6px;font-size:17px}
+.step b{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;color:#fff;flex:none}
+.step .x{margin-left:auto;border:none;background:none;font-size:20px;color:#888}
+.step.now{outline:3px solid var(--sel)}
+#hint{padding:0 12px 8px;font-size:17px;min-height:26px}
+</style></head><body>
+<div id="bar">
+  <button class="tool on" data-m="move">🚶 移動</button>
+  <button class="tool" data-m="pass">⚽ パス</button>
+  <button class="tool" data-m="drag">✋ 置く</button>
+  <button class="tool" data-m="erase">🧽 消す</button>
+  <span class="sep"></span>
+  <button class="tool" id="play">▶ 再生</button>
+  <button class="tool" id="reset">↺ はじめ</button>
+  <button class="tool" id="save">💾 保存</button>
+</div>
+<div id="hint"></div>
+<div id="main">
+  <svg id="svg" viewBox="-1.5 -1.5 23 13"></svg>
+  <div id="side"><h3>じゅんばん</h3><div id="steps"></div></div>
+</div>
+<script>
+/* ---- データ ----
+   pieces: 駒の はじめの 位置（m）。steps: 番号順の 動き。
+   move:{type,id,path:[[x,y]...]}  pass:{type,from,to,path:[[x,y]...]} */
+const START={bA:[1,5],bB:[12,5],bC:[11,2.2],bD:[11,7.8],bE:[11,5.2],rC:[7,3],rD:[7,5],rE:[7,7]};
+const COL=id=>id[0]==="b"?"var(--blue)":"var(--red)";
+let st={pieces:JSON.parse(JSON.stringify(START)),holder:"bB",steps:[]};
+try{const s=localStorage.getItem("pb-mock"); if(s) st=JSON.parse(s);}catch(e){}
+let mode="move", drawing=null, cur=null, playing=false;
+const svg=document.getElementById("svg"), NS="http://www.w3.org/2000/svg";
+const E=(t,a,p)=>{const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); (p||svg).appendChild(e); return e;};
+const HINT={move:"駒から 指で 線を 引くと、その道を 歩く（青い線）。",pass:"ボールを 持つ 駒から、受ける 駒まで 線を 引く（赤い 点線）。",
+ drag:"駒や ボールを はじめの 場所に 置く。",erase:"線を さわると 消える。"};
+
+/* ---- 番号順に 動かした あとの 位置（k 番目まで） ---- */
+function stateAfter(k){ const p=JSON.parse(JSON.stringify(st.pieces)); let h=st.holder;
+  for(let i=0;i<k;i++){ const s=st.steps[i]; if(s.type==="move") p[s.id]=s.path[s.path.length-1].slice(); else h=s.to; } return {p,h}; }
+const ptsStr=a=>a.map(q=>q[0].toFixed(2)+","+q[1].toFixed(2)).join(" ");
+
+function draw(anim){ svg.innerHTML="";
+  E("rect",{x:0,y:0,width:20,height:10,fill:"#e9d9b4",stroke:"#555","stroke-width":.08});
+  E("rect",{x:0,y:0,width:2,height:10,fill:"#f2c86a",opacity:.6}); E("rect",{x:18,y:0,width:2,height:10,fill:"#f2c86a",opacity:.6});
+  E("line",{x1:10,y1:0,x2:10,y2:10,stroke:"#555","stroke-width":.08});
+  // 線と 番号
+  st.steps.forEach((s,i)=>{ const g=E("g",{"data-i":i});
+    E("polyline",{points:ptsStr(s.path),fill:"none",stroke:"transparent","stroke-width":.8},g); // さわりやすく
+    E("polyline",{points:ptsStr(s.path),fill:"none",stroke:s.type==="move"?"var(--mv)":"var(--ps)","stroke-width":.12,
+      "stroke-dasharray":s.type==="pass"?".35 .25":"none","stroke-linecap":"round","marker-end":"url(#ar"+s.type+")"},g);
+    const m=s.path[Math.floor(s.path.length/2)];
+    E("circle",{cx:m[0],cy:m[1],r:.38,fill:s.type==="move"?"var(--mv)":"var(--ps)"},g);
+    const t=E("text",{x:m[0],y:m[1]+.14,"font-size":.42,"text-anchor":"middle",fill:"#fff","font-weight":700},g); t.textContent=i+1; });
+  const d=E("defs",{}); ["move","pass"].forEach(k=>{ const mk=E("marker",{id:"ar"+k,viewBox:"0 0 10 10",refX:8,refY:5,markerWidth:4,markerHeight:4,orient:"auto"},d);
+    E("path",{d:"M0,0L10,5L0,10z",fill:k==="move"?"var(--mv)":"var(--ps)"},mk); });
+  if(cur) E("polyline",{points:ptsStr(cur.path),fill:"none",stroke:mode==="move"?"var(--mv)":"var(--ps)","stroke-width":.12,"stroke-dasharray":mode==="pass"?".35 .25":"none"});
+  // 駒
+  const S=anim||{p:st.pieces,h:st.holder};
+  for(const id in S.p){ const [x,y]=S.p[id];
+    E("circle",{cx:x,cy:y,r:.45,fill:COL(id),stroke:"#fff","stroke-width":.08,"data-id":id});
+    const t=E("text",{x,y:y+.17,"font-size":.5,"text-anchor":"middle",fill:"#fff","font-weight":700,"pointer-events":"none"}); t.textContent=id[1]; }
+  const b=S.ball||(S.h&&S.p[S.h]?[S.p[S.h][0]+.45,S.p[S.h][1]-.45]:[10,5]);
+  E("circle",{cx:b[0],cy:b[1],r:.25,fill:"#fff",stroke:"#222","stroke-width":.06,"data-id":"ball"});
+  listSteps(anim&&anim.k); }
+
+function listSteps(now){ const box=document.getElementById("steps"); box.innerHTML="";
+  st.steps.forEach((s,i)=>{ const r=document.createElement("div"); r.className="step"+(now===i?" now":"");
+    const c=s.type==="move"?"var(--mv)":"var(--ps)";
+    r.innerHTML=`<b style="background:${c}">${i+1}</b>${s.type==="move"?s.id[1]+" が 動く":s.from[1]+" → "+s.to[1]+" パス"}<button class="x">×</button>`;
+    r.querySelector(".x").onclick=()=>{ st.steps.splice(i,1); draw(); };
+    box.appendChild(r); }); }
+
+/* ---- 指・ペンの 操作 ---- */
+function pt(ev){ const p=svg.createSVGPoint(); p.x=ev.clientX; p.y=ev.clientY; const q=p.matrixTransform(svg.getScreenCTM().inverse()); return [q.x,q.y]; }
+function near(p,S,r){ let best=null,bd=r||.7; for(const id in S.p){ const d=Math.hypot(S.p[id][0]-p[0],S.p[id][1]-p[1]); if(d<bd){bd=d;best=id;} } return best; }
+svg.addEventListener("pointerdown",ev=>{ if(playing) return; svg.setPointerCapture(ev.pointerId); const p=pt(ev);
+  const S=stateAfter(st.steps.length);  // 線は 最後の 状態から つなぐ
+  if(mode==="erase"){ const g=ev.target.closest("g[data-i]"); if(g){ st.steps.splice(+g.dataset.i,1); draw(); } return; }
+  if(mode==="drag"){ const id=ev.target.dataset.id; if(id) drawing={drag:id}; return; }
+  const id=near(p,S); if(!id) return;
+  if(mode==="pass"&&id!==S.h){ hint("ボールを 持って いる "+S.h[1]+" から 引いてね。"); return; }
+  cur={type:mode,id,path:[S.p[id].slice()]}; drawing=cur; });
+svg.addEventListener("pointermove",ev=>{ if(!drawing) return; const p=pt(ev);
+  if(drawing.drag){ if(drawing.drag==="ball"){ const id=near(p,{p:st.pieces},1); if(id) st.holder=id; } else st.pieces[drawing.drag]=p; draw(); return; }
+  const l=cur.path[cur.path.length-1]; if(Math.hypot(p[0]-l[0],p[1]-l[1])>.25){ cur.path.push(p); draw(); } });
+svg.addEventListener("pointerup",ev=>{ if(!drawing) return;
+  if(cur){ const S=stateAfter(st.steps.length);
+    if(cur.type==="move"&&cur.path.length>2) st.steps.push({type:"move",id:cur.id,path:cur.path});
+    if(cur.type==="pass"){ const to=near(cur.path[cur.path.length-1],S,1); if(to&&to!==cur.id){ cur.path.push(S.p[to].slice()); st.steps.push({type:"pass",from:cur.id,to,path:cur.path}); } else hint("受ける 駒の 上で 指を はなしてね。"); } }
+  drawing=null; cur=null; draw(); });
+
+/* ---- 再生：番号順に 1つずつ ---- */
+function along(path,f){ let L=0; const seg=[]; for(let i=1;i<path.length;i++){ const d=Math.hypot(path[i][0]-path[i-1][0],path[i][1]-path[i-1][1]); seg.push(d); L+=d; }
+  let r=f*L; for(let i=0;i<seg.length;i++){ if(r<=seg[i]){ const k=seg[i]?r/seg[i]:0; return [path[i][0]+(path[i+1][0]-path[i][0])*k,path[i][1]+(path[i+1][1]-path[i][1])*k]; } r-=seg[i]; } return path[path.length-1].slice(); }
+document.getElementById("play").onclick=async()=>{ if(playing||!st.steps.length) return; playing=true;
+  for(let k=0;k<st.steps.length;k++){ const s=st.steps[k], base=stateAfter(k), dur=s.type==="move"?1400:800, t0=performance.now();
+    await new Promise(res=>{ (function f(now){ const u=Math.min(1,(now-t0)/dur), S={p:JSON.parse(JSON.stringify(base.p)),h:base.h,k};
+      if(s.type==="move") S.p[s.id]=along(s.path,u); else { S.h=null; S.ball=along(s.path,u); }
+      draw(S); u<1?requestAnimationFrame(f):res(); })(t0); });
+    await new Promise(r=>setTimeout(r,300)); }
+  const F=stateAfter(st.steps.length); draw({...F,k:-1}); setTimeout(()=>{ playing=false; draw(); },1200); };
+document.getElementById("reset").onclick=()=>{ if(confirm("線を ぜんぶ 消して、はじめの 並びに もどす？")){ st={pieces:JSON.parse(JSON.stringify(START)),holder:"bB",steps:[]}; draw(); } };
+document.getElementById("save").onclick=()=>{ try{ localStorage.setItem("pb-mock",JSON.stringify(st)); hint("保存した（モックは この 端末の 中だけ）。"); }catch(e){ hint("保存できなかった。"); } };
+document.querySelectorAll(".tool[data-m]").forEach(b=>b.onclick=()=>{ mode=b.dataset.m; document.querySelectorAll(".tool[data-m]").forEach(x=>x.classList.toggle("on",x===b)); hint(HINT[mode]); });
+function hint(s){ document.getElementById("hint").textContent=s; }
+hint(HINT.move); draw();
+</script></body></html>
