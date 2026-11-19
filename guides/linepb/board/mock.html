@@ -7,8 +7,8 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"BIZ UDPGothic","Hiragino Sans","Noto Sans JP",sans-serif;
  height:100vh;display:flex;flex-direction:column;touch-action:none;user-select:none}
-#bar{display:flex;gap:8px;padding:8px 12px;align-items:center;flex-wrap:wrap}
-.tool{font:inherit;font-size:20px;font-weight:700;min-width:92px;height:52px;border-radius:12px;border:3px solid #999;background:var(--ui);padding:0 10px}
+#bar{display:flex;gap:6px;padding:8px 12px;align-items:center;flex-wrap:wrap}
+.tool{font:inherit;font-size:19px;font-weight:700;min-width:60px;height:52px;border-radius:12px;border:3px solid #999;background:var(--ui);padding:0 9px}
 .tool.on{border-color:#222;background:var(--sel)}
 .sep{flex:1}
 #main{flex:1;display:flex;min-height:0}
@@ -44,6 +44,16 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"BIZ UDPGothic",
 #qfb{flex:1;font-size:24px;font-weight:700;line-height:1.6}
 #qnext{visibility:hidden}
 rt{font-size:.5em}
+#dlg{position:fixed;inset:0;background:#0006;display:none;align-items:center;justify-content:center;z-index:9}
+#dlg.on{display:flex}
+#dlg .box{background:#fff;border-radius:20px;padding:20px 24px;width:min(560px,92vw);max-height:86vh;overflow:auto}
+#dlg h2{margin:0 0 14px;font-size:26px}
+.nm{display:flex;align-items:center;gap:8px;font-size:30px;font-weight:700}
+.nm input{font:inherit;font-size:30px;flex:1;min-width:0;padding:8px 12px;border:3px solid #444;border-radius:12px}
+#dlg .row{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.sv{display:flex;align-items:center;gap:10px;padding:10px 12px;border:3px solid #ddd;border-radius:14px;margin-bottom:8px;font-size:24px;font-weight:700;background:#fff;width:100%;font-family:inherit;text-align:left}
+.sv:active{background:#fff7cf}.sv small{font-size:15px;color:#777;font-weight:400}.sv .del{margin-left:auto;border:none;background:none;font-size:24px}
+#saves:empty::after{content:"まだ ありません";color:#888;font-size:20px}
 #hint{padding:0 12px 6px;font-size:17px;min-height:26px}
 #cut{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);font-size:64px;font-weight:700;color:#fff;background:var(--red);
  padding:8px 28px;border-radius:20px;display:none}
@@ -70,6 +80,7 @@ rt{font-size:.5em}
   <button class="tool" id="play">▶ 再生</button>
   <button class="tool" id="reset">↺ はじめ</button>
   <button class="tool" id="save">💾 保存</button>
+  <button class="tool" id="load">📂 セーブデータ</button>
 </div>
 <div id="vis"><span>線を 見せる：</span>
   <button class="chip on" data-v="mv"><i style="background:var(--mv)"></i>動く</button>
@@ -82,6 +93,13 @@ rt{font-size:.5em}
   <div id="side"><h3>じゅんばん</h3><div id="steps"></div></div>
 </div>
 </div>
+<div id="dlg"><div class="box">
+  <div id="dlgSave"><h2>作戦の 名前</h2>
+    <div class="nm"><input id="nm" maxlength="12" placeholder="はやわざ"><span>作戦</span></div>
+    <div class="row"><button class="tool" id="dlgCancel">やめる</button><button class="tool on" id="dlgOk">保存する</button></div></div>
+  <div id="dlgLoad"><h2>セーブデータ</h2><div id="saves"></div>
+    <div class="row"><button class="tool" id="dlgClose">とじる</button></div></div>
+</div></div>
 <div id="cut">カット！</div>
 <script>
 /* ===== データ =====
@@ -95,6 +113,7 @@ const COL=id=>id[0]==="b"?"var(--blue)":"var(--red)";
 const clone=o=>JSON.parse(JSON.stringify(o));
 let st={pieces:clone(START),holder:"bB",groups:[]};
 try{const s=localStorage.getItem("pb-mock2"); if(s) st=JSON.parse(s);}catch(e){}
+let curName="";
 let SHOW={mv:true,ps:true,df:true,num:true}, HIDE=new Set();
 let mode="move", drawing=null, cur=null, playing=false, defOn=true, lastAdded=null;
 let cursor={kind:"new",at:st.groups.length};
@@ -240,8 +259,33 @@ document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{ const k=c.dataset.
 document.getElementById("same").onclick=()=>{ if(lastAdded===null||!st.groups[lastAdded]) return hint("先に 動きを 1つ 書いてね。");
   cursor={kind:"join",g:lastAdded}; hint((lastAdded+1)+" 番と 同時に 動く 線を 書いてね。"); draw(); };
 document.getElementById("def").onclick=e=>{ defOn=!defOn; e.currentTarget.classList.toggle("on",defOn); draw(); };
-document.getElementById("reset").onclick=()=>{ if(confirm("線を ぜんぶ 消して、はじめの 並びに もどす？")){ st={pieces:clone(START),holder:"bB",groups:[]}; HIDE=new Set(); cursor={kind:"new",at:0}; lastAdded=null; draw(); } };
-document.getElementById("save").onclick=()=>{ try{ localStorage.setItem("pb-mock2",JSON.stringify(st)); hint("保存した（モックは この 端末の 中だけ）。"); }catch(e){ hint("保存できなかった。"); } };
+document.getElementById("reset").onclick=()=>{ if(confirm("線を ぜんぶ 消して、はじめの 並びに もどす？")){ st={pieces:clone(START),holder:"bB",groups:[]}; HIDE=new Set(); curName=""; cursor={kind:"new",at:0}; lastAdded=null; draw(); } };
+/* ===== セーブデータ（モックは この 端末の 中に 保存。本番は Web アプリの 保存先へ） ===== */
+const SKEY="pb-saves";
+function loadSaves(){ try{ return JSON.parse(localStorage.getItem(SKEY)||"[]"); }catch(e){ return []; } }
+function putSaves(a){ try{ localStorage.setItem(SKEY,JSON.stringify(a)); return true; }catch(e){ return false; } }
+const toName=t=>{ t=t.trim().replace(/\s+/g," ").replace(/(作戦)+$/,"").trim(); return t?t+"作戦":""; };
+const dlg=document.getElementById("dlg"), nm=document.getElementById("nm");
+function openDlg(which){ dlg.classList.add("on"); document.getElementById("dlgSave").style.display=which==="save"?"block":"none"; document.getElementById("dlgLoad").style.display=which==="load"?"block":"none"; }
+const closeDlg=()=>dlg.classList.remove("on");
+document.getElementById("save").onclick=()=>{ if(!st.groups.length) return hint("線を 書いてから 保存してね。"); nm.value=curName.replace(/作戦$/,""); openDlg("save"); setTimeout(()=>nm.focus(),50); };
+document.getElementById("dlgOk").onclick=()=>{ const name=toName(nm.value); if(!name){ nm.focus(); return; }
+  const a=loadSaves(), i=a.findIndex(x=>x.name===name);
+  if(i>=0&&!confirm("「"+name+"」は もう あります。上書きする？")) return;
+  const rec={name,t:Date.now(),data:clone(st)}; if(i>=0) a[i]=rec; else a.unshift(rec);
+  if(putSaves(a)){ curName=name; closeDlg(); hint("「"+name+"」を 保存した。"); } else hint("保存できなかった。"); };
+nm.addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("dlgOk").click(); });
+document.getElementById("dlgCancel").onclick=closeDlg;
+document.getElementById("dlgClose").onclick=closeDlg;
+dlg.addEventListener("pointerdown",e=>{ if(e.target===dlg) closeDlg(); });
+document.getElementById("load").onclick=()=>{ listSaves(); openDlg("load"); };
+function listSaves(){ const box=document.getElementById("saves"); box.innerHTML="";
+  loadSaves().forEach((r,i)=>{ const b=document.createElement("button"); b.className="sv"; const d=new Date(r.t);
+    b.innerHTML=`📋 ${r.name}<small>${d.getMonth()+1}/${d.getDate()} ・ ${r.data.groups.length} 手</small><span class="del" title="消す">🗑</span>`;
+    b.onclick=e=>{ if(e.target.classList.contains("del")){ if(confirm("「"+r.name+"」を 消す？")){ const a=loadSaves(); a.splice(i,1); putSaves(a); listSaves(); } return; }
+      if(st.groups.length&&!confirm("いまの 線は 消えて、「"+r.name+"」に なる。いい？")) return;
+      st=clone(r.data); curName=r.name; HIDE=new Set(); cursor={kind:"new",at:st.groups.length}; lastAdded=null; closeDlg(); draw(); hint("「"+r.name+"」を ひらいた。▶ 再生で 見られる。"); };
+    box.appendChild(b); }); }
 document.querySelectorAll(".tool[data-m]").forEach(b=>b.onclick=()=>{ mode=b.dataset.m; document.querySelectorAll(".tool[data-m]").forEach(x=>x.classList.toggle("on",x===b)); hint(HINT[mode]); draw(); });
 function hint(s){ document.getElementById("hint").textContent=s; }
 hint(HINT.move);
