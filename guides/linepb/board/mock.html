@@ -8,25 +8,35 @@
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"BIZ UDPGothic","Hiragino Sans","Noto Sans JP",sans-serif;
  height:100vh;display:flex;flex-direction:column;touch-action:none;user-select:none}
 #bar{display:flex;gap:8px;padding:8px 12px;align-items:center;flex-wrap:wrap}
-.tool{font:inherit;font-size:20px;font-weight:700;min-width:96px;height:52px;border-radius:12px;border:3px solid #999;background:var(--ui)}
+.tool{font:inherit;font-size:20px;font-weight:700;min-width:92px;height:52px;border-radius:12px;border:3px solid #999;background:var(--ui);padding:0 10px}
 .tool.on{border-color:#222;background:var(--sel)}
 .sep{flex:1}
 #main{flex:1;display:flex;min-height:0}
 #svg{flex:1;min-width:0}
-#side{width:220px;padding:8px;overflow:auto}
-#side h3{margin:4px 0 8px;font-size:18px}
-.step{display:flex;align-items:center;gap:6px;background:#fff;border-radius:10px;padding:6px 8px;margin-bottom:6px;font-size:17px}
-.step b{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;color:#fff;flex:none}
-.step .x{margin-left:auto;border:none;background:none;font-size:20px;color:#888}
-.step.now{outline:3px solid var(--sel)}
-#hint{padding:0 12px 8px;font-size:17px;min-height:26px}
+#side{width:250px;padding:8px;overflow:auto}
+#side h3{margin:4px 0 6px;font-size:18px}
+.grp{background:#fff;border-radius:12px;padding:6px 8px;border:3px solid transparent}
+.grp.join{border-color:#222;background:#fff7cf}
+.grp .hd{display:flex;align-items:center;gap:6px;font-size:16px;color:#666}
+.num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#333;color:#fff;font-weight:700;flex:none}
+.act{display:flex;align-items:center;gap:6px;font-size:17px;padding:3px 0 3px 4px}
+.dot{width:14px;height:14px;border-radius:50%;flex:none}
+.act .x{margin-left:auto;border:none;background:none;font-size:20px;color:#888}
+.grp.now{outline:4px solid var(--sel)}
+.gap{height:30px;margin:3px 0;border:2px dashed transparent;border-radius:10px;display:grid;place-items:center;font-size:15px;color:#aaa}
+.gap.on{border-color:#222;color:#222;background:#fff7cf;font-weight:700}
+#hint{padding:0 12px 6px;font-size:17px;min-height:26px}
+#cut{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);font-size:64px;font-weight:700;color:#fff;background:var(--red);
+ padding:8px 28px;border-radius:20px;display:none}
 </style></head><body>
 <div id="bar">
   <button class="tool on" data-m="move">🚶 移動</button>
   <button class="tool" data-m="pass">⚽ パス</button>
   <button class="tool" data-m="drag">✋ 置く</button>
   <button class="tool" data-m="erase">🧽 消す</button>
+  <button class="tool" id="same">🔗 同時に</button>
   <span class="sep"></span>
+  <button class="tool on" id="def">🛡 守り 動く</button>
   <button class="tool" id="play">▶ 再生</button>
   <button class="tool" id="reset">↺ はじめ</button>
   <button class="tool" id="save">💾 保存</button>
@@ -36,88 +46,163 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"BIZ UDPGothic",
   <svg id="svg" viewBox="-1.5 -1.5 23 13"></svg>
   <div id="side"><h3>じゅんばん</h3><div id="steps"></div></div>
 </div>
+<div id="cut">カット！</div>
 <script>
-/* ---- データ ----
-   pieces: 駒の はじめの 位置（m）。steps: 番号順の 動き。
-   move:{type,id,path:[[x,y]...]}  pass:{type,from,to,path:[[x,y]...]} */
+/* ===== データ =====
+ groups: 番号ごとの 動きの まとまり（同じ 番号は 同時に 動く）
+   move:{type:"move",id,path:[[dx,dy]...]}  … 道の 形（はじめの 位置からの ずれ）。始まりは その時の 位置に 合わせる
+   pass:{type:"pass",to,path:[[x,y]...]|null} … 出す人は その時 ボールを 持つ人。null は タップで 決めた まっすぐの パス
+ cursor: 次に 書く 動きの 入れ先  {kind:"new",at:k}＝k番めの 前に 新しい 番号 ／ {kind:"join",g:k}＝k番めに 同時で 足す */
 const START={bA:[1,5],bB:[12,5],bC:[11,2.2],bD:[11,7.8],bE:[11,5.2],rC:[7,3],rD:[7,5],rE:[7,7]};
+const GOALMAN="bA", MID=10;
 const COL=id=>id[0]==="b"?"var(--blue)":"var(--red)";
-let st={pieces:JSON.parse(JSON.stringify(START)),holder:"bB",steps:[]};
-try{const s=localStorage.getItem("pb-mock"); if(s) st=JSON.parse(s);}catch(e){}
-let mode="move", drawing=null, cur=null, playing=false;
+const clone=o=>JSON.parse(JSON.stringify(o));
+let st={pieces:clone(START),holder:"bB",groups:[]};
+try{const s=localStorage.getItem("pb-mock2"); if(s) st=JSON.parse(s);}catch(e){}
+let mode="move", drawing=null, cur=null, playing=false, defOn=true, lastAdded=null;
+let cursor={kind:"new",at:st.groups.length};
 const svg=document.getElementById("svg"), NS="http://www.w3.org/2000/svg";
 const E=(t,a,p)=>{const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); (p||svg).appendChild(e); return e;};
-const HINT={move:"駒から 指で 線を 引くと、その道を 歩く（青い線）。",pass:"ボールを 持つ 駒から、受ける 駒まで 線を 引く（赤い 点線）。",
+const HINT={move:"駒から 指で 線を 引くと、その道を 歩く（青い線）。",
+ pass:"ボールを 持つ 駒から 線を 引く（赤い 点線）か、受ける 駒を タップ。",
  drag:"駒や ボールを はじめの 場所に 置く。",erase:"線を さわると 消える。"};
+const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+const lerp=(a,b,u)=>[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u];
 
-/* ---- 番号順に 動かした あとの 位置（k 番目まで） ---- */
-function stateAfter(k){ const p=JSON.parse(JSON.stringify(st.pieces)); let h=st.holder;
-  for(let i=0;i<k;i++){ const s=st.steps[i]; if(s.type==="move") p[s.id]=s.path[s.path.length-1].slice(); else h=s.to; } return {p,h}; }
-const ptsStr=a=>a.map(q=>q[0].toFixed(2)+","+q[1].toFixed(2)).join(" ");
+/* ===== 道の 計算 ===== */
+function along(path,f){ let L=0; const seg=[]; for(let i=1;i<path.length;i++){ const d=dist(path[i],path[i-1]); seg.push(d); L+=d; }
+  if(!L) return path[0].slice(); let r=f*L;
+  for(let i=0;i<seg.length;i++){ if(r<=seg[i]) return lerp(path[i],path[i+1],seg[i]?r/seg[i]:0); r-=seg[i]; } return path[path.length-1].slice(); }
+const movePath=(a,p0)=>a.path.map(q=>[p0[0]+q[0],p0[1]+q[1]]);
+/* パスの 道：書いた 形を 出す人・受ける人の 今の 位置に 合わせて のばす */
+function passPos(a,from,to,u){ if(!a.path) return lerp(from,to,u);
+  const P=a.path, q=along(P,u), s=P[0], e=P[P.length-1];
+  return [q[0]+(from[0]-s[0])*(1-u)+(to[0]-e[0])*u, q[1]+(from[1]-s[1])*(1-u)+(to[1]-e[1])*u]; }
+function passPoly(a,from,to){ const o=[]; for(let i=0;i<=24;i++) o.push(passPos(a,from,to,i/24)); return o; }
 
-function draw(anim){ svg.innerHTML="";
+/* ===== 守りの 動き：パスの 通り道・受ける人・ゴールマンの 近くを ねらう ===== */
+function clampDef(p,holderPos){ let x=Math.min(MID-0.3,Math.max(2.3,p[0])), y=Math.min(9.7,Math.max(0.3,p[1]));
+  if(holderPos){ const d=dist([x,y],holderPos); if(d<1.5){ const k=1.5/(d||1); x=holderPos[0]+(x-holderPos[0])*k; y=holderPos[1]+(y-holderPos[1])*k; } }
+  return [Math.min(MID-0.3,Math.max(2.3,x)),Math.min(9.7,Math.max(0.3,y))]; }
+function defTargets(S,E2,pass,holder){ // S=始め E2=攻めの 終わり
+  const defs=Object.keys(S.p).filter(k=>k[0]==="r"), T={}, free=defs.slice();
+  const take=pt=>{ let b=null,bd=1e9; free.forEach(d=>{ const dd=dist(S.p[d],pt); if(dd<bd){bd=dd;b=d;} }); if(b) free.splice(free.indexOf(b),1); return b; };
+  const hp=E2[holder];
+  if(pass&&hp){ const to=E2[pass.to]; const d=take(lerp(hp,to,.62)); if(d) T[d]=lerp(hp,to,.62); }      // パスの 通り道
+  if(E2[GOALMAN]&&holder!==GOALMAN){ const g=[3.0,E2[GOALMAN][1]]; if(hp) g[1]=E2[GOALMAN][1]+(hp[1]-E2[GOALMAN][1])*.25; const d=take(g); if(d) T[d]=g; } // ゴールマンの 前
+  const cands=Object.keys(E2).filter(k=>k[0]==="b"&&k!==holder&&k!==GOALMAN&&E2[k][0]<MID+1)
+    .sort((a,b)=>dist(E2[a],hp||[0,5])-dist(E2[b],hp||[0,5]));
+  cands.forEach(k=>{ if(!free.length) return; const t=hp?lerp(E2[k],hp,.25):E2[k]; const d=take(t); if(d) T[d]=t; });  // 受けそうな 人の そば
+  free.forEach(d=>T[d]=S.p[d]);
+  for(const d in T){ let t=T[d]; const s=S.p[d], L=dist(s,t), MAX=3.2; if(L>MAX) t=lerp(s,t,MAX/L); T[d]=clampDef(t,hp); }
+  return T; }
+
+/* ===== 番号ごとの 位置を 順に 計算（始めの 位置の 一覧） ===== */
+function simulate(){ const S=[{p:clone(st.pieces),h:st.holder}];
+  st.groups.forEach((g,gi)=>{ const s=S[gi], e={p:clone(s.p),h:s.h};
+    g.forEach(a=>{ if(a.type==="move"&&s.p[a.id]){ const P=movePath(a,s.p[a.id]); e.p[a.id]=P[P.length-1]; } });
+    const ps=g.find(a=>a.type==="pass"&&a.to!==s.h&&s.p[a.to]);
+    if(defOn){ const T=defTargets(s,e.p,ps,s.h); for(const d in T) e.p[d]=T[d]; }
+    if(ps) e.h=ps.to; S.push(e); });
+  return S; }
+function baseState(S){ return cursor.kind==="new"?S[cursor.at]:S[cursor.g]; }
+
+/* ===== 描く ===== */
+function draw(anim){ svg.innerHTML=""; const S=simulate();
   E("rect",{x:0,y:0,width:20,height:10,fill:"#e9d9b4",stroke:"#555","stroke-width":.08});
   E("rect",{x:0,y:0,width:2,height:10,fill:"#f2c86a",opacity:.6}); E("rect",{x:18,y:0,width:2,height:10,fill:"#f2c86a",opacity:.6});
-  E("line",{x1:10,y1:0,x2:10,y2:10,stroke:"#555","stroke-width":.08});
-  // 線と 番号
-  st.steps.forEach((s,i)=>{ const g=E("g",{"data-i":i});
-    E("polyline",{points:ptsStr(s.path),fill:"none",stroke:"transparent","stroke-width":.8},g); // さわりやすく
-    E("polyline",{points:ptsStr(s.path),fill:"none",stroke:s.type==="move"?"var(--mv)":"var(--ps)","stroke-width":.12,
-      "stroke-dasharray":s.type==="pass"?".35 .25":"none","stroke-linecap":"round","marker-end":"url(#ar"+s.type+")"},g);
-    const m=s.path[Math.floor(s.path.length/2)];
-    E("circle",{cx:m[0],cy:m[1],r:.38,fill:s.type==="move"?"var(--mv)":"var(--ps)"},g);
-    const t=E("text",{x:m[0],y:m[1]+.14,"font-size":.42,"text-anchor":"middle",fill:"#fff","font-weight":700},g); t.textContent=i+1; });
-  const d=E("defs",{}); ["move","pass"].forEach(k=>{ const mk=E("marker",{id:"ar"+k,viewBox:"0 0 10 10",refX:8,refY:5,markerWidth:4,markerHeight:4,orient:"auto"},d);
-    E("path",{d:"M0,0L10,5L0,10z",fill:k==="move"?"var(--mv)":"var(--ps)"},mk); });
-  if(cur) E("polyline",{points:ptsStr(cur.path),fill:"none",stroke:mode==="move"?"var(--mv)":"var(--ps)","stroke-width":.12,"stroke-dasharray":mode==="pass"?".35 .25":"none"});
-  // 駒
-  const S=anim||{p:st.pieces,h:st.holder};
-  for(const id in S.p){ const [x,y]=S.p[id];
-    E("circle",{cx:x,cy:y,r:.45,fill:COL(id),stroke:"#fff","stroke-width":.08,"data-id":id});
+  E("line",{x1:MID,y1:0,x2:MID,y2:10,stroke:"#555","stroke-width":.08});
+  const d=E("defs",{}); [["mv","var(--mv)"],["ps","var(--ps)"],["df","#c77"]].forEach(([k,c])=>{ const mk=E("marker",{id:"ar"+k,viewBox:"0 0 10 10",refX:8,refY:5,markerWidth:4,markerHeight:4,orient:"auto"},d); E("path",{d:"M0,0L10,5L0,10z",fill:c},mk); });
+  st.groups.forEach((g,gi)=>{ const s=S[gi], e=S[gi+1], marks=[];
+    if(defOn) for(const id in s.p) if(id[0]==="r"&&dist(s.p[id],e.p[id])>.2)
+      E("line",{x1:s.p[id][0],y1:s.p[id][1],x2:e.p[id][0],y2:e.p[id][1],stroke:"#c77","stroke-width":.06,"stroke-dasharray":".15 .15","marker-end":"url(#ardf)",opacity:.7});
+    g.forEach((a,ai)=>{ const G=E("g",{"data-g":gi,"data-a":ai}); let P, isMv=a.type==="move";
+      if(isMv){ if(!s.p[a.id]) return; P=movePath(a,s.p[a.id]); }
+      else { if(!s.h||a.to===s.h) return; P=passPoly(a,s.p[s.h],e.p[a.to]); }
+      E("polyline",{points:P.map(q=>q.join(",")).join(" "),fill:"none",stroke:"transparent","stroke-width":.8},G);
+      E("polyline",{points:P.map(q=>q.join(",")).join(" "),fill:"none",stroke:isMv?"var(--mv)":"var(--ps)","stroke-width":.12,
+        "stroke-dasharray":isMv?"none":".35 .25","stroke-linecap":"round","marker-end":"url(#ar"+(isMv?"mv":"ps")+")",opacity:anim&&anim.k!==gi&&anim.k>=0?.35:1},G);
+      marks.push(P[Math.floor(P.length/2)]); });
+    marks.forEach(m=>{ E("circle",{cx:m[0],cy:m[1],r:.38,fill:"#333"}); const t=E("text",{x:m[0],y:m[1]+.14,"font-size":.42,"text-anchor":"middle",fill:"#fff","font-weight":700}); t.textContent=gi+1; }); });
+  if(cur){ const P=cur.path; E("polyline",{points:P.map(q=>q.join(",")).join(" "),fill:"none",stroke:cur.type==="move"?"var(--mv)":"var(--ps)","stroke-width":.12,"stroke-dasharray":cur.type==="pass"?".35 .25":"none"}); }
+  const V=anim||(mode==="drag"?{p:st.pieces,h:st.holder}:baseState(S));
+  for(const id in V.p){ const [x,y]=V.p[id];
+    E("circle",{cx:x,cy:y,r:.45,fill:COL(id),stroke:id===GOALMAN?"#f2a400":"#fff","stroke-width":id===GOALMAN?.14:.08,"data-id":id});
     const t=E("text",{x,y:y+.17,"font-size":.5,"text-anchor":"middle",fill:"#fff","font-weight":700,"pointer-events":"none"}); t.textContent=id[1]; }
-  const b=S.ball||(S.h&&S.p[S.h]?[S.p[S.h][0]+.45,S.p[S.h][1]-.45]:[10,5]);
+  const b=V.ball||(V.h&&V.p[V.h]?[V.p[V.h][0]+.45,V.p[V.h][1]-.45]:[10,5]);
   E("circle",{cx:b[0],cy:b[1],r:.25,fill:"#fff",stroke:"#222","stroke-width":.06,"data-id":"ball"});
-  listSteps(anim&&anim.k); }
+  listSteps(anim?anim.k:null); }
 
-function listSteps(now){ const box=document.getElementById("steps"); box.innerHTML="";
-  st.steps.forEach((s,i)=>{ const r=document.createElement("div"); r.className="step"+(now===i?" now":"");
-    const c=s.type==="move"?"var(--mv)":"var(--ps)";
-    r.innerHTML=`<b style="background:${c}">${i+1}</b>${s.type==="move"?s.id[1]+" が 動く":s.from[1]+" → "+s.to[1]+" パス"}<button class="x">×</button>`;
-    r.querySelector(".x").onclick=()=>{ st.steps.splice(i,1); draw(); };
-    box.appendChild(r); }); }
+function gapEl(k){ const g=document.createElement("div"); const on=cursor.kind==="new"&&cursor.at===k;
+  g.className="gap"+(on?" on":""); g.textContent=on?"▶ ここに 書く":"＋ ここに 入れる";
+  g.onclick=()=>{ cursor={kind:"new",at:k}; draw(); }; return g; }
+function listSteps(now){ const box=document.getElementById("steps"); box.innerHTML=""; const S=simulate();
+  box.appendChild(gapEl(0));
+  st.groups.forEach((g,gi)=>{ const r=document.createElement("div");
+    r.className="grp"+(cursor.kind==="join"&&cursor.g===gi?" join":"")+(now===gi?" now":"");
+    r.innerHTML=`<div class="hd"><span class="num">${gi+1}</span><span style="margin-left:auto;white-space:nowrap">${cursor.kind==="join"&&cursor.g===gi?"▶ ここに 同時に 書く":"🔗 同時に 足す"}</span></div>`;
+    r.onclick=e=>{ if(e.target.classList.contains("x")) return; cursor={kind:"join",g:gi}; draw(); };
+    g.forEach((a,ai)=>{ const s=S[gi], ok=a.type==="move"||(s.h&&a.to!==s.h);
+      const row=document.createElement("div"); row.className="act";
+      row.innerHTML=`<span class="dot" style="background:${a.type==="move"?"var(--mv)":"var(--ps)"}"></span>`+
+        (a.type==="move"?`${a.id[1]} が 動く`:ok?`${s.h[1]} → ${a.to[1]} パス`:`<s>${a.to[1]} へ パス</s>`)+`<button class="x">×</button>`;
+      row.querySelector(".x").onclick=()=>removeAct(gi,ai); r.appendChild(row); });
+    box.appendChild(r); box.appendChild(gapEl(gi+1)); }); }
 
-/* ---- 指・ペンの 操作 ---- */
+/* ===== 足す・消す ===== */
+function addAct(a){
+  if(cursor.kind==="join"){ const g=st.groups[cursor.g];
+    if(a.type==="pass"&&g.some(x=>x.type==="pass")) return hint("1つの 番号に パスは 1つだけ。");
+    if(a.type==="move"){ const i=g.findIndex(x=>x.type==="move"&&x.id===a.id); if(i>=0) g.splice(i,1); }
+    g.push(a); lastAdded=cursor.g; cursor={kind:"new",at:cursor.g+1}; }
+  else { st.groups.splice(cursor.at,0,[a]); lastAdded=cursor.at; cursor={kind:"new",at:cursor.at+1}; }
+  hint("次は "+(cursor.at+1)+" 番。同時に したい ときは 🔗。"); }
+function removeAct(gi,ai){ st.groups[gi].splice(ai,1); if(!st.groups[gi].length){ st.groups.splice(gi,1);
+    if(cursor.kind==="join") cursor={kind:"new",at:Math.min(gi,st.groups.length)}; else if(cursor.at>gi) cursor.at--; }
+  draw(); }
+
+/* ===== 指・ペンの 操作 ===== */
 function pt(ev){ const p=svg.createSVGPoint(); p.x=ev.clientX; p.y=ev.clientY; const q=p.matrixTransform(svg.getScreenCTM().inverse()); return [q.x,q.y]; }
-function near(p,S,r){ let best=null,bd=r||.7; for(const id in S.p){ const d=Math.hypot(S.p[id][0]-p[0],S.p[id][1]-p[1]); if(d<bd){bd=d;best=id;} } return best; }
+function near(p,P,r){ let best=null,bd=r||.7; for(const id in P){ const d=dist(P[id],p); if(d<bd){bd=d;best=id;} } return best; }
 svg.addEventListener("pointerdown",ev=>{ if(playing) return; svg.setPointerCapture(ev.pointerId); const p=pt(ev);
-  const S=stateAfter(st.steps.length);  // 線は 最後の 状態から つなぐ
-  if(mode==="erase"){ const g=ev.target.closest("g[data-i]"); if(g){ st.steps.splice(+g.dataset.i,1); draw(); } return; }
+  if(mode==="erase"){ const g=ev.target.closest("g[data-g]"); if(g) removeAct(+g.dataset.g,+g.dataset.a); return; }
   if(mode==="drag"){ const id=ev.target.dataset.id; if(id) drawing={drag:id}; return; }
-  const id=near(p,S); if(!id) return;
-  if(mode==="pass"&&id!==S.h){ hint("ボールを 持って いる "+S.h[1]+" から 引いてね。"); return; }
-  cur={type:mode,id,path:[S.p[id].slice()]}; drawing=cur; });
+  const B=baseState(simulate()), id=near(p,B.p); if(!id) return;
+  if(mode==="move"){ if(id[0]==="r"&&defOn) return hint("守りは 自動で 動く。手で 動かす ときは 🛡 を 切る。");
+    cur={type:"move",id,path:[B.p[id].slice()]}; drawing=cur; return; }
+  if(id===B.h){ cur={type:"pass",path:[B.p[id].slice()]}; drawing=cur; }      // ボールを 持つ 人から 引く
+  else drawing={tap:id};                                                        // 受ける 人の タップ
+});
 svg.addEventListener("pointermove",ev=>{ if(!drawing) return; const p=pt(ev);
-  if(drawing.drag){ if(drawing.drag==="ball"){ const id=near(p,{p:st.pieces},1); if(id) st.holder=id; } else st.pieces[drawing.drag]=p; draw(); return; }
-  const l=cur.path[cur.path.length-1]; if(Math.hypot(p[0]-l[0],p[1]-l[1])>.25){ cur.path.push(p); draw(); } });
-svg.addEventListener("pointerup",ev=>{ if(!drawing) return;
-  if(cur){ const S=stateAfter(st.steps.length);
-    if(cur.type==="move"&&cur.path.length>2) st.steps.push({type:"move",id:cur.id,path:cur.path});
-    if(cur.type==="pass"){ const to=near(cur.path[cur.path.length-1],S,1); if(to&&to!==cur.id){ cur.path.push(S.p[to].slice()); st.steps.push({type:"pass",from:cur.id,to,path:cur.path}); } else hint("受ける 駒の 上で 指を はなしてね。"); } }
+  if(drawing.drag){ if(drawing.drag==="ball"){ const id=near(p,st.pieces,1); if(id) st.holder=id; } else st.pieces[drawing.drag]=p; draw(); return; }
+  if(!cur) return; const l=cur.path[cur.path.length-1]; if(dist(p,l)>.25){ cur.path.push(p); draw(); } });
+svg.addEventListener("pointerup",ev=>{ if(!drawing) return; const B=baseState(simulate());
+  if(drawing.tap){ if(B.h&&B.h[0]===drawing.tap[0]) addAct({type:"pass",to:drawing.tap,path:null}); else hint("パスは 同じ チームの 人へ。"); }
+  else if(cur&&cur.type==="move"&&cur.path.length>2){ const o=cur.path[0]; addAct({type:"move",id:cur.id,path:cur.path.map(q=>[q[0]-o[0],q[1]-o[1]])}); }
+  else if(cur&&cur.type==="pass"){ const to=near(cur.path[cur.path.length-1],B.p,1);
+    if(to&&to!==B.h&&to[0]===B.h[0]){ cur.path.push(B.p[to].slice()); addAct({type:"pass",to,path:cur.path}); } else if(cur.path.length>2) hint("受ける 駒の 上で 指を はなしてね。"); }
   drawing=null; cur=null; draw(); });
 
-/* ---- 再生：番号順に 1つずつ ---- */
-function along(path,f){ let L=0; const seg=[]; for(let i=1;i<path.length;i++){ const d=Math.hypot(path[i][0]-path[i-1][0],path[i][1]-path[i-1][1]); seg.push(d); L+=d; }
-  let r=f*L; for(let i=0;i<seg.length;i++){ if(r<=seg[i]){ const k=seg[i]?r/seg[i]:0; return [path[i][0]+(path[i+1][0]-path[i][0])*k,path[i][1]+(path[i+1][1]-path[i][1])*k]; } r-=seg[i]; } return path[path.length-1].slice(); }
-document.getElementById("play").onclick=async()=>{ if(playing||!st.steps.length) return; playing=true;
-  for(let k=0;k<st.steps.length;k++){ const s=st.steps[k], base=stateAfter(k), dur=s.type==="move"?1400:800, t0=performance.now();
-    await new Promise(res=>{ (function f(now){ const u=Math.min(1,(now-t0)/dur), S={p:JSON.parse(JSON.stringify(base.p)),h:base.h,k};
-      if(s.type==="move") S.p[s.id]=along(s.path,u); else { S.h=null; S.ball=along(s.path,u); }
-      draw(S); u<1?requestAnimationFrame(f):res(); })(t0); });
-    await new Promise(r=>setTimeout(r,300)); }
-  const F=stateAfter(st.steps.length); draw({...F,k:-1}); setTimeout(()=>{ playing=false; draw(); },1200); };
-document.getElementById("reset").onclick=()=>{ if(confirm("線を ぜんぶ 消して、はじめの 並びに もどす？")){ st={pieces:JSON.parse(JSON.stringify(START)),holder:"bB",steps:[]}; draw(); } };
-document.getElementById("save").onclick=()=>{ try{ localStorage.setItem("pb-mock",JSON.stringify(st)); hint("保存した（モックは この 端末の 中だけ）。"); }catch(e){ hint("保存できなかった。"); } };
-document.querySelectorAll(".tool[data-m]").forEach(b=>b.onclick=()=>{ mode=b.dataset.m; document.querySelectorAll(".tool[data-m]").forEach(x=>x.classList.toggle("on",x===b)); hint(HINT[mode]); });
+/* ===== 再生：番号順。同じ 番号は 同時に 動く ===== */
+const flash=()=>{ const c=document.getElementById("cut"); c.style.display="block"; setTimeout(()=>c.style.display="none",900); };
+document.getElementById("play").onclick=async()=>{ if(playing||!st.groups.length) return; playing=true; const S=simulate();
+  for(let k=0;k<st.groups.length;k++){ const g=st.groups[k], s=S[k], e=S[k+1], dur=1600, t0=performance.now();
+    const ps=g.find(a=>a.type==="pass"&&s.h&&a.to!==s.h); let cut=false;
+    await new Promise(res=>{ (function f(now){ const u=Math.min(1,(now-t0)/dur), V={p:{},h:s.h,k};
+      for(const id in s.p){ const mv=g.find(a=>a.type==="move"&&a.id===id);
+        V.p[id]=mv?along(movePath(mv,s.p[id]),u):lerp(s.p[id],e.p[id],u); }
+      if(ps){ V.h=null; V.ball=passPos(ps,V.p[s.h],V.p[ps.to],u);
+        if(!cut&&u>.15&&u<.9) for(const id in V.p) if(id[0]==="r"&&dist(V.p[id],V.ball)<.5){ cut=true; flash(); } }
+      draw(V); u<1?requestAnimationFrame(f):res(); })(t0); });
+    await new Promise(r=>setTimeout(r,350)); }
+  setTimeout(()=>{ playing=false; draw(); },900); };
+
+document.getElementById("same").onclick=()=>{ if(lastAdded===null||!st.groups[lastAdded]) return hint("先に 動きを 1つ 書いてね。");
+  cursor={kind:"join",g:lastAdded}; hint((lastAdded+1)+" 番と 同時に 動く 線を 書いてね。"); draw(); };
+document.getElementById("def").onclick=e=>{ defOn=!defOn; e.currentTarget.classList.toggle("on",defOn); draw(); };
+document.getElementById("reset").onclick=()=>{ if(confirm("線を ぜんぶ 消して、はじめの 並びに もどす？")){ st={pieces:clone(START),holder:"bB",groups:[]}; cursor={kind:"new",at:0}; lastAdded=null; draw(); } };
+document.getElementById("save").onclick=()=>{ try{ localStorage.setItem("pb-mock2",JSON.stringify(st)); hint("保存した（モックは この 端末の 中だけ）。"); }catch(e){ hint("保存できなかった。"); } };
+document.querySelectorAll(".tool[data-m]").forEach(b=>b.onclick=()=>{ mode=b.dataset.m; document.querySelectorAll(".tool[data-m]").forEach(x=>x.classList.toggle("on",x===b)); hint(HINT[mode]); draw(); });
 function hint(s){ document.getElementById("hint").textContent=s; }
 hint(HINT.move); draw();
 </script></body></html>
