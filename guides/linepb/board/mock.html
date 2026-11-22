@@ -316,14 +316,14 @@ const SKEY="pb-saves";
    守りが「マーク」「ゴールまもり」なら カットされずに通る。「パスコース」だと 途中のパスが カットされやすい（守り方で結果が変わることを見せる） */
 const mv=(id,...pts)=>({type:"move",id,path:[[0,0],...pts]}), ps=to=>({type:"pass",to,path:null});
 const PRESETS=[
- {name:"サイド作戦", note:"C が はしを 走って もらい、ゴールマンは 反対の はしへ",
-  groups:[[mv("bC",[-3,-0.6],[-6,-1.2]),mv("bD",[-2,0.4],[-4,0.8])],[ps("bC"),mv("bA",[0,2],[0,4])],[ps("bA")]]},
- {name:"おとり作戦", note:"E が まんなかへ 走って 守りを ひきつけ、そのすきに C へ",
-  groups:[[mv("bE",[-3,0],[-6,-0.2]),mv("bC",[-3,-0.4],[-6.5,-0.8])],[ps("bC"),mv("bA",[0,0.75],[0,1.5])],[ps("bA")]]},
+ {name:"サイド作戦", note:"C が はしで もらい、まんなかの E へ。ゴールマンは 反対の はしへ",
+  groups:[[mv("bC",[-3,-0.6],[-6,-1.2]),mv("bD",[-2,0.4],[-4,0.8]),mv("bE",[-2.5,0],[-5.5,-0.2])],[ps("bC"),mv("bA",[0,2],[0,4])],[ps("bE")],[ps("bA")]]},
+ {name:"おとり作戦", note:"E が まんなかへ 走って 守りを ひきつけ、C → D と つなぐ",
+  groups:[[mv("bE",[-3,0],[-6,-0.2]),mv("bC",[-3,-0.4],[-6.5,-0.8]),mv("bD",[-2.5,0.4],[-5,1])],[ps("bC")],[ps("bD"),mv("bA",[0,2],[0,4])],[ps("bA")]]},
  {name:"リターン作戦", note:"近くの E に あずけて、前へ 走った B が もう一度 もらう",
-  groups:[[ps("bE")],[mv("bB",[-3,-1],[-6,-2.2])],[ps("bB"),mv("bA",[0,1.5],[0,3])],[ps("bA")]]},
+  groups:[[ps("bE")],[mv("bB",[-3,-1],[-6,-2.2]),mv("bC",[-2,-0.5],[-4,-1]),mv("bD",[-2,0.5],[-4,1])],[ps("bB"),mv("bA",[0,-2],[0,-4])],[ps("bA"),mv("bE",[-2,0],[-4,0])]]},
  {name:"3人つなぎ作戦", note:"C → D と 短い パスを つないで 前へ",
-  groups:[[mv("bC",[-1.5,-0.4],[-3,-0.8]),mv("bD",[-3,0.3],[-6,0.6])],[ps("bC")],[ps("bD"),mv("bA",[0,2],[0,4])],[ps("bA")]]}
+  groups:[[mv("bC",[-1.5,-0.4],[-3,-0.8]),mv("bD",[-3,0.3],[-6,0.6]),mv("bE",[-2.5,-0.6],[-5,-1.2])],[ps("bC")],[ps("bD"),mv("bA",[0,2],[0,4])],[ps("bA")]]}
 ].map(x=>({name:x.name,note:x.note,preset:true,data:{pieces:clone(START),holder:"bB",groups:x.groups}}));
 function loadSaves(){ try{ return JSON.parse(localStorage.getItem(SKEY)||"[]"); }catch(e){ return []; } }
 function putSaves(a){ try{ localStorage.setItem(SKEY,JSON.stringify(a)); return true; }catch(e){ return false; } }
