@@ -64,7 +64,6 @@ rt{font-size:.5em}
 #dlg .row{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
 .sv{display:flex;align-items:center;gap:10px;padding:10px 12px;border:3px solid #ddd;border-radius:14px;margin-bottom:8px;font-size:24px;font-weight:700;background:#fff;width:100%;font-family:inherit;text-align:left}
 .sv:active{background:#fff7cf}.sv small{font-size:15px;color:#777;font-weight:400}.sv .del{margin-left:auto;border:none;background:none;font-size:24px}
-#saves:empty::after{content:"まだ ありません";color:#888;font-size:20px}
 #hint{padding:0 12px 6px;font-size:17px;min-height:26px}
 #cut{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);font-size:64px;font-weight:700;color:#fff;background:var(--red);
  padding:8px 28px;border-radius:20px;display:none}
@@ -313,6 +312,19 @@ document.getElementById("def").onclick=e=>{ const i=(DEFS.findIndex(x=>x[0]===de
 document.getElementById("reset").onclick=()=>{ if(confirm("線を ぜんぶ 消して、はじめの 並びに もどす？")){ st={pieces:clone(START),holder:"bB",groups:[]}; HIDE=new Set(); curName=""; cursor={kind:"new",at:0}; lastAdded=null; draw(); } };
 /* ===== セーブデータ（モックは この 端末の 中に 保存。本番は Web アプリの 保存先へ） ===== */
 const SKEY="pb-saves";
+/* 見本の作戦（最初から入っている。消せない・上書きされない）。どれも ゴールマンが 帯の中で 空いた所へ 動いて もらう。
+   守りが「マーク」「ゴールまもり」なら カットされずに通る。「パスコース」だと 途中のパスが カットされやすい（守り方で結果が変わることを見せる） */
+const mv=(id,...pts)=>({type:"move",id,path:[[0,0],...pts]}), ps=to=>({type:"pass",to,path:null});
+const PRESETS=[
+ {name:"サイド作戦", note:"C が はしを 走って もらい、ゴールマンは 反対の はしへ",
+  groups:[[mv("bC",[-3,-0.6],[-6,-1.2]),mv("bD",[-2,0.4],[-4,0.8])],[ps("bC"),mv("bA",[0,2],[0,4])],[ps("bA")]]},
+ {name:"おとり作戦", note:"E が まんなかへ 走って 守りを ひきつけ、そのすきに C へ",
+  groups:[[mv("bE",[-3,0],[-6,-0.2]),mv("bC",[-3,-0.4],[-6.5,-0.8])],[ps("bC"),mv("bA",[0,0.75],[0,1.5])],[ps("bA")]]},
+ {name:"リターン作戦", note:"近くの E に あずけて、前へ 走った B が もう一度 もらう",
+  groups:[[ps("bE")],[mv("bB",[-3,-1],[-6,-2.2])],[ps("bB"),mv("bA",[0,1.5],[0,3])],[ps("bA")]]},
+ {name:"3人つなぎ作戦", note:"C → D と 短い パスを つないで 前へ",
+  groups:[[mv("bC",[-1.5,-0.4],[-3,-0.8]),mv("bD",[-3,0.3],[-6,0.6])],[ps("bC")],[ps("bD"),mv("bA",[0,2],[0,4])],[ps("bA")]]}
+].map(x=>({name:x.name,note:x.note,preset:true,data:{pieces:clone(START),holder:"bB",groups:x.groups}}));
 function loadSaves(){ try{ return JSON.parse(localStorage.getItem(SKEY)||"[]"); }catch(e){ return []; } }
 function putSaves(a){ try{ localStorage.setItem(SKEY,JSON.stringify(a)); return true; }catch(e){ return false; } }
 const toName=t=>{ t=t.trim().replace(/\s+/g," ").replace(/(作戦)+$/,"").trim(); return t?t+"作戦":""; };
@@ -330,12 +342,18 @@ document.getElementById("dlgCancel").onclick=closeDlg;
 document.getElementById("dlgClose").onclick=closeDlg;
 dlg.addEventListener("pointerdown",e=>{ if(e.target===dlg) closeDlg(); });
 document.getElementById("load").onclick=()=>{ listSaves(); openDlg("load"); };
+function openRec(r){ if(st.groups.length&&!confirm("いまの 線は 消えて、「"+r.name+"」に なる。いい？")) return;
+  st=clone(r.data); curName=r.preset?"":r.name; HIDE=new Set(); cursor=st.groups.length?{kind:"join",g:st.groups.length-1}:{kind:"new",at:0}; lastAdded=null; closeDlg(); draw(); hint("「"+r.name+"」を ひらいた。▶ 再生で 見られる。"); }
 function listSaves(){ const box=document.getElementById("saves"); box.innerHTML="";
+  const h=t=>{ const e=document.createElement("h3"); e.textContent=t; e.style.cssText="margin:6px 0;font-size:18px;color:#555"; box.appendChild(e); };
+  h("見本");
+  PRESETS.forEach(r=>{ const b=document.createElement("button"); b.className="sv";
+    b.style.cssText="flex-direction:column;align-items:flex-start;gap:2px"; b.innerHTML=`⭐ ${r.name}<small>${r.note}</small>`; b.onclick=()=>openRec(r); box.appendChild(b); });
+  h("自分の 作戦"); if(!loadSaves().length){ const e=document.createElement("div"); e.textContent="まだ ありません"; e.style.cssText="color:#888;font-size:18px;padding:4px 0 8px"; box.appendChild(e); }
   loadSaves().forEach((r,i)=>{ const b=document.createElement("button"); b.className="sv"; const d=new Date(r.t);
     b.innerHTML=`📋 ${r.name}<small>${d.getMonth()+1}/${d.getDate()} ・ ${r.data.groups.length} 手</small><span class="del" title="消す">🗑</span>`;
     b.onclick=e=>{ if(e.target.classList.contains("del")){ if(confirm("「"+r.name+"」を 消す？")){ const a=loadSaves(); a.splice(i,1); putSaves(a); listSaves(); } return; }
-      if(st.groups.length&&!confirm("いまの 線は 消えて、「"+r.name+"」に なる。いい？")) return;
-      st=clone(r.data); curName=r.name; HIDE=new Set(); cursor=st.groups.length?{kind:"join",g:st.groups.length-1}:{kind:"new",at:0}; lastAdded=null; closeDlg(); draw(); hint("「"+r.name+"」を ひらいた。▶ 再生で 見られる。"); };
+      openRec(r); };
     box.appendChild(b); }); }
 /* ===== 平面・立体の切り替え ===== */
 let is3d=false;
