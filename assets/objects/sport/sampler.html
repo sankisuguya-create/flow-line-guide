@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ラインポートボールの立体（試作）</title>
+<!-- 第1段の見本。体育館の黄コート（19×12m、assets/spaces/gym/space.json の線）に 2チーム×6人とボールを置き、
+     ドット立体を低解像度＋輪郭線で描く。目的は CZ1104（4GB）で回して 毎秒30コマ以上出るかを測ること。
+     ルールは仮：1チーム6人（コート5人＋ゴールマン1人）。ゴールマンは相手側のエンドラインの外、幅1m×長さ4.88mの帯に立つ。
+     space.json を読むので、ファイルを直接開かず サーバー経由で開く（例：リポジトリ直下で npx serve）。 -->
+<style>
+  :root{--ink:#143242;--soft:#4B6C80;--bg:#F7FAFC;--line:#C7DAE7}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;display:flex;flex-direction:column;font-family:"Hiragino Sans","Yu Gothic UI","BIZ UDPGothic","Noto Sans JP",sans-serif;color:var(--ink);background:var(--bg)}
+  header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:8px 16px;border-bottom:2px solid var(--ink);background:#fff}
+  h1{font-size:17px;margin:0}
+  .grp{display:flex;gap:6px;align-items:center;font-weight:700;font-size:14px}
+  button,select{font:inherit;font-size:15px;min-height:44px;padding:0 14px;border:2px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink)}
+  button[aria-pressed="true"]{background:var(--ink);color:#fff}
+  #fps{font-variant-numeric:tabular-nums;font-size:13px;color:var(--soft);margin-left:auto}
+  main{flex:1;position:relative;min-height:0}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;image-rendering:pixelated}
+  #msg{position:absolute;left:16px;top:16px;background:#fff;border:2px solid #B3261E;padding:8px 12px;border-radius:8px;display:none}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "voxel": "../../../engine/voxel/render.js"
+} }
+</script>
+<script src="figure.js"></script>
+</head>
+<body>
+<header>
+  <h1>ラインポートボール（試作）</h1>
+  <div class="grp" id="views">
+    <button data-v="top">真上</button><button data-v="oblique" aria-pressed="true">斜め</button><button data-v="side">横</button>
+  </div>
+  <label class="grp">左<select id="teamA"></select></label>
+  <label class="grp">右<select id="teamB"></select></label>
+  <label class="grp">粗さ<select id="rows"><option value="180">粗い</option><option value="270" selected>ふつう</option><option value="400">細かい</option></select></label>
+  <span id="fps">—</span>
+</header>
+<main><canvas id="cv"></canvas><div id="msg"></div></main>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { voxelGeometry, voxelMaterial, createPixelRenderer } from "voxel";
+
+const COURT = { x0: 10.38, x1: 33.56, y0: 4.68, y1: 19.32 };          // 黄コート（地図の座標 m）
+const CX = (COURT.x0 + COURT.x1) / 2, CY = (COURT.y0 + COURT.y1) / 2;
+const FLOOR = [6.3, 0, 28.95, 23.8];                                      // フロア [x,y,w,h]
+const GOAL = { w: 1.0, len: 4.88 };                                       // 仮：ゴールマンの帯
+const BIG = 1.6;                                                          // 人とボールの誇張倍率（実寸では 1人が10画素ほどで見分けられないため）
+const toW = (mx, my) => [mx - CX, my - CY];                               // 地図 → 立体（x そのまま、地図の y → z）
+
+const cv = document.getElementById("cv");
+const pr = createPixelRenderer(cv, { rows: 270 });
+const scene = new THREE.Scene();
+scene.background = new THREE.Color("#E9EEF2");
+scene.add(new THREE.HemisphereLight("#ffffff", "#8a7a66", 1.6));
+const sun = new THREE.DirectionalLight("#ffffff", 1.6);
+sun.position.set(-8, 20, 10); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 12, bottom: -12, near: 1, far: 60 });
+scene.add(sun);
+
+/* 床：space.json の黄の線を描いた板＋ゴールマンの帯 */
+async function floor() {
+  const S = 60;                                                           // 1m = 60px
+  const c = document.createElement("canvas"); c.width = FLOOR[2] * S; c.height = FLOOR[3] * S;
+  const g = c.getContext("2d");
+  g.fillStyle = "#D8B488"; g.fillRect(0, 0, c.width, c.height);
+  g.setTransform(S, 0, 0, S, -FLOOR[0] * S, -FLOOR[1] * S);
+  g.lineWidth = 0.12; g.strokeStyle = "#F4D23A";
+  try {
+    const sp = await (await fetch("../../spaces/gym/space.json")).json();
+    sp.floor.filter(f => f.c === "黄").forEach(f => g.stroke(new Path2D(f.d)));
+  } catch (e) {
+    g.strokeRect(COURT.x0, COURT.y0, COURT.x1 - COURT.x0, COURT.y1 - COURT.y0);
+    showMsg("space.json を読めなかったので、コートの外枠だけを描いています（サーバー経由で開いてください）");
+  }
+  g.strokeStyle = "#FFFFFF";                                              // 仮：ゴールマンの帯（白）
+  g.strokeRect(COURT.x0 - GOAL.w, CY - GOAL.len / 2, GOAL.w, GOAL.len);
+  g.strokeRect(COURT.x1, CY - GOAL.len / 2, GOAL.w, GOAL.len);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR[2], FLOOR[3]), new THREE.MeshLambertMaterial({ map: tex }));
+  m.rotation.x = -Math.PI / 2;
+  const [fx, fz] = toW(FLOOR[0] + FLOOR[2] / 2, FLOOR[1] + FLOOR[3] / 2); m.position.set(fx, 0, fz);
+  m.receiveShadow = true; scene.add(m);
+}
+
+/* 人物：色ごとに形を1つ作り、メッシュで使い回す */
+const mat = voxelMaterial(), geoCache = {};
+const geoOf = id => geoCache[id] || (geoCache[id] = voxelGeometry(SPORT.figure(SPORT.BIBS.find(b => b.id === id).col), SPORT.CELL));
+/* 仮の配置（コート中心からの m）。左チームは右（+x）へ攻め、ゴールマンは右の帯に立つ */
+const SPOTS = [[-7, -3.5], [-7, 3.5], [-2.5, 0], [3, -4], [3, 4.2], [COURT.x1 - CX + GOAL.w / 2, 0]];
+const people = [];
+function placeTeams() {
+  people.forEach(p => scene.remove(p)); people.length = 0;
+  [["teamA", 1], ["teamB", -1]].forEach(([sel, dir]) => {
+    const id = document.getElementById(sel).value;
+    SPOTS.forEach(([x, z], i) => {
+      const m = new THREE.Mesh(geoOf(id), mat);
+      m.castShadow = true; m.scale.setScalar(BIG);
+      const ox = dir * x + (i < 5 ? dir * 0.3 * ((i % 2) * 2 - 1) : 0);   // 両チームが同じ場所に重ならないよう少しずらす
+      m.position.set(ox, 0, dir * z + (dir < 0 ? 1.2 : 0));
+      m.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2;               // 攻める向きを正面に
+      scene.add(m); people.push(m);
+    });
+  });
+}
+const ballMesh = new THREE.Mesh(voxelGeometry(SPORT.ball(), SPORT.CELL), mat);
+ballMesh.castShadow = true; ballMesh.scale.setScalar(BIG); ballMesh.position.set(-2.5 + 0.45 * BIG, 0.62 * BIG, 0); scene.add(ballMesh);
+
+["teamA", "teamB"].forEach((s, i) => {
+  const el = document.getElementById(s);
+  SPORT.BIBS.forEach(b => el.add(new Option(b.name, b.id)));
+  el.value = i ? "blue" : "red";
+  el.onchange = placeTeams;
+});
+
+/* カメラ：正射影。3つの決まった見方＋指で回す */
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.5, 120);
+const ctl = new OrbitControls(cam, cv);
+ctl.enableDamping = false; ctl.enablePan = false; ctl.maxPolarAngle = THREE.MathUtils.degToRad(86);
+ctl.minZoom = 0.8; ctl.maxZoom = 6;
+const VIEWS = { top: [0.001, 0], oblique: [55, -30], side: [84, 0] };
+function view(name) {
+  const [pol, az] = VIEWS[name].map(THREE.MathUtils.degToRad);
+  const r = 50;
+  cam.position.set(r * Math.sin(pol) * Math.sin(az), r * Math.cos(pol), r * Math.sin(pol) * Math.cos(az));
+  cam.zoom = 1; ctl.target.set(0, 0, 0); cam.updateProjectionMatrix(); ctl.update();
+  document.querySelectorAll("#views button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === name));
+}
+document.querySelectorAll("#views button").forEach(b => b.onclick = () => view(b.dataset.v));
+ctl.addEventListener("start", () => document.querySelectorAll("#views button").forEach(b => b.setAttribute("aria-pressed", "false")));
+
+function resize() {
+  const { w, h } = pr.size();
+  const half = 13.5, a = w / h;                                           // コート全体（約26m）が収まる幅
+  if (a >= 25 / 16) { cam.top = half * 0.62; cam.bottom = -cam.top; cam.right = cam.top * a; cam.left = -cam.right; }
+  else { cam.right = half; cam.left = -half; cam.top = half / a; cam.bottom = -cam.top; }
+  cam.updateProjectionMatrix();
+}
+document.getElementById("rows").onchange = e => { pr.setRows(+e.target.value); resize(); };
+addEventListener("resize", resize);
+
+function showMsg(t) { const m = document.getElementById("msg"); m.textContent = t; m.style.display = "block"; }
+
+/* 毎秒のコマ数（直近1秒の平均） */
+let frames = 0, last = performance.now();
+const fpsEl = document.getElementById("fps");
+function loop(t) {
+  pr.render(scene, cam); frames++;
+  if (t - last >= 1000) { const f = frames * 1000 / (t - last); fpsEl.textContent = f.toFixed(0) + " コマ/秒"; window.__fps = f; frames = 0; last = t; }
+  requestAnimationFrame(loop);
+}
+placeTeams(); resize(); view("oblique");
+await floor();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
