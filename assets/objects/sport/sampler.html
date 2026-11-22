@@ -41,6 +41,8 @@
   <label class="grp">左<select id="teamA"></select></label>
   <label class="grp">右<select id="teamB"></select></label>
   <label class="grp">粗さ<select id="rows"><option value="180">粗い</option><option value="270" selected>ふつう</option><option value="400">細かい</option></select></label>
+  <div class="grp"><button id="play" aria-pressed="false">試合</button><button id="reset">最初から</button></div>
+  <span id="score" style="font-size:20px;font-weight:800;font-variant-numeric:tabular-nums">0 − 0</span>
   <span id="fps">—</span>
 </header>
 <main><canvas id="cv"></canvas><div id="msg"></div></main>
@@ -126,11 +128,94 @@ ballShadow.castShadow = true;
 [ballMesh, ballShadow].forEach(m => { m.scale.setScalar(BIG); m.position.set(-2.5 * CS + 0.45 * BIG, 0.74 * BIG, 0); });
 overlay.add(ballMesh); scene.add(ballShadow);
 
+/* ===== 簡単な試合（仮の動き）=====
+   座標はコート中心からの実寸 m（画面へは CS 倍）。左チーム(dir=+1)は右へ攻め、右の帯にいる味方のゴールマンへ渡せば1点。
+   持った人は0.7秒で、前にいて相手が近くにいない味方へパスする。ゴールマンへの通り道が空いていれば ゴールマンへ。
+   守りは決まった相手の、ボール側に付く。飛んでいるボールの近く（0.45m）に相手がいれば、半分の確率で取られる。 */
+const L = (COURT.x1 - COURT.x0) / 2, Wd = (COURT.y1 - COURT.y0) / 2;
+const SPEED = 3.2, PASS_V = 9;
+let P = [], hold = null, fly = null, holdT = 0, play = false, score = [0, 0], pause = 0;
+function resetSim(kick) {
+  P = people.map((m, i) => {
+    const team = i < 6 ? 0 : 1, dir = team ? -1 : 1, k = i % 6, gm = k === 5;
+    return { m, team, dir, gm, x: m.position.x / CS, z: m.position.z / CS, hx: 0, hz: 0 };
+  });
+  P.forEach(p => { if (!p.gm) { p.x = -p.dir * (1.5 + Math.random() * 6); p.z = (Math.random() * 2 - 1) * (Wd - 1); } });
+  hold = P[kick ? 8 : 2]; hold.x = 0; hold.z = 0; fly = null; holdT = 0;
+}
+const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+function laneOpen(a, b, team) {                                           // a→b の線から0.9m以内に相手がいない
+  return !P.some(q => q.team !== team && !q.gm && segDist(q, a, b) < 0.9);
+}
+function segDist(q, a, b) {
+  const dx = b.x - a.x, dz = b.z - a.z, t = Math.max(0, Math.min(1, ((q.x - a.x) * dx + (q.z - a.z) * dz) / (dx * dx + dz * dz || 1)));
+  return Math.hypot(q.x - a.x - dx * t, q.z - a.z - dz * t);
+}
+function choosePass(h) {
+  const mates = P.filter(q => q.team === h.team && q !== h);
+  const gm = mates.find(q => q.gm);
+  const dg = dist(h, gm);
+  if (dg < 12 && (laneOpen(h, gm, h.team) || Math.random() < 0.25)) return gm;   // 近ければ、道がふさがっていても4回に1回は狙う
+  let best = null, bs = -1e9;
+  mates.filter(q => !q.gm).forEach(q => {
+    const near = Math.min(...P.filter(o => o.team !== h.team).map(o => dist(o, q)));
+    const sc = (q.x - h.x) * h.dir * 0.6 + Math.min(near, 4) * 1.5 - (laneOpen(h, q, h.team) ? 0 : 6) + Math.random();
+    if (sc > bs) { bs = sc; best = q; }
+  });
+  return best;
+}
+function step(dt) {
+  if (pause > 0) { pause -= dt; if (pause <= 0) resetSim(lastScorer === 0); return; }
+  const owner = hold || (fly && fly.to);
+  const atk = hold ? hold.team : fly ? fly.from.team : 0;
+  P.forEach((p, i) => {
+    let tx = p.x, tz = p.z;
+    if (p.gm) { tx = p.dir * (L + GOAL.w / 2); tz = Math.max(-Wd + 0.5, Math.min(Wd - 0.5, fly ? fly.z : hold.z)); }
+    else if (p === hold) { tx = p.x; tz = p.z; }                          // 持っている人は止まる（ピボット）
+    else if (p.team === atk) {                                             // 攻め：前の空いた所へ
+      if (!p.hx || Math.random() < dt * 0.5) { p.hx = p.dir * (1 + Math.random() * (L - 2)); p.hz = (Math.random() * 2 - 1) * (Wd - 1); }
+      tx = p.hx; tz = p.hz;
+    } else {                                                               // 守り：決まった相手とボールの間
+      const opp = P[(i + 6) % 12], b = fly || hold;
+      tx = opp.x + (b.x - opp.x) * 0.15 - p.dir * 1.0; tz = opp.z + (b.z - opp.z) * 0.15;
+    }
+    const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz), v = Math.min(d, SPEED * dt);
+    if (d > 0.05) { p.x += dx / d * v; p.z += dz / d * v; p.m.rotation.y = Math.atan2(dx, dz); }
+    if (!p.gm) { p.x = Math.max(-L + 0.3, Math.min(L - 0.3, p.x)); p.z = Math.max(-Wd + 0.3, Math.min(Wd - 0.3, p.z)); }
+  });
+  if (hold) {
+    holdT += dt;
+    if (holdT > 0.7) { const to = choosePass(hold); fly = { from: hold, to, x: hold.x, z: hold.z, t: 0, T: dist(hold, to) / PASS_V }; hold = null; stat.pass++; if (to.gm) stat.goalTry++; }
+  } else if (fly) {
+    fly.t += dt; const k = Math.min(1, fly.t / fly.T);
+    fly.x = fly.from.x + (fly.to.x - fly.from.x) * k; fly.z = fly.from.z + (fly.to.z - fly.from.z) * k;
+    const thief = k > 0.2 && k < 0.8 && !fly.miss && P.find(q => q.team !== fly.from.team && !q.gm && Math.hypot(q.x - fly.x, q.z - fly.z) < 0.45);
+    if (thief && Math.random() < 0.5) fly.miss = true;                     // 半分は取りそこねる
+    if (thief && !fly.miss) { stat.steal++; hold = thief; fly = null; holdT = 0; }
+    else if (k >= 1) {
+      if (fly.to.gm) { score[fly.from.team]++; lastScorer = fly.from.team; document.getElementById("score").textContent = score[0] + " − " + score[1]; hold = fly.to; fly = null; pause = 1.5; }
+      else { hold = fly.to; fly = null; holdT = 0; }
+    }
+  }
+}
+let lastScorer = 0;
+const stat = window.__sim = { pass: 0, steal: 0, goalTry: 0 };
+function drawSim() {
+  P.forEach(p => p.m.position.set(p.x * CS, 0, p.z * CS));
+  let bx, bz, by;
+  if (hold) { const a = hold.m.rotation.y; bx = hold.x + Math.sin(a) * 0.3; bz = hold.z + Math.cos(a) * 0.3; by = 0.74; }
+  else { const k = Math.min(1, fly.t / fly.T); bx = fly.x; bz = fly.z; by = 0.9 + Math.sin(Math.PI * k) * Math.min(2, fly.T * 2.5); }
+  [ballMesh, ballShadow].forEach(m => m.position.set(bx * CS, by * BIG, bz * CS));
+}
+const playBtn = document.getElementById("play");
+playBtn.onclick = () => { play = !play; playBtn.setAttribute("aria-pressed", play); playBtn.textContent = play ? "止める" : "試合"; };
+document.getElementById("reset").onclick = () => { score = [0, 0]; document.getElementById("score").textContent = "0 − 0"; pause = 0; resetSim(false); drawSim(); };
+
 ["teamA", "teamB"].forEach((s, i) => {
   const el = document.getElementById(s);
   SPORT.BIBS.forEach(b => el.add(new Option(b.name, b.id)));
   el.value = i ? "blue" : "red";
-  el.onchange = placeTeams;
+  el.onchange = () => { placeTeams(); resetSim(false); drawSim(); };
 });
 
 /* カメラ：正射影。3つの決まった見方＋指で回す */
@@ -164,12 +249,15 @@ function showMsg(t) { const m = document.getElementById("msg"); m.textContent = 
 /* 毎秒のコマ数（直近1秒の平均） */
 let frames = 0, last = performance.now();
 const fpsEl = document.getElementById("fps");
+let prev = 0;
 function loop(t) {
+  const dt = Math.min(0.05, (t - (prev || t)) / 1000); prev = t;
+  if (play) { step(dt); drawSim(); }
   pr.render(scene, cam, overlay); frames++;
   if (t - last >= 1000) { const f = frames * 1000 / (t - last); fpsEl.textContent = f.toFixed(0) + " コマ/秒"; window.__fps = f; frames = 0; last = t; }
   requestAnimationFrame(loop);
 }
-placeTeams(); resize(); view("oblique");
+placeTeams(); resetSim(false); drawSim(); resize(); view("oblique");
 await floor();
 requestAnimationFrame(loop);
 </script>
