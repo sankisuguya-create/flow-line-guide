@@ -4,24 +4,30 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ラインポートボールの立体（試作）</title>
-<!-- 第1段の見本。体育館の黄コート（19×12m、assets/spaces/gym/space.json の線）に 2チーム×6人とボールを置き、
-     ドット立体を低解像度＋輪郭線で描く。目的は CZ1104（4GB）で回して 毎秒30コマ以上出るかを測ること。
-     ルールは仮：1チーム6人（コート5人＋ゴールマン1人）。ゴールマンは相手側のエンドラインの外、幅1m×長さ＝コートの短辺 の帯に立つ。人もコートも1.6倍（＝実寸の比）。
-     space.json を読むので、ファイルを直接開かず サーバー経由で開く（例：リポジトリ直下で npx serve）。 -->
+<!-- ラインポートボール（3年）の試合を、ドット立体で動かす見本。
+     ルールの正本：sankisuguya-create/taiiku の linepb/rules.md。コートの形は guides/linepb/rule.html と同じ。
+     - コート 20m×10m、両端の幅2mがゴールマンの帯（仮）。センターラインで自陣・相手陣
+     - 攻め：コート4人＋ゴールマン1人（相手側の帯）。守り：3人（自分の陣から出ない）、2人はベンチ。審判5人は上3人・下2人
+     - ゴールマンが帯の中でキャッチしたら得点。点＝最初にパスした人＋相手陣でさわった人 の人数（ゴールマンは数えない）
+     - カット・ゴールマンがとれない → スタートに戻る。戻るたびに 攻めはゴールマン、守りはベンチと交代
+     - 3分で攻守交代
+     描画：人とコートは同じ倍率（CS）で、実寸の比のまま。ボールだけ画面の解像度で重ねる。 -->
 <style>
   :root{--ink:#143242;--soft:#4B6C80;--bg:#F7FAFC;--line:#C7DAE7}
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0;display:flex;flex-direction:column;font-family:"Hiragino Sans","Yu Gothic UI","BIZ UDPGothic","Noto Sans JP",sans-serif;color:var(--ink);background:var(--bg)}
-  header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:8px 16px;border-bottom:2px solid var(--ink);background:#fff}
+  header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:8px 16px;border-bottom:2px solid var(--ink);background:#fff}
   h1{font-size:17px;margin:0}
   .grp{display:flex;gap:6px;align-items:center;font-weight:700;font-size:14px}
-  button,select{font:inherit;font-size:15px;min-height:44px;padding:0 14px;border:2px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink)}
+  button,select{font:inherit;font-size:15px;min-height:44px;padding:0 12px;border:2px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink)}
   button[aria-pressed="true"]{background:var(--ink);color:#fff}
-  #fps{font-variant-numeric:tabular-nums;font-size:13px;color:var(--soft);margin-left:auto}
+  #board{display:flex;gap:14px;align-items:center;font-weight:800;font-variant-numeric:tabular-nums}
+  #board .sc{font-size:20px}
+  #fps{font-size:13px;color:var(--soft);margin-left:auto;font-variant-numeric:tabular-nums}
   main{flex:1;position:relative;min-height:0}
   canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;image-rendering:pixelated}
-  #msg{position:absolute;left:16px;top:16px;background:#fff;border:2px solid #B3261E;padding:8px 12px;border-radius:8px;display:none}
+  #msg{position:absolute;left:50%;top:16px;transform:translateX(-50%);background:#fff;border:2px solid var(--ink);padding:8px 16px;border-radius:10px;font-weight:800;font-size:18px;display:none}
 </style>
 <script type="importmap">
 { "imports": {
@@ -40,9 +46,10 @@
   </div>
   <label class="grp">左<select id="teamA"></select></label>
   <label class="grp">右<select id="teamB"></select></label>
-  <label class="grp">粗さ<select id="rows"><option value="180">粗い</option><option value="270" selected>ふつう</option><option value="400">細かい</option></select></label>
+  <label class="grp">審判<select id="teamR"></select></label>
+  <label class="grp">細かさ<select id="rows"><option value="270">粗い</option><option value="400" selected>ふつう</option><option value="540">細かい</option></select></label>
   <div class="grp"><button id="play" aria-pressed="false">試合</button><button id="reset">最初から</button></div>
-  <span id="score" style="font-size:20px;font-weight:800;font-variant-numeric:tabular-nums">0 − 0</span>
+  <div id="board"><span id="clock">—</span><span class="sc" id="score">0 − 0</span></div>
   <span id="fps">—</span>
 </header>
 <main><canvas id="cv"></canvas><div id="msg"></div></main>
@@ -52,213 +59,254 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { voxelGeometry, voxelMaterial, createPixelRenderer } from "voxel";
 
-const COURT = { x0: 10.38, x1: 33.56, y0: 4.68, y1: 19.32 };          // 黄コート（地図の座標 m）
-const CX = (COURT.x0 + COURT.x1) / 2, CY = (COURT.y0 + COURT.y1) / 2;
-const FLOOR = [6.3, 0, 28.95, 23.8];                                      // フロア [x,y,w,h]
-const GOAL = { w: 1.0, len: COURT.y1 - COURT.y0 };                        // ゴールマンの帯：幅1m、長さはコートの短辺（14.64m）
-const BIG = 1.6;                                                          // 人とボールの倍率
-const CS = 1.6;                                                           // コート（床・配置）の倍率。BIG と同じなら 実寸の比に戻る
-const toW = (mx, my) => [mx - CX, my - CY];                               // 地図 → 立体（x そのまま、地図の y → z）
+/* ===== 寸法（実寸 m、コート中心が原点。x＝長辺、z＝短辺） ===== */
+const HL = 10, HW = 5, BAND = 2;                    // 20m×10m、帯は幅2m（rules.md：仮）
+const CS = 1.6, BIG = 1.6;                          // コートと人の倍率（同じなので実寸の比）
+const GYM = { w: 28.95, h: 23.8 };                  // 体育館のフロア（space.json）。コートは中央に置く
+const LETTERS = "ABCDE";
 
 const cv = document.getElementById("cv");
-const pr = createPixelRenderer(cv, { rows: 270 });
+const pr = createPixelRenderer(cv, { rows: 400 });
 const scene = new THREE.Scene();
 scene.background = new THREE.Color("#E9EEF2");
 scene.add(new THREE.HemisphereLight("#ffffff", "#8a7a66", 1.6));
 const sun = new THREE.DirectionalLight("#ffffff", 1.6);
 sun.position.set(-8, 20, 10); sun.castShadow = true;
 sun.shadow.mapSize.set(1024, 1024);
-Object.assign(sun.shadow.camera, { left: -16 * CS, right: 16 * CS, top: 12 * CS, bottom: -12 * CS, near: 1, far: 100 });
+Object.assign(sun.shadow.camera, { left: -14 * CS, right: 14 * CS, top: 10 * CS, bottom: -10 * CS, near: 1, far: 100 });
 scene.add(sun);
 
-/* 床：space.json の黄の線を描いた板＋ゴールマンの帯 */
-async function floor() {
-  const S = 60;                                                           // 1m = 60px
-  const c = document.createElement("canvas"); c.width = FLOOR[2] * S; c.height = FLOOR[3] * S;
+/* 床：木の床に、ラインポートボールのコート（白のテープ）。帯はうすく色をつける */
+function floor() {
+  const S = 50, c = document.createElement("canvas"); c.width = GYM.w * S; c.height = GYM.h * S;
   const g = c.getContext("2d");
   g.fillStyle = "#D8B488"; g.fillRect(0, 0, c.width, c.height);
-  g.setTransform(S, 0, 0, S, -FLOOR[0] * S, -FLOOR[1] * S);
-  g.lineWidth = 0.12; g.strokeStyle = "#F4D23A";
-  try {
-    const sp = await (await fetch("../../spaces/gym/space.json")).json();
-    sp.floor.filter(f => f.c === "黄").forEach(f => g.stroke(new Path2D(f.d)));
-  } catch (e) {
-    g.strokeRect(COURT.x0, COURT.y0, COURT.x1 - COURT.x0, COURT.y1 - COURT.y0);
-    showMsg("space.json を読めなかったので、コートの外枠だけを描いています（サーバー経由で開いてください）");
-  }
-  g.strokeStyle = "#FFFFFF";                                              // 仮：ゴールマンの帯（白）
-  g.strokeRect(COURT.x0 - GOAL.w, CY - GOAL.len / 2, GOAL.w, GOAL.len);
-  g.strokeRect(COURT.x1, CY - GOAL.len / 2, GOAL.w, GOAL.len);
+  g.setTransform(S, 0, 0, S, c.width / 2, c.height / 2);
+  g.fillStyle = "rgba(255,231,184,.75)";
+  g.fillRect(-HL, -HW, BAND, HW * 2); g.fillRect(HL - BAND, -HW, BAND, HW * 2);
+  g.strokeStyle = "#FFFFFF"; g.lineWidth = 0.1;
+  g.strokeRect(-HL, -HW, HL * 2, HW * 2);
+  [-HL + BAND, 0, HL - BAND].forEach(x => { g.beginPath(); g.moveTo(x, -HW); g.lineTo(x, HW); g.stroke(); });
+  g.beginPath(); g.arc(0, 0, 0.35, 0, Math.PI * 2); g.stroke();
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR[2], FLOOR[3]), new THREE.MeshLambertMaterial({ map: tex }));
-  m.rotation.x = -Math.PI / 2;
-  const [fx, fz] = toW(FLOOR[0] + FLOOR[2] / 2, FLOOR[1] + FLOOR[3] / 2); m.position.set(fx * CS, 0, fz * CS); m.scale.set(CS, CS, 1);
-  m.receiveShadow = true; scene.add(m);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(GYM.w * CS, GYM.h * CS), new THREE.MeshLambertMaterial({ map: tex }));
+  m.rotation.x = -Math.PI / 2; m.receiveShadow = true; scene.add(m);
 }
 
-/* 人物：色ごとに形を1つ作り、メッシュで使い回す */
+/* ===== 人 ===== */
 const mat = voxelMaterial(), geoCache = {};
 const geoOf = id => geoCache[id] || (geoCache[id] = voxelGeometry(SPORT.figure(SPORT.BIBS.find(b => b.id === id).col), SPORT.CELL));
-/* 仮の配置（コート中心からの m）。左チームは右（+x）へ攻め、ゴールマンは右の帯に立つ */
-const SPOTS = [[-7, -3.5], [-7, 3.5], [-2.5, 0], [3, -4], [3, 4.2], [COURT.x1 - CX + GOAL.w / 2, 0]];
-const people = [];
-function placeTeams() {
-  people.forEach(p => scene.remove(p)); people.length = 0;
-  [["teamA", 1], ["teamB", -1]].forEach(([sel, dir]) => {
-    const id = document.getElementById(sel).value;
-    SPOTS.forEach(([x, z], i) => {
-      const m = new THREE.Mesh(geoOf(id), mat);
-      m.castShadow = true; m.scale.setScalar(BIG);
-      const ox = dir * x + (i < 5 ? dir * 0.3 * ((i % 2) * 2 - 1) : 0);   // 両チームが同じ場所に重ならないよう少しずらす
-      m.position.set(ox * CS, 0, (dir * z + (dir < 0 ? 1.2 : 0)) * CS);
-      m.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2;               // 攻める向きを正面に
-      scene.add(m); people.push(m);
-    });
+const sel = { A: document.getElementById("teamA"), B: document.getElementById("teamB"), R: document.getElementById("teamR") };
+const DEF = { A: "red", B: "blue", R: "green" };
+Object.entries(sel).forEach(([k, el]) => { SPORT.BIBS.forEach(b => el.add(new Option(b.name, b.id))); el.value = DEF[k]; });
+const bibName = id => SPORT.BIBS.find(b => b.id === id).name;
+
+let people = [];                                    // {m, team(0/1/2), k(0..4), x, z}
+function makePeople() {
+  people.forEach(p => scene.remove(p.m));
+  people = [];
+  ["A", "B", "R"].forEach((t, team) => {
+    for (let k = 0; k < 5; k++) {
+      const m = new THREE.Mesh(geoOf(sel[t].value), mat);
+      m.castShadow = true; m.scale.setScalar(BIG); scene.add(m);
+      people.push({ m, team, k, x: 0, z: 0 });
+    }
   });
 }
-/* ボールはボクセルにせず、なめらかな球（直径約21cm、ポートボール用の大きさ）にする。
-   低解像度だと3画素ほどの四角になるので、画面の解像度で上に重ねて描く（overlay）。床の影は 影だけの複製で落とす */
+const teamOf = t => people.filter(p => p.team === t);
+
+/* ===== ボール：なめらかな球を画面の解像度で重ねる。影は 影だけの複製で落とす ===== */
 const overlay = new THREE.Scene();
 overlay.add(new THREE.HemisphereLight("#ffffff", "#8a7a66", 1.6));
 const sun2 = new THREE.DirectionalLight("#ffffff", 1.6); sun2.position.copy(sun.position); overlay.add(sun2);
 const ballGeo = new THREE.SphereGeometry(0.105, 24, 16);
 const ballMesh = new THREE.Mesh(ballGeo, new THREE.MeshLambertMaterial({ color: "#F08A24" }));
 const ballShadow = new THREE.Mesh(ballGeo, new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }));
-ballShadow.castShadow = true;
-[ballMesh, ballShadow].forEach(m => { m.scale.setScalar(BIG); m.position.set(-2.5 * CS + 0.45 * BIG, 0.74 * BIG, 0); });
-overlay.add(ballMesh); scene.add(ballShadow);
+ballShadow.castShadow = true; overlay.add(ballMesh); scene.add(ballShadow);
+[ballMesh, ballShadow].forEach(m => m.scale.setScalar(BIG));
 
-/* ===== 簡単な試合（仮の動き）=====
-   座標はコート中心からの実寸 m（画面へは CS 倍）。左チーム(dir=+1)は右へ攻め、右の帯にいる味方のゴールマンへ渡せば1点。
-   持った人は0.7秒で、前にいて相手が近くにいない味方へパスする。ゴールマンへの通り道が空いていれば ゴールマンへ。
-   守りは決まった相手の、ボール側に付く。飛んでいるボールの近く（0.45m）に相手がいれば、半分の確率で取られる。 */
-const L = (COURT.x1 - COURT.x0) / 2, Wd = (COURT.y1 - COURT.y0) / 2;
-const SPEED = 3.2, PASS_V = 9;
-let P = [], hold = null, fly = null, holdT = 0, play = false, score = [0, 0], pause = 0;
-function resetSim(kick) {
-  P = people.map((m, i) => {
-    const team = i < 6 ? 0 : 1, dir = team ? -1 : 1, k = i % 6, gm = k === 5;
-    return { m, team, dir, gm, x: m.position.x / CS, z: m.position.z / CS, hx: 0, hz: 0 };
-  });
-  P.forEach(p => { if (!p.gm) { p.x = -p.dir * (1.5 + Math.random() * 6); p.z = (Math.random() * 2 - 1) * (Wd - 1); } });
-  hold = P[kick ? 8 : 2]; hold.x = 0; hold.z = 0; fly = null; holdT = 0;
-}
+/* ===== 試合（rules.md に合わせた簡単な動き） =====
+   左チーム(0)の陣は x<0、右チーム(1)は x>0。攻めは相手の陣へ攻め、ゴールマンは相手側の帯に立つ。 */
+const SPEED = 3.0, PASS_V = 8, HOLD = 1.0, HALF_TIME = 180;
+const S = { off: 0, gm: [0, 0], bench: [0, 0], score: [0, 0], clock: HALF_TIME, play: false,
+            stat: { pass: 0, gmTry: 0, cut: 0, drop: 0, goal: 0 }, hold: null, fly: null, holdT: 0, touched: new Set(), first: null, pause: 0, msgT: 0 };
+const dirOf = t => t === 0 ? 1 : -1;                // 攻める向き
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
-function laneOpen(a, b, team) {                                           // a→b の線から0.9m以内に相手がいない
-  return !P.some(q => q.team !== team && !q.gm && segDist(q, a, b) < 0.9);
-}
 function segDist(q, a, b) {
-  const dx = b.x - a.x, dz = b.z - a.z, t = Math.max(0, Math.min(1, ((q.x - a.x) * dx + (q.z - a.z) * dz) / (dx * dx + dz * dz || 1)));
+  const dx = b.x - a.x, dz = b.z - a.z, t = clamp(((q.x - a.x) * dx + (q.z - a.z) * dz) / (dx * dx + dz * dz || 1), 0, 1);
   return Math.hypot(q.x - a.x - dx * t, q.z - a.z - dz * t);
 }
-function choosePass(h) {
-  const mates = P.filter(q => q.team === h.team && q !== h);
-  const gm = mates.find(q => q.gm);
-  const dg = dist(h, gm);
-  if (dg < 12 && (laneOpen(h, gm, h.team) || Math.random() < 0.25)) return gm;   // 近ければ、道がふさがっていても4回に1回は狙う
+function roles() {                                  // いまの役割
+  const o = S.off, d = 1 - o, O = teamOf(o), D = teamOf(d);
+  const gm = O[S.gm[o] % 5];
+  const field = O.filter(p => p !== gm);
+  const onCourt = [0, 1, 2].map(i => D[(S.bench[d] + i) % 5]);
+  const bench = D.filter(p => !onCourt.includes(p));
+  return { o, d, dir: dirOf(o), gm, field, onCourt, bench };
+}
+function say(t, sec) { const m = document.getElementById("msg"); m.textContent = t; m.style.display = "block"; S.msgT = sec || 2; }
+function updateBoard() {
+  document.getElementById("score").textContent = S.score[0] + " − " + S.score[1];
+  const s = Math.max(0, Math.ceil(S.clock)), id = S.off ? sel.B.value : sel.A.value;
+  document.getElementById("clock").textContent = "せめ " + bibName(id) + "　" + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+/* スタート：攻めは自陣から。ボールを持たない人は相手陣へ。守りは自分の陣、ベンチはコートの外 */
+function start() {
+  const R = roles();
+  R.field.forEach((p, i) => {
+    p.x = -R.dir * (2 + Math.random() * 5); p.z = clamp((i - 1.5) * 2.4 + (Math.random() - 0.5), -HW + 0.5, HW - 0.5); p.tx = null;
+  });
+  R.gm.x = R.dir * (HL - BAND / 2); R.gm.z = 0;
+  R.onCourt.forEach((p, i) => { p.x = R.dir * (3 + i * 1.8); p.z = (i - 1) * 2.5; });
+  R.bench.forEach((p, i) => { p.x = -R.dir * (HL - 1.5 - i * 1.2); p.z = -HW - 1.5; });
+  /* 攻めにベンチはいない（5人全員が出る） */
+  S.hold = R.field[Math.floor(Math.random() * 4)]; S.hold.x = -R.dir * 3; S.hold.z = 0;
+  S.fly = null; S.holdT = 0; S.touched = new Set(); S.first = null;
+}
+function refs() {                                   // 審判：上のラインに3人、下に2人
+  const R = teamOf(2), spots = [[-6, -HW - 0.8], [0, -HW - 0.8], [6, -HW - 0.8], [-4, HW + 0.8], [4, HW + 0.8]];
+  R.forEach((p, i) => { [p.x, p.z] = spots[i]; p.m.rotation.y = p.z < 0 ? 0 : Math.PI; });
+}
+function backToStart(text) {                        // スタートに戻る：ゴールマン・ベンチを交代
+  const R = roles();
+  S.gm[R.o]++; S.bench[R.d]++;
+  say(text, 1.8); S.pause = 1.8;
+}
+function choosePass(h, R) {
+  const lane = (a, b) => !R.onCourt.some(q => segDist(q, a, b) < 0.6);
+  const dg = dist(h, R.gm);
+  if (dg < 15 && (lane(h, R.gm) || Math.random() < 0.1)) return R.gm;
   let best = null, bs = -1e9;
-  mates.filter(q => !q.gm).forEach(q => {
-    const near = Math.min(...P.filter(o => o.team !== h.team).map(o => dist(o, q)));
-    const sc = (q.x - h.x) * h.dir * 0.6 + Math.min(near, 4) * 1.5 - (laneOpen(h, q, h.team) ? 0 : 6) + Math.random();
+  R.field.filter(q => q !== h).forEach(q => {
+    const near = Math.min(...R.onCourt.map(o => dist(o, q)));
+    const sc = (q.x - h.x) * R.dir * 0.5 + Math.min(near, 3) * 1.5 - (lane(h, q) ? 0 : 5) + Math.random();
     if (sc > bs) { bs = sc; best = q; }
   });
   return best;
 }
+function move(p, tx, tz, dt, face) {
+  const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz), v = Math.min(d, SPEED * dt);
+  if (d > 0.05) { p.x += dx / d * v; p.z += dz / d * v; p.m.rotation.y = Math.atan2(dx, dz); }
+  else if (face) p.m.rotation.y = Math.atan2(face.x - p.x, face.z - p.z);
+}
 function step(dt) {
-  if (pause > 0) { pause -= dt; if (pause <= 0) resetSim(lastScorer === 0); return; }
-  const owner = hold || (fly && fly.to);
-  const atk = hold ? hold.team : fly ? fly.from.team : 0;
-  P.forEach((p, i) => {
-    let tx = p.x, tz = p.z;
-    if (p.gm) { tx = p.dir * (L + GOAL.w / 2); tz = Math.max(-Wd + 0.5, Math.min(Wd - 0.5, fly ? fly.z : hold.z)); }
-    else if (p === hold) { tx = p.x; tz = p.z; }                          // 持っている人は止まる（ピボット）
-    else if (p.team === atk) {                                             // 攻め：前の空いた所へ
-      if (!p.hx || Math.random() < dt * 0.5) { p.hx = p.dir * (1 + Math.random() * (L - 2)); p.hz = (Math.random() * 2 - 1) * (Wd - 1); }
-      tx = p.hx; tz = p.hz;
-    } else {                                                               // 守り：決まった相手とボールの間
-      const opp = P[(i + 6) % 12], b = fly || hold;
-      tx = opp.x + (b.x - opp.x) * 0.15 - p.dir * 1.0; tz = opp.z + (b.z - opp.z) * 0.15;
-    }
-    const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz), v = Math.min(d, SPEED * dt);
-    if (d > 0.05) { p.x += dx / d * v; p.z += dz / d * v; p.m.rotation.y = Math.atan2(dx, dz); }
-    if (!p.gm) { p.x = Math.max(-L + 0.3, Math.min(L - 0.3, p.x)); p.z = Math.max(-Wd + 0.3, Math.min(Wd - 0.3, p.z)); }
+  if (S.msgT > 0 && (S.msgT -= dt) <= 0) document.getElementById("msg").style.display = "none";
+  S.clock -= dt;
+  if (S.clock <= 0 && S.pause <= 0) { S.off = 1 - S.off; S.clock = HALF_TIME; say("攻守交代", 2); S.pause = 2; }
+  if (S.pause > 0) { if ((S.pause -= dt) <= 0) start(); updateBoard(); return; }
+  const R = roles(), ball = S.fly || S.hold;
+  /* 攻め：持っている人は動かない（持ったまま動くのはファウル）。ほかは相手陣の空いた所へ */
+  R.field.forEach(p => {
+    if (p === S.hold) { p.m.rotation.y = Math.atan2(R.gm.x - p.x, R.gm.z - p.z); return; }
+    if (S.fly && S.fly.to === p) { move(p, p.x, p.z, dt, S.fly); return; }
+    if (p.tx == null || Math.random() < dt * 0.6) { p.tx = R.dir * (1 + Math.random() * (HL - BAND - 1.6)); p.tz = (Math.random() * 2 - 1) * (HW - 0.6); }
+    move(p, p.tx, p.tz, dt, ball);
+    p.x = clamp(p.x, -HL + BAND + 0.3, HL - BAND - 0.3); p.z = clamp(p.z, -HW + 0.3, HW - 0.3);
   });
-  if (hold) {
-    holdT += dt;
-    if (holdT > 0.7) { const to = choosePass(hold); fly = { from: hold, to, x: hold.x, z: hold.z, t: 0, T: dist(hold, to) / PASS_V }; hold = null; stat.pass++; if (to.gm) stat.goalTry++; }
-  } else if (fly) {
-    fly.t += dt; const k = Math.min(1, fly.t / fly.T);
-    fly.x = fly.from.x + (fly.to.x - fly.from.x) * k; fly.z = fly.from.z + (fly.to.z - fly.from.z) * k;
-    const thief = k > 0.2 && k < 0.8 && !fly.miss && P.find(q => q.team !== fly.from.team && !q.gm && Math.hypot(q.x - fly.x, q.z - fly.z) < 0.45);
-    if (thief && Math.random() < 0.5) fly.miss = true;                     // 半分は取りそこねる
-    if (thief && !fly.miss) { stat.steal++; hold = thief; fly = null; holdT = 0; }
-    else if (k >= 1) {
-      if (fly.to.gm) { score[fly.from.team]++; lastScorer = fly.from.team; document.getElementById("score").textContent = score[0] + " − " + score[1]; hold = fly.to; fly = null; pause = 1.5; }
-      else { hold = fly.to; fly = null; holdT = 0; }
+  /* ゴールマン：帯の中で、ボールからの道が守りに一番ふさがれていない所へ動く */
+  if (!R.gm.tz || Math.random() < dt * 2) {
+    let bz = 0, bs = -1;
+    for (let z = -HW + 0.5; z <= HW - 0.5; z += 0.5) {
+      const q = { x: R.dir * (HL - BAND / 2), z }, sc = Math.min(...R.onCourt.map(o => segDist(o, ball, q))) - Math.abs(z - R.gm.z) * 0.1;
+      if (sc > bs) { bs = sc; bz = z; }
+    }
+    R.gm.tz = bz;
+  }
+  move(R.gm, R.dir * (HL - BAND / 2), R.gm.tz, dt, ball);
+  /* 守り：1人はゴールマンへの道、2人はゴールマンに近い攻めへの道に立つ。自分の陣から出ない、持つ人から2歩はなれる */
+  const threats = R.field.filter(p => p !== S.hold).sort((a, b) => dist(a, R.gm) - dist(b, R.gm));
+  const targets = [R.gm, threats[0], threats[1]];
+  R.onCourt.forEach((p, i) => {
+    const t = targets[i] || R.gm, k = i === 0 ? 0.6 : 0.75;   // 1人は道の途中、2人は相手の近く
+    let tx = ball.x + (t.x - ball.x) * k, tz = ball.z + (t.z - ball.z) * k;
+    if (S.hold) { const dh = Math.hypot(tx - S.hold.x, tz - S.hold.z); if (dh < 1.3) { tx = S.hold.x + (tx - S.hold.x) / (dh || 1) * 1.3; tz = S.hold.z + (tz - S.hold.z) / (dh || 1) * 1.3; } }
+    const lo = R.dir > 0 ? 0.2 : -HL + BAND + 0.3, hi = R.dir > 0 ? HL - BAND - 0.3 : -0.2;
+    move(p, clamp(tx, lo, hi), clamp(tz, -HW + 0.3, HW - 0.3), dt, ball);
+    p.x = clamp(p.x, lo, hi);
+  });
+  R.bench.forEach(p => p.m.rotation.y = Math.atan2(ball.x - p.x, ball.z - p.z));
+  /* ボール */
+  if (S.hold) {
+    if ((S.holdT += dt) > HOLD) {
+      const to = choosePass(S.hold, R);
+      if (!S.first) { S.first = S.hold; S.touched.add(S.hold); }   // 最初にパスした人（自陣からでも数える）
+      S.fly = { from: S.hold, to, x: S.hold.x, z: S.hold.z, t: 0, T: Math.max(0.2, dist(S.hold, to) / PASS_V) };
+      S.hold = null; S.stat.pass++; if (to === R.gm) S.stat.gmTry++;
+    }
+  } else if (S.fly) {
+    const f = S.fly; f.t += dt; const k = Math.min(1, f.t / f.T);
+    f.x = f.from.x + (f.to.x - f.from.x) * k; f.z = f.from.z + (f.to.z - f.from.z) * k;
+    const cut = k > 0.2 && k < 0.85 && !f.miss && R.onCourt.find(q => Math.hypot(q.x - f.x, q.z - f.z) < 0.4);
+    if (cut) { if (Math.random() < 0.4) { S.stat.cut++; S.fly = null; backToStart("カットされた → スタートへ"); return; } f.miss = true; }
+    if (k >= 1) {
+      if (f.to === R.gm) {
+        if (Math.random() < 0.15) { S.stat.drop++; S.fly = null; backToStart("ゴールマンがとれなかった → スタートへ"); return; }
+        const pts = S.touched.size, names = [...S.touched].map(p => LETTERS[p.k]).join("・");
+        S.score[R.o] += pts; S.stat.goal++; S.fly = null; S.hold = R.gm;
+        backToStart(bibName(R.o ? sel.B.value : sel.A.value) + " " + pts + "点！（" + names + "）");
+      } else {
+        if (f.to.x * R.dir > 0) S.touched.add(f.to);                  // 相手陣でさわった人
+        S.hold = f.to; S.fly = null; S.holdT = 0;
+      }
     }
   }
+  updateBoard();
 }
-let lastScorer = 0;
-const stat = window.__sim = { pass: 0, steal: 0, goalTry: 0 };
-function drawSim() {
-  P.forEach(p => p.m.position.set(p.x * CS, 0, p.z * CS));
+function draw() {
+  people.forEach(p => p.m.position.set(p.x * CS, 0, p.z * CS));
   let bx, bz, by;
-  if (hold) { const a = hold.m.rotation.y; bx = hold.x + Math.sin(a) * 0.3; bz = hold.z + Math.cos(a) * 0.3; by = 0.74; }
-  else { const k = Math.min(1, fly.t / fly.T); bx = fly.x; bz = fly.z; by = 0.9 + Math.sin(Math.PI * k) * Math.min(2, fly.T * 2.5); }
+  if (S.hold) { const a = S.hold.m.rotation.y; bx = S.hold.x + Math.sin(a) * 0.25; bz = S.hold.z + Math.cos(a) * 0.25; by = 0.75; }
+  else if (S.fly) { const k = Math.min(1, S.fly.t / S.fly.T); bx = S.fly.x; bz = S.fly.z; by = 0.9 + Math.sin(Math.PI * k) * Math.min(1.5, S.fly.T * 2); }
+  else return;
   [ballMesh, ballShadow].forEach(m => m.position.set(bx * CS, by * BIG, bz * CS));
 }
+function resetAll() {
+  makePeople(); refs();
+  Object.assign(S, { off: 0, gm: [0, 0], bench: [0, 0], score: [0, 0], clock: HALF_TIME, pause: 0 });
+  start(); updateBoard(); draw();
+}
 const playBtn = document.getElementById("play");
-playBtn.onclick = () => { play = !play; playBtn.setAttribute("aria-pressed", play); playBtn.textContent = play ? "止める" : "試合"; };
-document.getElementById("reset").onclick = () => { score = [0, 0]; document.getElementById("score").textContent = "0 − 0"; pause = 0; resetSim(false); drawSim(); };
+playBtn.onclick = () => { S.play = !S.play; playBtn.setAttribute("aria-pressed", S.play); playBtn.textContent = S.play ? "止める" : "試合"; };
+document.getElementById("reset").onclick = resetAll;
+Object.values(sel).forEach(el => el.onchange = resetAll);
 
-["teamA", "teamB"].forEach((s, i) => {
-  const el = document.getElementById(s);
-  SPORT.BIBS.forEach(b => el.add(new Option(b.name, b.id)));
-  el.value = i ? "blue" : "red";
-  el.onchange = () => { placeTeams(); resetSim(false); drawSim(); };
-});
-
-/* カメラ：正射影。3つの決まった見方＋指で回す */
+/* ===== カメラ：正射影。3つの決まった見方＋指で回す ===== */
 const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.5, 160);
 const ctl = new OrbitControls(cam, cv);
 ctl.enableDamping = false; ctl.enablePan = false; ctl.maxPolarAngle = THREE.MathUtils.degToRad(86);
 ctl.minZoom = 0.8; ctl.maxZoom = 6;
 const VIEWS = { top: [0.001, 0], oblique: [55, -30], side: [84, 0] };
 function view(name) {
-  const [pol, az] = VIEWS[name].map(THREE.MathUtils.degToRad);
-  const r = 70;
+  const [pol, az] = VIEWS[name].map(THREE.MathUtils.degToRad), r = 70;
   cam.position.set(r * Math.sin(pol) * Math.sin(az), r * Math.cos(pol), r * Math.sin(pol) * Math.cos(az));
   cam.zoom = 1; ctl.target.set(0, 0, 0); cam.updateProjectionMatrix(); ctl.update();
   document.querySelectorAll("#views button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === name));
 }
 document.querySelectorAll("#views button").forEach(b => b.onclick = () => view(b.dataset.v));
 ctl.addEventListener("start", () => document.querySelectorAll("#views button").forEach(b => b.setAttribute("aria-pressed", "false")));
-
 function resize() {
   const { w, h } = pr.size();
-  const half = 13.5 * CS, a = w / h;                                           // コート全体（約26m）が収まる幅
-  if (a >= 25 / 16) { cam.top = half * 0.62; cam.bottom = -cam.top; cam.right = cam.top * a; cam.left = -cam.right; }
+  const half = 12 * CS, a = w / h;                  // コート20m＋審判・ベンチが収まる幅
+  if (a >= 24 / 15) { cam.top = half * 0.62; cam.bottom = -cam.top; cam.right = cam.top * a; cam.left = -cam.right; }
   else { cam.right = half; cam.left = -half; cam.top = half / a; cam.bottom = -cam.top; }
   cam.updateProjectionMatrix();
 }
 document.getElementById("rows").onchange = e => { pr.setRows(+e.target.value); resize(); };
 addEventListener("resize", resize);
 
-function showMsg(t) { const m = document.getElementById("msg"); m.textContent = t; m.style.display = "block"; }
-
 /* 毎秒のコマ数（直近1秒の平均） */
-let frames = 0, last = performance.now();
+let frames = 0, last = performance.now(), prev = 0;
 const fpsEl = document.getElementById("fps");
-let prev = 0;
 function loop(t) {
   const dt = Math.min(0.05, (t - (prev || t)) / 1000); prev = t;
-  if (play) { step(dt); drawSim(); }
+  if (S.play) { step(dt); draw(); }
   pr.render(scene, cam, overlay); frames++;
   if (t - last >= 1000) { const f = frames * 1000 / (t - last); fpsEl.textContent = f.toFixed(0) + " コマ/秒"; window.__fps = f; frames = 0; last = t; }
   requestAnimationFrame(loop);
 }
-placeTeams(); resetSim(false); drawSim(); resize(); view("oblique");
-await floor();
+window.__S = S;
+floor(); resetAll(); resize(); view("oblique");
 requestAnimationFrame(loop);
 </script>
 </body>
