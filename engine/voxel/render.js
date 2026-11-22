@@ -92,9 +92,12 @@ export function createPixelRenderer(canvas, opt) {
     three: renderer,
     size,
     setRows(n) { rows = n; return size(); },
-    render(scene, camera) {
+    /* overlay：低解像度にすると形が崩れる小さな物（ボール等）を、画面の解像度で上に重ねる。
+       前後関係は見ない（常に手前）。影は本体の scene に影だけの複製を置いて落とす */
+    render(scene, camera, overlay) {
       renderer.setRenderTarget(rt); renderer.render(scene, camera);
       renderer.setRenderTarget(null); renderer.render(postScene, postCam);
+      if (overlay) { renderer.autoClear = false; renderer.clearDepth(); renderer.render(overlay, camera); renderer.autoClear = true; }
     }
   };
 }

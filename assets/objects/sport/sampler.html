@@ -114,8 +114,17 @@ function placeTeams() {
     });
   });
 }
-const ballMesh = new THREE.Mesh(voxelGeometry(SPORT.ball(), SPORT.CELL), mat);
-ballMesh.castShadow = true; ballMesh.scale.setScalar(BIG); ballMesh.position.set(-2.5 * CS + 0.45 * BIG, 0.62 * BIG, 0); scene.add(ballMesh);
+/* ボールはボクセルにせず、なめらかな球（直径約21cm、ポートボール用の大きさ）にする。
+   低解像度だと3画素ほどの四角になるので、画面の解像度で上に重ねて描く（overlay）。床の影は 影だけの複製で落とす */
+const overlay = new THREE.Scene();
+overlay.add(new THREE.HemisphereLight("#ffffff", "#8a7a66", 1.6));
+const sun2 = new THREE.DirectionalLight("#ffffff", 1.6); sun2.position.copy(sun.position); overlay.add(sun2);
+const ballGeo = new THREE.SphereGeometry(0.105, 24, 16);
+const ballMesh = new THREE.Mesh(ballGeo, new THREE.MeshLambertMaterial({ color: "#F08A24" }));
+const ballShadow = new THREE.Mesh(ballGeo, new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }));
+ballShadow.castShadow = true;
+[ballMesh, ballShadow].forEach(m => { m.scale.setScalar(BIG); m.position.set(-2.5 * CS + 0.45 * BIG, 0.74 * BIG, 0); });
+overlay.add(ballMesh); scene.add(ballShadow);
 
 ["teamA", "teamB"].forEach((s, i) => {
   const el = document.getElementById(s);
@@ -156,7 +165,7 @@ function showMsg(t) { const m = document.getElementById("msg"); m.textContent = 
 let frames = 0, last = performance.now();
 const fpsEl = document.getElementById("fps");
 function loop(t) {
-  pr.render(scene, cam); frames++;
+  pr.render(scene, cam, overlay); frames++;
   if (t - last >= 1000) { const f = frames * 1000 / (t - last); fpsEl.textContent = f.toFixed(0) + " コマ/秒"; window.__fps = f; frames = 0; last = t; }
   requestAnimationFrame(loop);
 }
