@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ラインポートボール v2 試作</title>
+<!-- v2 試作：ゴールの場面だけを立体で。動き・字幕は ../rule.html の SCENES を build.py が 取りこむ（二重に 持たない）。
+     goal.src.html を 直して python3 build.py → goal.html。goal.html は 直接 直さない。 -->
+<style>
+/*FONT*/
+:root{--red:#ff4d5e;--blue:#4d8dff;--green:#3fd47a;--gold:#ffcf5a;--ink:#e8eefc}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#05070f;overflow:hidden;color:var(--ink);font-family:"LPB",sans-serif}
+#wrap{position:relative;width:1280px;height:720px;margin:0 auto;overflow:hidden;background:#05070f}
+#gl{position:absolute;inset:0;width:1280px;height:720px;display:block}
+#mini{position:absolute;right:22px;top:22px;width:320px;height:190px;border-radius:14px;
+  background:rgba(8,14,30,.72);border:1px solid rgba(140,190,255,.35);box-shadow:0 0 24px rgba(80,140,255,.25)}
+#minilbl{position:absolute;right:30px;top:214px;font-size:15px;font-weight:800;color:#9fb6e0;letter-spacing:.08em}
+#board{position:absolute;left:28px;top:22px;font-size:38px;font-weight:900;letter-spacing:.04em;
+  text-shadow:0 0 12px rgba(0,0,0,.8)}
+#cap{position:absolute;left:0;right:0;bottom:0;height:128px;padding:34px 260px 0 260px;text-align:center;white-space:nowrap;
+  font-size:46px;font-weight:900;background:linear-gradient(transparent,rgba(3,5,12,.88) 45%);text-shadow:0 2px 10px #000}
+#cap span{display:inline-block;transform-origin:center}
+rt{font-size:.42em;font-weight:800;color:#cfe0ff}
+#title{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding-left:540px;pointer-events:none;background:linear-gradient(90deg,rgba(5,7,15,.15),rgba(5,7,15,.75) 45%)}
+#title .ch{font-size:20px;letter-spacing:.5em;color:var(--gold);font-weight:800}
+#title .t{font-size:96px;font-weight:900;text-shadow:0 0 28px rgba(255,207,90,.55)}
+#title .s{font-size:28px;color:#b9c8ea;font-weight:800;margin-top:6px}
+.lab{position:absolute;transform:translate(-50%,-100%);font-size:30px;font-weight:900;padding:6px 18px;border-radius:999px;
+  background:rgba(8,14,30,.85);border:3px solid currentColor;white-space:nowrap}
+#big{position:absolute;left:0;right:0;top:150px;text-align:center;font-size:150px;font-weight:900;color:var(--gold);
+  text-shadow:0 0 30px rgba(255,207,90,.9),0 0 80px rgba(255,160,40,.6)}
+#play{position:absolute;left:16px;bottom:140px;width:56px;height:56px;border-radius:14px;border:2px solid #9fb6e0;background:rgba(8,14,30,.8);
+  color:#fff;font-size:22px;cursor:pointer}
+body.rec #play{display:none}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="gl" width="1280" height="720"></canvas>
+  <canvas id="mini" width="320" height="190"></canvas><div id="minilbl">上から 見た 図</div>
+  <div id="board"></div>
+  <div id="labs"></div>
+  <div id="big"></div>
+  <div id="title"><div class="ch">CHAPTER 5</div><div class="t">ゴールと 点数</div><div class="s">パスを つないで、ゴールマンへ</div></div>
+  <div id="cap"></div>
+  <button id="play">▶</button>
+</div>
+<script>
+/*DATA*/
+</script>
+<script type="module">
+import * as THREE from "three";
+import {EffectComposer} from "three/addons/postprocessing/EffectComposer.js";
+import {RenderPass} from "three/addons/postprocessing/RenderPass.js";
+import {UnrealBloomPass} from "three/addons/postprocessing/UnrealBloomPass.js";
+import {OutputPass} from "three/addons/postprocessing/OutputPass.js";
+import {RoomEnvironment} from "three/addons/environments/RoomEnvironment.js";
+
+const SC=SCENES.find(s=>s.name==="ゴール");
+const INTRO=3.2, OUTRO=1.5, TOTAL=INTRO+SC.dur+OUTRO;
+const W=1280,H=720, el=id=>document.getElementById(id);
+const sm=u=>{u=Math.max(0,Math.min(1,u));return u*u*(3-2*u);};
+const wx=m=>m-10, wz=m=>m-5;                   // 図の m → 世界（コートの 中心が 原点）
+
+/* ===== 描画の 土台 ===== */
+const renderer=new THREE.WebGLRenderer({canvas:el("gl"),antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(1); renderer.setSize(W,H,false);
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const pmrem=new THREE.PMREMGenerator(renderer), ENV=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+const scene=new THREE.Scene(); scene.background=new THREE.Color("#05070f"); scene.fog=new THREE.Fog("#05070f",30,70); scene.environment=ENV;
+const cam=new THREE.PerspectiveCamera(38,W/H,0.1,200);
+scene.add(new THREE.HemisphereLight("#9fb6ff","#0a0f20",0.55));
+const sun=new THREE.DirectionalLight("#fff4e0",2.2); sun.position.set(-8,18,10); sun.castShadow=true;
+sun.shadow.mapSize.set(1024,1024); Object.assign(sun.shadow.camera,{left:-16,right:16,top:12,bottom:-12}); scene.add(sun);
+const composer=new EffectComposer(renderer); composer.addPass(new RenderPass(scene,cam));
+const bloom=new UnrealBloomPass(new THREE.Vector2(W,H),0.38,0.4,0.92); composer.addPass(bloom); composer.addPass(new OutputPass());
+
+/* ===== コート ===== */
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(120,120),new THREE.MeshStandardMaterial({color:"#0a1022",roughness:.9}));
+floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; scene.add(floor);
+const court=new THREE.Mesh(new THREE.PlaneGeometry(20,10),new THREE.MeshStandardMaterial({color:"#1a2546",roughness:.75}));
+court.rotation.x=-Math.PI/2; court.position.y=0.005; court.receiveShadow=true; scene.add(court);
+function glowLine(x1,z1,x2,z2,col,w){ const L=Math.hypot(x2-x1,z2-z1), m=new THREE.Mesh(new THREE.BoxGeometry(L,0.03,w||0.08),
+  new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:0.9})); m.position.set((x1+x2)/2,0.02,(z1+z2)/2); m.rotation.y=-Math.atan2(z2-z1,x2-x1); scene.add(m); return m; }
+[[-10,-5,10,-5],[10,-5,10,5],[10,5,-10,5],[-10,5,-10,-5],[0,-5,0,5],[-8,-5,-8,5],[8,-5,8,5]].forEach(l=>glowLine(...l,"#bfe0ff"));
+const cc=new THREE.Mesh(new THREE.TorusGeometry(0.35,0.03,8,40),new THREE.MeshStandardMaterial({color:"#bfe0ff",emissive:"#bfe0ff",emissiveIntensity:1.6}));
+cc.rotation.x=Math.PI/2; cc.position.y=0.02; scene.add(cc);
+function zone(x,w,col){ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,10),new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:.9,transparent:true,opacity:0,depthWrite:false}));
+  m.rotation.x=-Math.PI/2; m.position.set(x,0.012,0); scene.add(m); return m; }
+const bandL=zone(-9,2,"#ffb340"), enemy=zone(-4,8,"#ff8a3d");
+[[-8,-5],[-8,5],[8,-5],[8,5]].forEach(p=>{ const c=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.6,20),new THREE.MeshStandardMaterial({color:"#ff9a2e",emissive:"#ff7a00",emissiveIntensity:.8}));
+  c.position.set(p[0],0.3,p[1]); c.castShadow=true; scene.add(c); });
+
+/* ===== 人＝四角柱（チームの色、側面と上に 字） ===== */
+const COL={r:"#e23a4e",b:"#2f6fe0",j:"#2fb866"};
+function letterTex(ch,col){ const c=document.createElement("canvas"); c.width=c.height=128; const g=c.getContext("2d");
+  g.fillStyle=col; g.fillRect(0,0,128,128); g.fillStyle="#fff"; g.font="900 92px LPB, sans-serif"; g.textAlign="center"; g.textBaseline="middle"; g.fillText(ch,64,70);
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t; }
+const PEOPLE={};
+Object.keys(START).forEach(id=>{ const col=COL[id[0]], side=new THREE.MeshStandardMaterial({map:letterTex(id[1],col),roughness:.35,metalness:.1,emissive:col,emissiveIntensity:.12});
+  const plain=new THREE.MeshStandardMaterial({color:col,roughness:.35,metalness:.1,emissive:col,emissiveIntensity:.12});
+  const m=new THREE.Mesh(new THREE.BoxGeometry(0.7,1.5,0.7),[side,side,side,plain,side,side]); m.castShadow=true; m.receiveShadow=true;
+  const g=new THREE.Group(); m.position.y=0.75; g.add(m);
+  const ring=new THREE.Mesh(new THREE.RingGeometry(0.6,0.8,48),new THREE.MeshBasicMaterial({color:"#ffae3b",transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));
+  ring.rotation.x=-Math.PI/2; ring.position.y=0.03; g.add(ring);
+  const badge=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthTest:false})); badge.scale.set(0.7,0.7,1); badge.position.y=2.15; badge.visible=false; g.add(badge);
+  scene.add(g); PEOPLE[id]={g,ring,badge,body:m}; });
+function badgeTex(ok){ const c=document.createElement("canvas"); c.width=c.height=128; const g=c.getContext("2d");
+  g.fillStyle=ok?"#22c55e":"#7d8796"; g.beginPath(); g.arc(64,64,56,0,7); g.fill(); g.strokeStyle="#fff"; g.lineWidth=14; g.lineCap="round"; g.beginPath();
+  if(ok){ g.moveTo(36,66); g.lineTo(56,86); g.lineTo(92,44); } else { g.moveTo(42,42); g.lineTo(86,86); g.moveTo(86,42); g.lineTo(42,86); } g.stroke();
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
+const OK=badgeTex(true), NG=badgeTex(false);
+
+/* ===== ボール＝球（光る あと） ===== */
+const ball=new THREE.Mesh(new THREE.SphereGeometry(0.26,32,16),new THREE.MeshStandardMaterial({color:"#ffffff",emissive:"#fff3d0",emissiveIntensity:.55,roughness:.3}));
+ball.castShadow=true; scene.add(ball);
+const TRAIL=[...Array(14)].map((_,i)=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(0.2*(1-i/16),12,8),new THREE.MeshBasicMaterial({color:"#ffe39a",transparent:true,opacity:0,depthWrite:false})); scene.add(m); return m; });
+function ballWorld(t){ const B=SC.ball; let i=0; while(i<B.length-1&&t>=B[i+1][0]) i++;
+  const hp=pos(SC,B[i][1],t); if(i<B.length-1&&t>B[i+1][0]-0.8){ const gp=pos(SC,B[i+1][1],t), u=(t-(B[i+1][0]-0.8))/0.8;
+    return new THREE.Vector3(wx(hp[0]+(gp[0]-hp[0])*u),1.1+Math.sin(Math.PI*u)*1.4,wz(hp[1]+(gp[1]-hp[1])*u)); }
+  return new THREE.Vector3(wx(hp[0])+0.45,1.1,wz(hp[1])+0.3); }
+
+/* ===== ゴールの 光の つぶ（毎回 同じに なるよう 決まった 乱数） ===== */
+let seed=7; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const SPARK=[...Array(90)].map(()=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(0.06,6,4),new THREE.MeshBasicMaterial({color:rnd()<.5?"#ffd36b":"#ffffff",transparent:true,opacity:0,depthWrite:false}));
+  m.userData.v=new THREE.Vector3((rnd()-.5)*7,rnd()*7+2,(rnd()-.5)*7); scene.add(m); return m; });
+const CATCH=SC.ball[SC.ball.length-1][0];
+const POINT=[[2.5,4.5],[12.5,14.5],[15.5,18],[20.5,23]];   // マスコットが 指さす 場面の 秒
+
+/* ===== マスコット（銀色。別の 場面を 左下に 重ねて 描く） ===== */
+const ms=new THREE.Scene(); ms.environment=ENV; ms.add(new THREE.HemisphereLight("#ffffff","#8a93a6",1.8));
+const ml=new THREE.DirectionalLight("#ffffff",2.4); ml.position.set(2,3,4); ms.add(ml);
+const mcam=new THREE.PerspectiveCamera(30,1,0.1,50); mcam.position.set(0,1.7,10.5); mcam.lookAt(0,1.6,0);
+const SILVER=new THREE.MeshStandardMaterial({color:"#eef1f5",metalness:.55,roughness:.28,envMapIntensity:1.6});
+const GUN=new THREE.MeshStandardMaterial({color:"#3c424c",metalness:.7,roughness:.35});
+const WHITE=new THREE.MeshStandardMaterial({color:"#ffffff",roughness:.4});
+function eyeTex(){ const c=document.createElement("canvas"); c.width=64; c.height=128; const g=c.getContext("2d");
+  g.fillStyle="#ffd21f"; g.beginPath(); g.ellipse(32,64,28,60,0,0,7); g.fill(); /* 目は 黄色（しまは 黒） */ g.save(); g.clip(); g.fillStyle="#222"; for(let y=14;y<128;y+=18) g.fillRect(0,y,64,6); g.restore();
+  g.strokeStyle="#111"; g.lineWidth=6; g.beginPath(); g.ellipse(32,64,28,60,0,0,7); g.stroke(); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
+function bellyTex(){ const c=document.createElement("canvas"); c.width=c.height=256; const g=c.getContext("2d"); g.fillStyle="#cfd5de"; g.fillRect(0,0,256,256);
+  g.strokeStyle="#fff"; g.lineWidth=26; g.lineCap="round"; g.beginPath(); g.moveTo(60,120); g.quadraticCurveTo(80,190,128,150); g.quadraticCurveTo(176,190,196,120); g.stroke();
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
+const MAS=new THREE.Group(); ms.add(MAS);
+const head=new THREE.Mesh(new THREE.SphereGeometry(1,40,28),SILVER); head.scale.set(1.25,1,0.95); head.position.y=2.35; MAS.add(head);
+const ET=eyeTex(); [-0.42,0.42].forEach(x=>{ const e=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.68),new THREE.MeshBasicMaterial({map:ET,transparent:true})); e.position.set(x,2.5,0.93); MAS.add(e); });
+// 顎の 模様：頭の 下の 前に 描く（白い 四角と 上の 青い 帯）。頭の 面に そわせて 少し 下向きに 貼る
+// 口＝シャッター：上の 青い 帯が 箱。白い 板が 下へ 下がって 中（暗い）が 見える。open＝0（閉）〜1（全開）
+function chinTex(open){ const c=document.createElement("canvas"); c.width=128; c.height=128; const g=c.getContext("2d");
+  const top=38, bot=120, h=(bot-top)*(1-open*0.8);
+  g.fillStyle="#1b1420"; g.fillRect(8,top,112,bot-top);
+  g.fillStyle="#fff"; g.fillRect(8,bot-h,112,h);
+  g.strokeStyle="#c9ced6"; g.lineWidth=2; for(let y=bot-h+10;y<bot;y+=12){ g.beginPath(); g.moveTo(12,y); g.lineTo(116,y); g.stroke(); }
+  g.fillStyle="#1f6fe0"; g.fillRect(8,8,112,30);
+  g.strokeStyle="#1b1f27"; g.lineWidth=6; g.strokeRect(8,8,112,112); g.lineWidth=3; g.beginPath(); g.moveTo(8,top); g.lineTo(120,top); g.stroke();
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
+const CHINS=[0,1,2,3,4,5].map(k=>chinTex(k/5)), CHIN0=CHINS[0];
+const chin=new THREE.Mesh(new THREE.PlaneGeometry(0.58,0.58),new THREE.MeshBasicMaterial({map:CHIN0,transparent:true,polygonOffset:true,polygonOffsetFactor:-2}));
+chin.position.set(0,1.93,0.875); chin.rotation.x=0.45; MAS.add(chin);
+// アンテナ：頭の 左上から 曲がって のびる 細い 線と、先の 玉
+const antCurve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(-0.45,3.2,0),new THREE.Vector3(-0.6,3.75,0.05),new THREE.Vector3(-0.98,3.95,0.05));
+MAS.add(new THREE.Mesh(new THREE.TubeGeometry(antCurve,20,0.035,8),GUN));
+const antB=new THREE.Mesh(new THREE.SphereGeometry(0.2,24,16),SILVER); antB.position.set(-1.1,4.02,0.05); MAS.add(antB);
+const torso=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.15,0.8),[SILVER,SILVER,SILVER,SILVER,new THREE.MeshStandardMaterial({map:bellyTex(),metalness:.6,roughness:.3}),SILVER]);
+torso.position.y=0.95; MAS.add(torso);
+function limb(x,y,rotZ){ const g=new THREE.Group(); for(let i=0;i<3;i++){ const s=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,0.24,16),GUN); s.position.y=-i*0.26; g.add(s); }
+  g.position.set(x,y,0); g.rotation.z=rotZ; MAS.add(g); return g; }
+const armL=limb(-0.95,1.3,-0.7), armR=limb(0.95,1.3,0.7);
+[armL,armR].forEach(a=>{ const h=new THREE.Mesh(new THREE.TorusGeometry(0.16,0.07,10,20,Math.PI*1.4),GUN); h.position.y=-0.85; a.add(h); });
+limb(-0.4,0.3,0); limb(0.4,0.3,0);
+[-0.4,0.4].forEach(x=>{ const f=new THREE.Mesh(new THREE.SphereGeometry(0.28,20,12,0,Math.PI*2,0,Math.PI/2),GUN); f.scale.set(1,0.6,1.3); f.position.set(x,-0.42,0.08); MAS.add(f); });
+
+/* ===== カメラの 道すじ（場面の 秒 → 位置・見る 点） ===== */
+const smoothBall=t=>{ const v=new THREE.Vector3(); for(let k=0;k<8;k++) v.add(ballWorld(Math.max(0,t-k*0.08))); return v.multiplyScalar(1/8); };
+function camAt(ts){
+  const shots=[
+    [-99, ()=>[new THREE.Vector3(9,13,15),new THREE.Vector3(-1,0,0)]],
+    [4.5, t=>{ const b=smoothBall(t); return [new THREE.Vector3(b.x+7,7.5,b.z+10),new THREE.Vector3(b.x-2,0.8,b.z)]; }],
+    [12.3,t=>{ const a=(t-12.3)*0.12; return [new THREE.Vector3(-1+Math.sin(a)*2,9.5,11),new THREE.Vector3(-8,0.6,0)]; }],
+    [15.5,()=>[new THREE.Vector3(0,17,12),new THREE.Vector3(-3,0,0.5)]],
+    [20.3,t=>{ const a=(t-20.3)*0.15; return [new THREE.Vector3(2+Math.sin(a)*3,11,13),new THREE.Vector3(-2,0.5,0)]; }]];
+  let i=0; while(i<shots.length-1&&ts>=shots[i+1][0]) i++;
+  let [p,l]=shots[i][1](ts); const blend=1.3;
+  if(i>0&&ts<shots[i][0]+blend){ const [p0,l0]=shots[i-1][1](ts), u=sm((ts-shots[i][0])/blend); p=p0.lerp(p,u); l=l0.lerp(l,u); }
+  return [p,l]; }
+
+/* ===== 上から 見た 図（2D） ===== */
+const mc=el("mini").getContext("2d");
+function drawMini(ts,foc){ const S=13.5, ox=25, oy=27; mc.clearRect(0,0,320,190);
+  mc.strokeStyle="rgba(190,225,255,.9)"; mc.lineWidth=2; mc.strokeRect(ox,oy,20*S,10*S);
+  [2,10,18].forEach(x=>{ mc.beginPath(); mc.moveTo(ox+x*S,oy); mc.lineTo(ox+x*S,oy+10*S); mc.stroke(); });
+  if(ts>=15.5){ mc.fillStyle="rgba(255,138,61,.28)"; mc.fillRect(ox+2*S,oy,8*S,10*S); }
+  Object.keys(START).forEach(id=>{ const p=pos(SC,id,ts); if(p[1]<-0.5) return; const x=ox+p[0]*S, y=oy+p[1]*S;
+    if(foc[id]){ mc.strokeStyle="#ffae3b"; mc.lineWidth=3; mc.beginPath(); mc.arc(x,y,10,0,7); mc.stroke(); }
+    mc.fillStyle=COL[id[0]]; mc.beginPath(); mc.arc(x,y,6.5,0,7); mc.fill(); mc.fillStyle="#fff"; mc.font="900 9px LPB"; mc.textAlign="center"; mc.textBaseline="middle"; mc.fillText(id[1],x,y+.5); });
+  const b=ballWorld(ts); mc.fillStyle="#fff"; mc.beginPath(); mc.arc(ox+(b.x+10)*S,oy+(b.z+5)*S,3.5,0,7); mc.fill(); }
+
+/* ===== 字幕（1行。はみ出す ときは 横はばを ちぢめる） ===== */
+let lastCap=null, capAt=0;
+function setCap2(c,ts){ if(c===lastCap) return; lastCap=c; capAt=ts; const cp=el("cap"); cp.innerHTML="<span>"+ruby(c)+"</span>";
+  const sp=cp.firstChild, avail=1280-520, w=sp.offsetWidth; sp.style.transform=w>avail?"scaleX("+Math.max(.72,avail/w)+")":""; }
+
+/* ===== 時刻 T の 1コマを 描く（録画は これを 1コマずつ 呼ぶ） ===== */
+function renderAt(T){
+  const ts=Math.max(0,Math.min(SC.dur,T-INTRO)), intro=T<INTRO;
+  // 人・強調・チェック
+  const b=ballWorld(ts); let holder=null; { const B=SC.ball; let i=0; while(i<B.length-1&&ts>=B[i+1][0]) i++; if(!(i<B.length-1&&ts>B[i+1][0]-0.8)) holder=B[i][1]; }
+  const foc={}; (SC.focus||[]).forEach(f=>{ if(ts>=f[0]&&ts<f[1]&&!intro) f[2].forEach(id=>{ foc[id==="@ball"?holder:id]=1; }); });
+  const touched={}; SC.ball.forEach((x,i)=>{ if(x[0]<=ts&&x[1]!=="bA"){ const q=pos(SC,x[1],x[0]); touched[x[1]]=(i===0||q[0]<10)?1:-1; } });
+  Object.keys(PEOPLE).forEach(id=>{ const P=PEOPLE[id], p=pos(SC,id,ts); P.g.position.set(wx(p[0]),0,p[1]<-0.5?wz(p[1])-1.5:wz(p[1]));
+    const ph=(Math.sin(T*Math.PI*3)+1)/2; P.ring.material.opacity=foc[id]?0.55+0.4*ph:0; P.ring.scale.setScalar(foc[id]?1+0.25*ph:1);
+    P.body.material.forEach?P.body.material.forEach(m=>m.emissiveIntensity=foc[id]?0.3+0.2*ph:0.04):0;
+    const tv=ts>=15.5?touched[id]:0; P.badge.visible=!!tv&&!intro; if(tv) P.badge.material.map=tv===1?OK:NG; P.badge.material.needsUpdate=true; });
+  ball.position.copy(b);
+  TRAIL.forEach((m,i)=>{ const q=ballWorld(Math.max(0,ts-(i+1)*0.035)); m.position.copy(q); const fly=q.distanceTo(b)>0.05; m.material.opacity=fly?0.5*(1-i/14):0; });
+  // 帯・相手の じん
+  let band=0, en=0; (SC.hi||[]).forEach(h=>{ if(ts>=h[0]&&ts<h[1]){ if(h[2]==="band") band=1; if(h[2]==="enemy") en=1; } });
+  bandL.material.opacity=band*0.35; enemy.material.opacity=en*(0.22+0.06*Math.sin(T*4));
+  // ゴールの 光
+  SPARK.forEach(m=>{ const u=ts-CATCH; if(u<0||u>1.8){ m.material.opacity=0; return; } m.position.set(-9+m.userData.v.x*u*0.5,1.2+m.userData.v.y*u-4.9*u*u,0+m.userData.v.z*u*0.5); m.material.opacity=1-u/1.8; });
+  bloom.strength=0.38+(ts>CATCH&&ts<CATCH+1?0.6*(1-(ts-CATCH)):0);
+  // カメラ（はじめの 題の 間は ゆっくり 回る）
+  let [cp,cl]=camAt(ts); if(intro){ const a=T*0.12; cp=new THREE.Vector3(Math.sin(a)*22,10,Math.cos(a)*22); cl=new THREE.Vector3(0,0,0); }
+  else if(T<INTRO+1.2){ const a=INTRO*0.12, u=sm((T-INTRO)/1.2); cp=new THREE.Vector3(Math.sin(a)*22,10,Math.cos(a)*22).lerp(cp,u); cl=new THREE.Vector3(0,0,0).lerp(cl,u); }
+  cam.position.copy(cp); cam.lookAt(cl);
+  composer.render();
+  // マスコット：題の 間は 大きく 左に、あとは 左下で 話す
+  // 話す：字幕が 出てから 字数に あわせた 時間だけ 口が 開け閉め（1秒に 約7回）
+  const talk=T-INTRO-capAt, talkLen=(lastCap||"").replace(/\{([^|}]+)\|[^}]+\}/g,"$1").length*0.11, talking=!intro&&talk>=0&&talk<talkLen;
+  const op=intro?(T>0.4&&T<2.2?(1-Math.cos(T*Math.PI*6))/2:0):(talking?(1-Math.cos(talk*Math.PI*12))/2:0);   // シャッターの 開き（なめらかに 上下）
+  chin.material.map=CHINS[Math.round(op*5)];
+  MAS.position.y=Math.sin(T*2.2)*0.06+(talking?Math.abs(Math.sin(talk*Math.PI*3))*0.06:0);
+  // 指さし：大事な 所で 右手を 画面の 中へ 向け、体も そちらへ 向く
+  let pt=0; POINT.forEach(q=>{ if(ts>=q[0]-0.4&&ts<q[1]+0.4&&!intro) pt=Math.max(pt,sm((ts-(q[0]-0.4))/0.4)*sm(((q[1]+0.4)-ts)/0.4)); });
+  MAS.rotation.y=Math.sin(T*0.8)*0.2*(1-pt)+0.45*pt; head.rotation.z=-0.12*pt;
+  armR.rotation.z=intro?2.3+Math.sin(T*7)*0.35:(0.7+Math.sin(T*1.5)*0.08)*(1-pt)+(2.05+Math.sin(T*6)*0.05)*pt;
+  renderer.autoClear=false; renderer.clearDepth();
+  const vp=intro?[40,110,400,500]:[18,20,210,250]; mcam.aspect=vp[2]/vp[3]; mcam.updateProjectionMatrix();
+  renderer.setScissorTest(true); renderer.setScissor(...vp); renderer.setViewport(...vp); renderer.toneMapping=THREE.NoToneMapping; renderer.render(ms,mcam);
+  renderer.setScissorTest(false); renderer.setViewport(0,0,W,H); renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.autoClear=true;
+  // 文字の 重ね
+  const ti=el("title"); ti.style.opacity=intro?Math.min(1,T/0.6)*(T>INTRO-0.5?(INTRO-T)/0.5:1):0;
+  let c=""; if(!intro) SC.cap.forEach(x=>{ if(ts>=x[0]) c=x[1]; }); setCap2(c,ts); el("cap").style.opacity=intro?0:1;
+  let bd=SC.board[0]; SC.board.forEach(x=>{ if(ts>=x[0]) bd=x; });
+  el("board").innerHTML=intro?"":'<span style="color:var(--red)">赤 '+bd[1]+'</span> − <span style="color:var(--blue)">'+bd[2]+' 青</span>';
+  let big=""; (SC.bigs||[]).forEach(g=>{ if(ts>=g[0]&&ts<g[1]) big=g[2]; }); const bu=ts-20.5; el("big").textContent=big;
+  el("big").style.transform="scale("+(big?1+0.4*Math.max(0,1-bu*3):1)+")";
+  let labs=""; (SC.marks||[]).forEach(m=>{ if(ts<m[0]||ts>=m[1]) return; const v=new THREE.Vector3(wx(m[2]),2.6,wz(m[3])).project(cam);
+    labs+='<div class="lab" style="left:'+((v.x+1)/2*W)+'px;top:'+((1-v.y)/2*H)+'px;color:var(--green)">'+m[4]+'</div>'; });
+  el("labs").innerHTML=labs; el("mini").style.opacity=el("minilbl").style.opacity=intro?0:1;
+  drawMini(ts,foc);
+}
+window.TOTAL=TOTAL; window.renderAt=renderAt;
+/* 手元で 見る ときは 実時間で 再生（▶ で 最初から） */
+let t0=null, playing=!/rec/.test(location.search);
+if(!playing) document.body.classList.add("rec");
+el("play").onclick=()=>{ t0=null; playing=true; };
+function loop(now){ if(playing){ if(t0===null) t0=now; const T=(now-t0)/1000; renderAt(Math.min(T,TOTAL)); if(T>TOTAL) playing=false; } requestAnimationFrame(loop); }
+document.fonts.ready.then(()=>{ renderAt(0); window.READY=true; requestAnimationFrame(loop); });
+</script>
+</body>
+</html>
