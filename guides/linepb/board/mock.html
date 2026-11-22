@@ -57,6 +57,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"BIZ UDPGothic",
 rt{font-size:.5em}
 #dlg{position:fixed;inset:0;background:#0006;display:none;align-items:center;justify-content:center;z-index:9}
 #dlg.on{display:flex}
+#ask{position:fixed;inset:0;background:#0006;display:none;align-items:center;justify-content:center;z-index:10}#ask.on{display:flex}
+#ask .box{background:#fff;border-radius:20px;padding:20px 24px;width:min(480px,90vw)}#ask p{font-size:24px;font-weight:700;margin:0 0 16px;line-height:1.5}#ask .row{display:flex;justify-content:flex-end;gap:10px}
 #dlg .box{background:#fff;border-radius:20px;padding:20px 24px;width:min(560px,92vw);max-height:86vh;overflow:auto}
 #dlg h2{margin:0 0 14px;font-size:26px}
 .nm{display:flex;align-items:center;gap:8px;font-size:30px;font-weight:700}
@@ -138,6 +140,7 @@ rt{font-size:.5em}
   <div id="dlgLoad"><h2>セーブデータ</h2><div id="saves"></div>
     <div class="row"><button class="tool" id="dlgClose">とじる</button></div></div>
 </div></div>
+<div id="ask"><div class="box"><p id="askMsg"></p><div class="row"><button class="tool" id="askNo">やめる</button><button class="tool on" id="askYes">はい</button></div></div></div>
 <div id="cut">カット！</div>
 <script>
 /* ===== データ =====
@@ -309,7 +312,10 @@ document.getElementById("next").onclick=()=>{ const at=cursor.kind==="join"?curs
   cursor={kind:"new",at}; hint((at+1)+" 番の 動きを 書いてね。"); draw(); };
 document.getElementById("def").onclick=e=>{ const i=(DEFS.findIndex(x=>x[0]===defMode)+1)%DEFS.length; defMode=DEFS[i][0];
   e.currentTarget.textContent=DEFS[i][1]; e.currentTarget.classList.toggle("on",defMode!=="off"); hint({off:"守りは 動かない（手で 動かせる）。",mark:"守りは 近くの 攻めに 1人ずつ つく。",goal:"守りは ゴールマンの 前を かためる。",lane:"守りは パスの 道に 入る。"}[defMode]); draw(); };
-document.getElementById("reset").onclick=()=>{ if(confirm("線を ぜんぶ 消して、はじめの 並びに もどす？")){ st={pieces:clone(START),holder:"bB",groups:[]}; HIDE=new Set(); curName=""; cursor={kind:"new",at:0}; lastAdded=null; draw(); } };
+/* 確かめの画面：ブラウザの confirm は、埋め込み（GAS・プレビュー）で止められて 常に「いいえ」になることがあるので使わない */
+function ask(msg){ return new Promise(res=>{ const a=document.getElementById("ask"); document.getElementById("askMsg").textContent=msg; a.classList.add("on");
+  const done=v=>{ a.classList.remove("on"); res(v); }; document.getElementById("askYes").onclick=()=>done(true); document.getElementById("askNo").onclick=()=>done(false); }); }
+document.getElementById("reset").onclick=async()=>{ if(await ask("線を ぜんぶ 消して、はじめの 並びに もどす？")){ st={pieces:clone(START),holder:"bB",groups:[]}; HIDE=new Set(); curName=""; cursor={kind:"new",at:0}; lastAdded=null; draw(); } };
 /* ===== セーブデータ（モックは この 端末の 中に 保存。本番は Web アプリの 保存先へ） ===== */
 const SKEY="pb-saves";
 /* 見本の作戦（最初から入っている。消せない・上書きされない）。どれも ゴールマンが 帯の中で 空いた所へ 動いて もらう。
@@ -332,9 +338,9 @@ const dlg=document.getElementById("dlg"), nm=document.getElementById("nm");
 function openDlg(which){ dlg.classList.add("on"); document.getElementById("dlgSave").style.display=which==="save"?"block":"none"; document.getElementById("dlgLoad").style.display=which==="load"?"block":"none"; }
 const closeDlg=()=>dlg.classList.remove("on");
 document.getElementById("save").onclick=()=>{ if(!st.groups.length) return hint("線を 書いてから 保存してね。"); nm.value=curName.replace(/作戦$/,""); openDlg("save"); setTimeout(()=>nm.focus(),50); };
-document.getElementById("dlgOk").onclick=()=>{ const name=toName(nm.value); if(!name){ nm.focus(); return; }
+document.getElementById("dlgOk").onclick=async()=>{ const name=toName(nm.value); if(!name){ nm.focus(); return; }
   const a=loadSaves(), i=a.findIndex(x=>x.name===name);
-  if(i>=0&&!confirm("「"+name+"」は もう あります。上書きする？")) return;
+  if(i>=0&&!(await ask("「"+name+"」は もう あります。上書きする？"))) return;
   const rec={name,t:Date.now(),data:clone(st)}; if(i>=0) a[i]=rec; else a.unshift(rec);
   if(putSaves(a)){ curName=name; closeDlg(); hint("「"+name+"」を 保存した。"); } else hint("保存できなかった。"); };
 nm.addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("dlgOk").click(); });
@@ -342,8 +348,9 @@ document.getElementById("dlgCancel").onclick=closeDlg;
 document.getElementById("dlgClose").onclick=closeDlg;
 dlg.addEventListener("pointerdown",e=>{ if(e.target===dlg) closeDlg(); });
 document.getElementById("load").onclick=()=>{ listSaves(); openDlg("load"); };
-function openRec(r){ if(st.groups.length&&!confirm("いまの 線は 消えて、「"+r.name+"」に なる。いい？")) return;
-  st=clone(r.data); curName=r.preset?"":r.name; HIDE=new Set(); cursor=st.groups.length?{kind:"join",g:st.groups.length-1}:{kind:"new",at:0}; lastAdded=null; closeDlg(); draw(); hint("「"+r.name+"」を ひらいた。▶ 再生で 見られる。"); }
+let openedSnap=null;   // 開いたときのまま（書きかえていない）なら、選び直すときに確かめない
+async function openRec(r){ if(st.groups.length&&JSON.stringify(st)!==openedSnap&&!(await ask("いまの 線は 消えて、「"+r.name+"」に なる。いい？"))) return;
+  st=clone(r.data); openedSnap=JSON.stringify(st); curName=r.preset?"":r.name; HIDE=new Set(); cursor=st.groups.length?{kind:"join",g:st.groups.length-1}:{kind:"new",at:0}; lastAdded=null; closeDlg(); draw(); hint("「"+r.name+"」を ひらいた。▶ 再生で 見られる。"); }
 function listSaves(){ const box=document.getElementById("saves"); box.innerHTML="";
   const h=t=>{ const e=document.createElement("h3"); e.textContent=t; e.style.cssText="margin:6px 0;font-size:18px;color:#555"; box.appendChild(e); };
   h("見本");
@@ -352,7 +359,7 @@ function listSaves(){ const box=document.getElementById("saves"); box.innerHTML=
   h("自分の 作戦"); if(!loadSaves().length){ const e=document.createElement("div"); e.textContent="まだ ありません"; e.style.cssText="color:#888;font-size:18px;padding:4px 0 8px"; box.appendChild(e); }
   loadSaves().forEach((r,i)=>{ const b=document.createElement("button"); b.className="sv"; const d=new Date(r.t);
     b.innerHTML=`📋 ${r.name}<small>${d.getMonth()+1}/${d.getDate()} ・ ${r.data.groups.length} 手</small><span class="del" title="消す">🗑</span>`;
-    b.onclick=e=>{ if(e.target.classList.contains("del")){ if(confirm("「"+r.name+"」を 消す？")){ const a=loadSaves(); a.splice(i,1); putSaves(a); listSaves(); } return; }
+    b.onclick=async e=>{ if(e.target.classList.contains("del")){ if(await ask("「"+r.name+"」を 消す？")){ const a=loadSaves(); a.splice(i,1); putSaves(a); listSaves(); } return; }
       openRec(r); };
     box.appendChild(b); }); }
 /* ===== 平面・立体の切り替え ===== */
