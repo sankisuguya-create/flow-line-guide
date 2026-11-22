@@ -6,7 +6,7 @@
 <title>ラインポートボールの立体（試作）</title>
 <!-- 第1段の見本。体育館の黄コート（19×12m、assets/spaces/gym/space.json の線）に 2チーム×6人とボールを置き、
      ドット立体を低解像度＋輪郭線で描く。目的は CZ1104（4GB）で回して 毎秒30コマ以上出るかを測ること。
-     ルールは仮：1チーム6人（コート5人＋ゴールマン1人）。ゴールマンは相手側のエンドラインの外、幅1m×長さ4.88mの帯に立つ。
+     ルールは仮：1チーム6人（コート5人＋ゴールマン1人）。ゴールマンは相手側のエンドラインの外、幅1m×長さ＝コートの短辺 の帯に立つ。人もコートも1.6倍（＝実寸の比）。
      space.json を読むので、ファイルを直接開かず サーバー経由で開く（例：リポジトリ直下で npx serve）。 -->
 <style>
   :root{--ink:#143242;--soft:#4B6C80;--bg:#F7FAFC;--line:#C7DAE7}
@@ -53,8 +53,9 @@ import { voxelGeometry, voxelMaterial, createPixelRenderer } from "voxel";
 const COURT = { x0: 10.38, x1: 33.56, y0: 4.68, y1: 19.32 };          // 黄コート（地図の座標 m）
 const CX = (COURT.x0 + COURT.x1) / 2, CY = (COURT.y0 + COURT.y1) / 2;
 const FLOOR = [6.3, 0, 28.95, 23.8];                                      // フロア [x,y,w,h]
-const GOAL = { w: 1.0, len: 4.88 };                                       // 仮：ゴールマンの帯
-const BIG = 1.6;                                                          // 人とボールの誇張倍率（実寸では 1人が10画素ほどで見分けられないため）
+const GOAL = { w: 1.0, len: COURT.y1 - COURT.y0 };                        // ゴールマンの帯：幅1m、長さはコートの短辺（14.64m）
+const BIG = 1.6;                                                          // 人とボールの倍率
+const CS = 1.6;                                                           // コート（床・配置）の倍率。BIG と同じなら 実寸の比に戻る
 const toW = (mx, my) => [mx - CX, my - CY];                               // 地図 → 立体（x そのまま、地図の y → z）
 
 const cv = document.getElementById("cv");
@@ -65,7 +66,7 @@ scene.add(new THREE.HemisphereLight("#ffffff", "#8a7a66", 1.6));
 const sun = new THREE.DirectionalLight("#ffffff", 1.6);
 sun.position.set(-8, 20, 10); sun.castShadow = true;
 sun.shadow.mapSize.set(1024, 1024);
-Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 12, bottom: -12, near: 1, far: 60 });
+Object.assign(sun.shadow.camera, { left: -16 * CS, right: 16 * CS, top: 12 * CS, bottom: -12 * CS, near: 1, far: 100 });
 scene.add(sun);
 
 /* 床：space.json の黄の線を描いた板＋ゴールマンの帯 */
@@ -89,7 +90,7 @@ async function floor() {
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
   const m = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR[2], FLOOR[3]), new THREE.MeshLambertMaterial({ map: tex }));
   m.rotation.x = -Math.PI / 2;
-  const [fx, fz] = toW(FLOOR[0] + FLOOR[2] / 2, FLOOR[1] + FLOOR[3] / 2); m.position.set(fx, 0, fz);
+  const [fx, fz] = toW(FLOOR[0] + FLOOR[2] / 2, FLOOR[1] + FLOOR[3] / 2); m.position.set(fx * CS, 0, fz * CS); m.scale.set(CS, CS, 1);
   m.receiveShadow = true; scene.add(m);
 }
 
@@ -107,14 +108,14 @@ function placeTeams() {
       const m = new THREE.Mesh(geoOf(id), mat);
       m.castShadow = true; m.scale.setScalar(BIG);
       const ox = dir * x + (i < 5 ? dir * 0.3 * ((i % 2) * 2 - 1) : 0);   // 両チームが同じ場所に重ならないよう少しずらす
-      m.position.set(ox, 0, dir * z + (dir < 0 ? 1.2 : 0));
+      m.position.set(ox * CS, 0, (dir * z + (dir < 0 ? 1.2 : 0)) * CS);
       m.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2;               // 攻める向きを正面に
       scene.add(m); people.push(m);
     });
   });
 }
 const ballMesh = new THREE.Mesh(voxelGeometry(SPORT.ball(), SPORT.CELL), mat);
-ballMesh.castShadow = true; ballMesh.scale.setScalar(BIG); ballMesh.position.set(-2.5 + 0.45 * BIG, 0.62 * BIG, 0); scene.add(ballMesh);
+ballMesh.castShadow = true; ballMesh.scale.setScalar(BIG); ballMesh.position.set(-2.5 * CS + 0.45 * BIG, 0.62 * BIG, 0); scene.add(ballMesh);
 
 ["teamA", "teamB"].forEach((s, i) => {
   const el = document.getElementById(s);
@@ -124,14 +125,14 @@ ballMesh.castShadow = true; ballMesh.scale.setScalar(BIG); ballMesh.position.set
 });
 
 /* カメラ：正射影。3つの決まった見方＋指で回す */
-const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.5, 120);
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.5, 160);
 const ctl = new OrbitControls(cam, cv);
 ctl.enableDamping = false; ctl.enablePan = false; ctl.maxPolarAngle = THREE.MathUtils.degToRad(86);
 ctl.minZoom = 0.8; ctl.maxZoom = 6;
 const VIEWS = { top: [0.001, 0], oblique: [55, -30], side: [84, 0] };
 function view(name) {
   const [pol, az] = VIEWS[name].map(THREE.MathUtils.degToRad);
-  const r = 50;
+  const r = 70;
   cam.position.set(r * Math.sin(pol) * Math.sin(az), r * Math.cos(pol), r * Math.sin(pol) * Math.cos(az));
   cam.zoom = 1; ctl.target.set(0, 0, 0); cam.updateProjectionMatrix(); ctl.update();
   document.querySelectorAll("#views button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === name));
@@ -141,7 +142,7 @@ ctl.addEventListener("start", () => document.querySelectorAll("#views button").f
 
 function resize() {
   const { w, h } = pr.size();
-  const half = 13.5, a = w / h;                                           // コート全体（約26m）が収まる幅
+  const half = 13.5 * CS, a = w / h;                                           // コート全体（約26m）が収まる幅
   if (a >= 25 / 16) { cam.top = half * 0.62; cam.bottom = -cam.top; cam.right = cam.top * a; cam.left = -cam.right; }
   else { cam.right = half; cam.left = -half; cam.top = half / a; cam.bottom = -cam.top; }
   cam.updateProjectionMatrix();
