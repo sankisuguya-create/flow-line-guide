@@ -68,6 +68,31 @@ rt{font-size:.5em}
 #hint{padding:0 12px 6px;font-size:17px;min-height:26px}
 #cut{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);font-size:64px;font-weight:700;color:#fff;background:var(--red);
  padding:8px 28px;border-radius:20px;display:none}
+
+/* ===== スマホ（縦持ち、幅700px以下） =====
+   道具は6列の格子（絵文字の下に短い文字）、コートは画面の幅いっぱい、じゅんばんはその下でスクロール */
+@media (max-width:700px){
+ #bar{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:6px 8px}
+ #bar .sep{display:none}
+ .tool{font-size:12px;min-width:0;height:auto;min-height:48px;padding:2px 1px;border-width:2px;border-radius:10px;line-height:1.15;white-space:normal;word-break:keep-all;overflow-wrap:anywhere}
+ #views3d{grid-column:1/-1;order:99;gap:4px}#views3d .tool{flex:1}
+ #vis{padding:0 8px 4px;gap:6px;overflow-x:auto;font-size:13px}
+ #vis>span{display:none}
+ .chip{font-size:14px;height:34px;padding:0 10px;flex:none;white-space:nowrap}
+ #hint{font-size:14px;padding:0 8px 4px;min-height:20px}
+ #main{flex-direction:column}
+ #svg,#stage{flex:none;width:100%;aspect-ratio:23/13;height:auto}
+ #side{width:auto;flex:1;min-height:0;padding:6px 8px}
+ #side h3{font-size:15px;margin:2px 0 4px}
+ .act{font-size:15px}.gap{height:26px;font-size:13px}
+ #home{gap:16px;padding:16px}#home h1{font-size:28px}
+ .card{font-size:24px;padding:16px 18px;border-radius:18px;column-gap:14px}.card .ic{font-size:40px}.card small{font-size:15px}
+ .qbar{gap:8px;padding:6px 8px;flex-wrap:wrap}#qq{font-size:18px;flex-basis:100%;order:5}#qno{font-size:15px}#qscore{font-size:17px}
+ #qsvg{flex:none;width:100%;aspect-ratio:23/12.4;height:auto}
+ .qfoot{flex-wrap:wrap;padding:6px 10px 10px}#qfb{font-size:17px;flex-basis:100%}
+ #dlg h2{font-size:21px}.nm,.nm input{font-size:22px}.sv{font-size:18px}
+ #cut{font-size:40px}
+}
 </style></head><body>
 <div id="home" class="scr">
   <h1>ラインポートボール</h1>
