@@ -334,7 +334,7 @@ document.getElementById("reset").onclick=async()=>{ if(await ask("線を ぜん�
 /* ===== セーブデータ（モックは この 端末の 中に 保存。本番は Web アプリの 保存先へ） ===== */
 const SKEY="pb-saves";
 /* 見本の作戦（📚 作戦 のトグルに並ぶ。セーブデータとは別で、消せない・上書きされない）。
-   出典の考え方：相手のいない所へ動く・はばを広げる・数で上回る（2対1）・入れかわる・もどってから走る（各県の指導資料、TGfU・ゲームの原則）。
+   出典の考え方：相手のいない所へ動く・はばを広げる・数で上回る（2対1）・入れかわる・もどってから走る・三角形・逆サイド・ななめに走りぬける・かべ（各県の指導資料、TGfU・ゲームの原則）。
    どれも ゴールマンが 帯の中で 空いた所へ 動いて もらう。
    守りが「マーク」「ゴールまもり」なら カットされずに通る。「パスコース」だと 途中のパスが カットされやすい（守り方で結果が変わることを見せる） */
 const mv=(id,...pts)=>({type:"move",id,path:[[0,0],...pts]}), ps=to=>({type:"pass",to,path:null});
@@ -356,7 +356,15 @@ const PRESETS=[
  {cat:"だます", name:"Vの字作戦", note:"E が 一度 もどってから 前へ 走り、守りを ふりきる",
   groups:[[{"type": "move", "id": "bE", "path": [[0, 0], [1, 0.4], [-7.6, -1.6]]}, {"type": "move", "id": "bC", "path": [[0, 0], [-2.6, -0.9], [-5.3, -1.8]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-2.6, 0.9], [-5.3, 1.8]]}], [{"type": "pass", "to": "bE", "path": null}], [{"type": "pass", "to": "bA", "path": null}, {"type": "move", "id": "bA", "path": [[0, 0], [0, -1], [0, -2]]}]]},
  {cat:"ひろがる", name:"ロングパス作戦", note:"みんなで 守りを 引きつけ、ゴールマンへ 一気に 長い パス",
-  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-3.1, 3.2], [-6.1, 6.4]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-2.6, 0.9], [-5.2, 1.8]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-3.2, 0], [-6.5, 0.1]]}, {"type": "move", "id": "bA", "path": [[0, 0], [0, -2], [0, -4]]}], [{"type": "pass", "to": "bA", "path": null}]]}
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-3.1, 3.2], [-6.1, 6.4]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-2.6, 0.9], [-5.2, 1.8]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-3.2, 0], [-6.5, 0.1]]}, {"type": "move", "id": "bA", "path": [[0, 0], [0, -2], [0, -4]]}], [{"type": "pass", "to": "bA", "path": null}]]},
+ {cat:"つなぐ", name:"三角形作戦", note:"B・C・E が 三角形に ならび、どこへでも パスできる 形で つなぐ",
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-1.5, 0], [-3.1, -0.1]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-2.2, 0.1], [-4.5, 0.2]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-3.1, 0.8], [-6.3, 1.6]]}], [{"type": "pass", "to": "bC", "path": null}], [{"type": "pass", "to": "bE", "path": null}], [{"type": "pass", "to": "bA", "path": null}]]},
+ {cat:"ひろがる", name:"逆サイド作戦", note:"はしの C から まんなかの E、反対の はしの D へ。守りを 左右に ゆさぶる",
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-0.9, -0.7], [-1.8, -1.4]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-3.9, 0.9], [-7.9, 1.8]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-2.3, 0.2], [-4.6, 0.4]]}], [{"type": "pass", "to": "bC", "path": null}], [{"type": "pass", "to": "bE", "path": null}], [{"type": "pass", "to": "bD", "path": null}, {"type": "move", "id": "bA", "path": [[0, 0], [0, 1.8], [0, 3.5]]}], [{"type": "pass", "to": "bA", "path": null}]]},
+ {cat:"だます", name:"ななめ走り作戦", note:"C が 守りの うしろを ななめに 走りぬけて もらう",
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-2, 1.8], [-7.3, 5.1]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-2.2, 0.8], [-4.5, 1.6]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-1, -1.5], [-1.9, -2.9]]}], [{"type": "pass", "to": "bC", "path": null}], [{"type": "pass", "to": "bA", "path": null}, {"type": "move", "id": "bA", "path": [[0, 0], [0, 1.5], [0, 3]]}]]},
+ {cat:"だます", name:"かべ作戦", note:"D が 守りの 前に 立って かべに なり、そのかげから E が とび出す",
+  groups:[[{"type": "move", "id": "bD", "path": [[0, 0], [-1.5, -0.7], [-3.1, -1.3]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-2, 0.8], [-7.5, -2.2]]}, {"type": "move", "id": "bC", "path": [[0, 0], [-2.3, -0.5], [-4.5, -0.9]]}], [{"type": "pass", "to": "bE", "path": null}], [{"type": "pass", "to": "bA", "path": null}, {"type": "move", "id": "bA", "path": [[0, 0], [0, -1.2], [0, -2.5]]}]]}
 ].map(x=>({cat:x.cat,name:x.name,note:x.note,preset:true,data:{pieces:clone(START),holder:"bB",groups:x.groups}}));
 function loadSaves(){ try{ return JSON.parse(localStorage.getItem(SKEY)||"[]"); }catch(e){ return []; } }
 function putSaves(a){ try{ localStorage.setItem(SKEY,JSON.stringify(a)); return true; }catch(e){ return false; } }
