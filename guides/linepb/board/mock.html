@@ -327,8 +327,10 @@ document.getElementById("play").onclick=async()=>{ if(playing||!st.groups.length
     const ps=g.find(a=>a.type==="pass"&&s.h&&a.to!==s.h); let cut=false;
     await new Promise(res=>{ (function f(now){ const u=Math.min(1,(now-t0)/dur), V={p:{},h:s.h,k};
       for(const id in s.p){ const mv=g.find(a=>a.type==="move"&&a.id===id);
-        V.p[id]=mv?along(movePath(mv,s.p[id]),u):lerp(s.p[id],e.p[id],u); }
-      if(ps){ V.h=null; V.ball=passPos(ps,V.p[s.h],V.p[ps.to],u);
+        const uu=(mv&&ps&&id===s.h)?Math.max(0,(u-.3)/.7):u;   // 投げた人は 投げおわってから 動き出す（投げながら 走らない）
+        V.p[id]=mv?along(movePath(mv,s.p[id]),uu):lerp(s.p[id],e.p[id],u); }
+      if(ps){ V.h=null; const mt=g.find(a=>a.type==="move"&&a.id===ps.to), C=mt?along(movePath(mt,s.p[ps.to]),1):e.p[ps.to];
+        V.ball=lerp(s.p[s.h],C,u);   // ボールは まっすぐ：投げた 場所から、受ける人が 走りこむ 先へ
         if(!cut&&u>.15&&u<.9) for(const id in V.p) if(id[0]==="r"&&dist(V.p[id],V.ball)<.5){ cut=true; flash(); } }
       draw(V); u<1?requestAnimationFrame(f):res(); })(t0); });
     await new Promise(r=>setTimeout(r,350)); }
