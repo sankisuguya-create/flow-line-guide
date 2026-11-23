@@ -275,7 +275,7 @@ Object.values(sel).forEach(el => el.onchange = resetAll);
 const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.5, 160);
 const ctl = new OrbitControls(cam, cv);
 ctl.enableDamping = false; ctl.enablePan = false; ctl.maxPolarAngle = THREE.MathUtils.degToRad(86);
-ctl.minZoom = 0.8; ctl.maxZoom = 6;
+ctl.minZoom = 0.8; ctl.maxZoom = 6; ctl.zoomToCursor = true;
 const VIEWS = { top: [0.001, 0], oblique: [55, -30], side: [84, 0] };
 function view(name) {
   const [pol, az] = VIEWS[name].map(THREE.MathUtils.degToRad), r = 70;

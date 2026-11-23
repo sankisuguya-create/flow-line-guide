@@ -74,6 +74,8 @@ export function createStage(parent, opt) {
   const ctl = new OrbitControls(cam, cv);
   ctl.enableDamping = false; ctl.enablePan = false; ctl.maxPolarAngle = THREE.MathUtils.degToRad(86);
   ctl.minZoom = 0.8; ctl.maxZoom = 6;
+  ctl.zoomToCursor = true;                       // ホイール・ピンチは カーソル／2本の指の まん中を 中心に 拡大縮小
+  ctl.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };   // 2本指＝ピンチで 拡大縮小
   const VIEWS = { top: [0.001, 0], oblique: [55, 0], side: [84, 0] };
   function view(name) {
     const [pol, az] = VIEWS[name].map(THREE.MathUtils.degToRad), r = 70;
