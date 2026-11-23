@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>作戦ボード（モック）</title>
+<!-- 平面（SVG）と立体（ドット立体、engine/voxel/stage3d.js）を 🧊 で切り替える。動きの計算は平面と共通で、立体は描くだけ。
+     線を書く・置く・消すは平面で行う（立体のときに道具を押すと平面に戻る）。 -->
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script src="../../../assets/objects/sport/figure.js"></script>
+<style>
+:root{--bg:#f4f1ea;--ink:#222;--red:#d63a3a;--blue:#2f6fd6;--mv:#1f5fd0;--ps:#d02a2a;--ui:#fff;--sel:#ffd84d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"BIZ UDPGothic","Hiragino Sans","Noto Sans JP",sans-serif;
+ height:100vh;display:flex;flex-direction:column;touch-action:none;user-select:none}
+#bar{display:flex;gap:6px;padding:8px 12px;align-items:center;flex-wrap:wrap}
+.tool{font:inherit;font-size:19px;font-weight:700;min-width:60px;height:52px;border-radius:12px;border:3px solid #999;background:var(--ui);padding:0 9px}
+.tool.on{border-color:#222;background:var(--sel)}
+.sep{flex:1}
+#main{flex:1;display:flex;min-height:0}
+#svg{flex:1;min-width:0}
+#stage{flex:1;min-width:0;position:relative;display:none}
+#views3d{display:none;gap:6px}#views3d.on{display:flex}
+/* 同じ系統の道具は トグル（開くと下に出る）。開くのは1つだけ */
+.tg{position:relative}
+.tgh{font:inherit;font-size:19px;font-weight:700;height:52px;border-radius:12px;border:3px solid #999;background:var(--ui);padding:0 12px;white-space:nowrap}
+.tg.open .tgh{border-color:#222;background:#fff7cf}
+.tgb{display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:6;background:#fff;border:3px solid #444;border-radius:16px;padding:10px;gap:8px;flex-wrap:wrap;width:max-content;max-width:min(560px,92vw);box-shadow:0 6px 18px #0003}
+.tg.open .tgb{display:flex}
+.tgb .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:100%}
+#vis{padding:0;font-size:17px}
+.tac{flex-direction:column;flex-wrap:nowrap;width:min(520px,92vw);max-height:60vh;overflow:auto}
+.tac h4{margin:4px 0 0;font-size:16px;color:#666}
+.tc{font:inherit;text-align:left;border:3px solid #ddd;border-radius:14px;background:#fff;padding:8px 12px;font-size:20px;font-weight:700}
+.tc small{display:block;font-size:14px;font-weight:400;color:#555}.tc.on{border-color:#222;background:#fff7cf}
+#side{width:250px;padding:8px;overflow:auto}
+#side h3{margin:4px 0 6px;font-size:18px}
+.grp{background:#fff;border-radius:12px;padding:6px 8px;border:3px solid transparent}
+.grp.join{border-color:#222;background:#fff7cf}
+.grp .hd{display:flex;align-items:center;gap:6px;font-size:16px;color:#666}
+.num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#333;color:#fff;font-weight:700;flex:none}
+.act{display:flex;align-items:center;gap:6px;font-size:17px;padding:3px 0 3px 4px}
+.dot{width:14px;height:14px;border-radius:50%;flex:none}
+.act .x{margin-left:auto;border:none;background:none;font-size:20px;color:#888}
+.grp.now{outline:4px solid var(--sel)}
+.gap{height:30px;margin:3px 0;border:2px dashed transparent;border-radius:10px;display:grid;place-items:center;font-size:15px;color:#aaa}
+.gap.on{border-color:#222;color:#222;background:#fff7cf;font-weight:700}
+#vis{display:flex;gap:8px;align-items:center;padding:0 12px 6px;font-size:17px}
+.chip{font:inherit;font-size:17px;font-weight:700;height:40px;padding:0 12px;border-radius:20px;border:2px solid #bbb;background:#eee;color:#999;display:flex;align-items:center;gap:6px}
+.chip.on{background:#fff;color:#222;border-color:#444}
+.chip i{display:inline-block;width:22px;height:5px;border-radius:3px}
+.chip:not(.on) i{opacity:.25}
+.eye{border:none;background:none;font-size:20px;padding:0 4px}
+.grp.off{opacity:.45}
+.scr{display:none;flex:1;flex-direction:column;min-height:0}.scr.on{display:flex}
+#home{align-items:center;justify-content:center;gap:28px}
+#home h1{margin:0 0 8px;font-size:40px}
+.card{font:inherit;width:min(560px,90vw);padding:22px 28px;border-radius:24px;border:4px solid #444;background:#fff;font-size:34px;font-weight:700;display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:20px;text-align:left}
+.card .ic{grid-row:span 2;font-size:56px}.card small{font-size:20px;font-weight:400;color:#555}
+.qbar{display:flex;align-items:center;gap:14px;padding:8px 12px}
+#qno{font-size:20px;color:#666}#qq{font-size:30px;font-weight:700}#qscore{font-size:22px;font-weight:700}
+#qsvg{flex:1;min-height:0}
+.qfoot{display:flex;align-items:center;gap:12px;padding:6px 14px 12px;min-height:76px}
+#qfb{flex:1;font-size:24px;font-weight:700;line-height:1.6}
+#qnext{visibility:hidden}
+rt{font-size:.5em}
+#dlg{position:fixed;inset:0;background:#0006;display:none;align-items:center;justify-content:center;z-index:9}
+#dlg.on{display:flex}
+#ask{position:fixed;inset:0;background:#0006;display:none;align-items:center;justify-content:center;z-index:10}#ask.on{display:flex}
+#ask .box{background:#fff;border-radius:20px;padding:20px 24px;width:min(480px,90vw)}#ask p{font-size:24px;font-weight:700;margin:0 0 16px;line-height:1.5}#ask .row{display:flex;justify-content:flex-end;gap:10px}
+#dlg .box{background:#fff;border-radius:20px;padding:20px 24px;width:min(560px,92vw);max-height:86vh;overflow:auto}
+#dlg h2{margin:0 0 14px;font-size:26px}
+.nm{display:flex;align-items:center;gap:8px;font-size:30px;font-weight:700}
+.nm input{font:inherit;font-size:30px;flex:1;min-width:0;padding:8px 12px;border:3px solid #444;border-radius:12px}
+#dlg .row{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.sv{display:flex;align-items:center;gap:10px;padding:10px 12px;border:3px solid #ddd;border-radius:14px;margin-bottom:8px;font-size:24px;font-weight:700;background:#fff;width:100%;font-family:inherit;text-align:left}
+.sv:active{background:#fff7cf}.sv small{font-size:15px;color:#777;font-weight:400}.sv .del{margin-left:auto;border:none;background:none;font-size:24px}
+#hint{padding:0 12px 6px;font-size:17px;min-height:26px}
+#cut{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);font-size:64px;font-weight:700;color:#fff;background:var(--red);
+ padding:8px 28px;border-radius:20px;display:none}
+
+/* ===== スマホ（縦持ち、幅700px以下） =====
+   道具は6列の格子（絵文字の下に短い文字）、コートは画面の幅いっぱい、じゅんばんはその下でスクロール */
+@media (max-width:700px){
+ #bar{gap:4px;padding:6px 8px}
+ #bar .tool,.tgh{font-size:14px;height:44px;padding:0 8px;border-width:2px;min-width:0}
+ .tg{position:static}
+ .tgb{left:8px;right:8px;top:auto;margin-top:6px;width:auto;max-width:none}
+ .tgb .tool{font-size:14px;height:44px}
+ .tac{width:auto}
+ .chip{font-size:14px;height:34px;padding:0 10px;flex:none;white-space:nowrap}
+ #hint{font-size:14px;padding:0 8px 4px;min-height:20px}
+ #main{flex-direction:column}
+ #svg,#stage{flex:none;width:100%;aspect-ratio:23/13;height:auto}
+ #side{width:auto;flex:1;min-height:0;padding:6px 8px}
+ #side h3{font-size:15px;margin:2px 0 4px}
+ .act{font-size:15px}.gap{height:26px;font-size:13px}
+ #home{gap:16px;padding:16px}#home h1{font-size:28px}
+ .card{font-size:24px;padding:16px 18px;border-radius:18px;column-gap:14px}.card .ic{font-size:40px}.card small{font-size:15px}
+ .qbar{gap:8px;padding:6px 8px;flex-wrap:wrap}#qq{font-size:18px;flex-basis:100%;order:5}#qno{font-size:15px}#qscore{font-size:17px}
+ #qsvg{flex:none;width:100%;aspect-ratio:23/12.4;height:auto}
+ .qfoot{flex-wrap:wrap;padding:6px 10px 10px}#qfb{font-size:17px;flex-basis:100%}
+ #dlg h2{font-size:21px}.nm,.nm input{font-size:22px}.sv{font-size:18px}
+ #cut{font-size:40px}
+}
+</style></head><body>
+<div id="home" class="scr">
+  <h1>ラインポートボール</h1>
+  <button class="card" data-go="boardScr"><span class="ic">📋</span>作戦ボード<small>線を 書いて <ruby>動<rt>うご</rt></ruby>きを <ruby>考<rt>かんが</rt></ruby>える</small></button>
+  <button class="card" data-go="quiz"><span class="ic">💡</span>はんだん トレーニング<small>どこに パス？ どこへ <ruby>動<rt>うご</rt></ruby>く？</small></button>
+</div>
+<div id="quiz" class="scr">
+  <div class="qbar"><button class="tool back">◀ もどる</button><div id="qno"></div><div id="qq"></div><span class="sep"></span><div id="qscore"></div></div>
+  <svg id="qsvg" viewBox="-1.5 -1.2 23 12.4"></svg>
+  <div class="qfoot"><div id="qfb"></div><button class="tool" id="qnext">つぎへ ▶</button></div>
+</div>
+<div id="boardScr" class="scr">
+<div id="bar"><button class="tool back">◀</button>
+  <button class="tool" id="play">▶ 再生</button>
+  <div class="tg" id="tgDraw"><button class="tgh">✏️ <span id="lbDraw">移動</span> ▾</button><div class="tgb">
+    <button class="tool on" data-m="move">🚶 移動</button>
+    <button class="tool" data-m="pass">⚽ パス</button>
+    <button class="tool" data-m="drag">✋ 置く</button>
+    <button class="tool" data-m="erase">🧽 消す</button>
+    <button class="tool" id="next">➕ つぎの 番号</button></div></div>
+  <div class="tg" id="tgTac"><button class="tgh">📚 作戦 ▾</button><div class="tgb tac" id="tacList"></div></div>
+  <div class="tg" id="tgDef"><button class="tgh">🛡 <span id="lbDef">マーク</span> ▾</button><div class="tgb">
+    <button class="tool" data-def="off">止まる</button><button class="tool on" data-def="mark">マーク</button>
+    <button class="tool" data-def="goal">ゴールまもり</button><button class="tool" data-def="lane">パスコース</button>
+    <div class="row"><span>反応：</span><button class="tool on" data-lag="1">ふつう（おくれる）</button><button class="tool" data-lag="0">はやい（強い）</button></div></div></div>
+  <div class="tg" id="tgSee"><button class="tgh">👀 見る ▾</button><div class="tgb">
+    <div class="row"><button class="tool" id="v3d">🧊 立体</button>
+    <span id="views3d"><button class="tool" data-cam="top">真上</button><button class="tool on" data-cam="oblique">斜め</button><button class="tool" data-cam="side">横</button></span></div>
+    <div class="row" id="vis"><span>線：</span>
+    <button class="chip" data-v="mv"><i style="background:var(--mv)"></i>動く</button>
+    <button class="chip" data-v="ps"><i style="background:var(--ps);height:4px;border-top:2px dashed #fff"></i>パス</button>
+    <button class="chip" data-v="df"><i style="background:#c77"></i>守り</button>
+    <button class="chip" data-v="num">番号</button>
+    <button class="chip on" data-v="free"><i style="background:#1a9b4b"></i>フリー</button></div></div></div>
+  <div class="tg" id="tgData"><button class="tgh">💾 データ ▾</button><div class="tgb">
+    <button class="tool" id="save">💾 保存</button>
+    <button class="tool" id="load">📂 セーブデータ</button>
+    <button class="tool" id="reset">↺ はじめ</button></div></div>
+</div>
+<div id="hint"></div>
+<div id="main">
+  <svg id="svg" viewBox="-1.5 -1.5 23 13"></svg>
+  <div id="stage"></div>
+  <div id="side"><h3>じゅんばん</h3><div id="steps"></div></div>
+</div>
+</div>
+<div id="dlg"><div class="box">
+  <div id="dlgSave"><h2>作戦の 名前</h2>
+    <div class="nm"><input id="nm" maxlength="12" placeholder="はやわざ"><span>作戦</span></div>
+    <div class="row"><button class="tool" id="dlgCancel">やめる</button><button class="tool on" id="dlgOk">保存する</button></div></div>
+  <div id="dlgLoad"><h2>セーブデータ</h2><div id="saves"></div>
+    <div class="row"><button class="tool" id="dlgClose">とじる</button></div></div>
+</div></div>
+<div id="ask"><div class="box"><p id="askMsg"></p><div class="row"><button class="tool" id="askNo">やめる</button><button class="tool on" id="askYes">はい</button></div></div></div>
+<div id="cut">カット！</div>
+<script>
+/* ===== データ =====
+ groups: 番号ごとの 動きの まとまり（同じ 番号は 同時に 動く）
+   move:{type:"move",id,path:[[dx,dy]...]}  … 道の 形（はじめの 位置からの ずれ）。始まりは その時の 位置に 合わせる
+   pass:{type:"pass",to,path:[[x,y]...]|null} … 出す人は その時 ボールを 持つ人。null は タップで 決めた まっすぐの パス
+ cursor: 次に 書く 動きの 入れ先  {kind:"new",at:k}＝k番めの 前に 新しい 番号 ／ {kind:"join",g:k}＝k番めに 同時で 足す */
+const START={bA:[1,5],bB:[12,5],bC:[11,2.2],bD:[11,7.8],bE:[11,5.2],rC:[7,3],rD:[7,5],rE:[7,7]};
+const GOALMAN="bA", MID=10;
+const COL=id=>id[0]==="b"?"var(--blue)":"var(--red)";
+const clone=o=>JSON.parse(JSON.stringify(o));
+let st={pieces:clone(START),holder:"bB",groups:[]};
+try{const s=localStorage.getItem("pb-mock2"); if(s) st=JSON.parse(s);}catch(e){}
+let curName="";
+let SHOW={mv:false,ps:false,df:false,num:false,free:true}, HIDE=new Set();
+let mode="move", drawing=null, cur=null, playing=false, lastAdded=null;
+let cursor=st.groups.length?{kind:"join",g:st.groups.length-1}:{kind:"new",at:0};
+const svg=document.getElementById("svg"), NS="http://www.w3.org/2000/svg";
+const E=(t,a,p)=>{const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); (p||svg).appendChild(e); return e;};
+const HINT={move:"駒から 指で 線を 引くと、その道を 歩く（青い線）。同じ 番号は 同時に 動く。",
+ pass:"ボールを 持つ 駒から 線を 引く（赤い 点線）か、受ける 駒を タップ。",
+ drag:"駒や ボールを はじめの 場所に 置く。",erase:"線を さわると 消える。"};
+const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+const lerp=(a,b,u)=>[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u];
+
+/* ===== 道の 計算 ===== */
+function along(path,f){ let L=0; const seg=[]; for(let i=1;i<path.length;i++){ const d=dist(path[i],path[i-1]); seg.push(d); L+=d; }
+  if(!L) return path[0].slice(); let r=f*L;
+  for(let i=0;i<seg.length;i++){ if(r<=seg[i]) return lerp(path[i],path[i+1],seg[i]?r/seg[i]:0); r-=seg[i]; } return path[path.length-1].slice(); }
+const movePath=(a,p0)=>a.path.map(q=>[p0[0]+q[0],p0[1]+q[1]]);
+/* パスの 道：書いた 形を 出す人・受ける人の 今の 位置に 合わせて のばす */
+function passPos(a,from,to,u){ if(!a.path) return lerp(from,to,u);
+  const P=a.path, q=along(P,u), s=P[0], e=P[P.length-1];
+  return [q[0]+(from[0]-s[0])*(1-u)+(to[0]-e[0])*u, q[1]+(from[1]-s[1])*(1-u)+(to[1]-e[1])*u]; }
+function passPoly(a,from,to){ const o=[]; for(let i=0;i<=24;i++) o.push(passPos(a,from,to,i/24)); return o; }
+
+/* ===== 守りの 動き：パスの 通り道・受ける人・ゴールマンの 近くを ねらう ===== */
+function clampDef(p,holderPos){ let x=Math.min(MID-0.3,Math.max(2.3,p[0])), y=Math.min(9.7,Math.max(0.3,p[1]));
+  if(holderPos){ const d=dist([x,y],holderPos); if(d<1.5){ const k=1.5/(d||1); x=holderPos[0]+(x-holderPos[0])*k; y=holderPos[1]+(y-holderPos[1])*k; } }
+  return [Math.min(MID-0.3,Math.max(2.3,x)),Math.min(9.7,Math.max(0.3,y))]; }
+/* 守りの 動き方（どれも パスの 行き先は 知らない。攻めが 動いた 先を 見て 動く）
+   mark …… マーク：1人ずつ 近い 攻めに つく（ゴール側・ボール寄り）
+   goal …… ゴールまもり：帯の 前に 3人で ならび、ボールの 方へ ずれる
+   lane …… パスコース：ボールの 人と 受けそうな 人の 間に 入る */
+const DEFS=[["off","🛡 守り 止まる"],["mark","🛡 マーク"],["goal","🛡 ゴールまもり"],["lane","🛡 パスコース"]];
+let defMode="mark";
+function defTargets(S,E2,holder){
+  const defs=Object.keys(S.p).filter(k=>k[0]==="r"), T={}, free=defs.slice();
+  const take=pt=>{ let b=null,bd=1e9; free.forEach(d=>{ const dd=dist(S.p[d],pt); if(dd<bd){bd=dd;b=d;} }); if(b) free.splice(free.indexOf(b),1); return b; };
+  const hp=E2[holder]||[MID,5], gm=E2[GOALMAN];
+  const atk=Object.keys(E2).filter(k=>k[0]==="b"&&k!==holder&&k!==GOALMAN&&E2[k][0]<MID+1).sort((a,b)=>E2[a][0]-E2[b][0]); // ゴールに 近い 順
+  if(defMode==="mark"){
+    atk.forEach(k=>{ if(!free.length) return; const a=E2[k], t=[a[0]-1.0,a[1]+(hp[1]-a[1])*.15]; const d=take(t); if(d) T[d]=t; });
+    if(gm&&free.length){ const t=[3.0,gm[1]+(hp[1]-gm[1])*.3]; const d=take(t); if(d) T[d]=t; } }
+  if(defMode==="goal"){ const c=Math.min(7.5,Math.max(2.5,(gm?gm[1]:5)+(hp[1]-(gm?gm[1]:5))*.35));
+    [[3.4,c],[3.8,c-2.4],[3.8,c+2.4]].forEach(t=>{ const d=take(t); if(d) T[d]=t; }); }
+  if(defMode==="lane"){ const rc=atk.concat(gm&&holder!==GOALMAN?[GOALMAN]:[]).sort((a,b)=>dist(E2[a],hp)-dist(E2[b],hp));
+    rc.forEach(k=>{ if(!free.length) return; const t=lerp(hp,E2[k],.6); const d=take(t); if(d) T[d]=t; }); }
+  free.forEach(d=>T[d]=S.p[d]);
+  for(const d in T){ let t=T[d]; const s=S.p[d], L=dist(s,t), MAX=3.2; if(L>MAX) t=lerp(s,t,MAX/L); T[d]=clampDef(t,E2[holder]); }
+  return T; }
+
+/* ===== 番号ごとの 位置を 順に 計算（始めの 位置の 一覧） ===== */
+/* 守りの反応：ふつう＝一手おくれ（その番号が始まる時の攻めの位置を見て動く。走りこみに おくれて マークが外れる）
+               はやい＝先読み（攻めが動き終わる場所へ同時に付く。強い守り） */
+let defLag=true;
+const FREE=1.5;   // 守りから この距離以上 はなれた 攻め＝フリー（パスの チャンス）
+function simulate(){ const S=[{p:clone(st.pieces),h:st.holder}];
+  st.groups.forEach((g,gi)=>{ const s=S[gi], e={p:clone(s.p),h:s.h};
+    g.forEach(a=>{ if(a.type==="move"&&s.p[a.id]){ const P=movePath(a,s.p[a.id]); e.p[a.id]=P[P.length-1]; } });
+    const ps=g.find(a=>a.type==="pass"&&a.to!==s.h&&s.p[a.to]);
+    if(defMode!=="off"){ const T=defTargets(s,defLag?s.p:e.p,s.h); for(const d in T) e.p[d]=T[d]; }
+    if(ps) e.h=ps.to; S.push(e); });
+  return S; }
+function baseState(S){ return cursor.kind==="new"?S[cursor.at]:S[cursor.g]; }
+
+/* ===== 描く ===== */
+function draw(anim){ svg.innerHTML=""; const S=simulate();
+  E("rect",{x:0,y:0,width:20,height:10,fill:"#e9d9b4",stroke:"#555","stroke-width":.08});
+  E("rect",{x:0,y:0,width:2,height:10,fill:"#f2c86a",opacity:.6}); E("rect",{x:18,y:0,width:2,height:10,fill:"#f2c86a",opacity:.6});
+  E("line",{x1:MID,y1:0,x2:MID,y2:10,stroke:"#555","stroke-width":.08});
+  const d=E("defs",{}); [["mv","var(--mv)"],["ps","var(--ps)"],["df","#c77"]].forEach(([k,c])=>{ const mk=E("marker",{id:"ar"+k,viewBox:"0 0 10 10",refX:8,refY:5,markerWidth:4,markerHeight:4,orient:"auto"},d); E("path",{d:"M0,0L10,5L0,10z",fill:c},mk); });
+  st.groups.forEach((g,gi)=>{ const s=S[gi], e=S[gi+1], marks=[];
+    if(defMode!=="off"&&SHOW.df&&!HIDE.has(gi)) for(const id in s.p) if(id[0]==="r"&&dist(s.p[id],e.p[id])>.2)
+      E("line",{x1:s.p[id][0],y1:s.p[id][1],x2:e.p[id][0],y2:e.p[id][1],stroke:"#c77","stroke-width":.06,"stroke-dasharray":".15 .15","marker-end":"url(#ardf)",opacity:.7});
+    if(HIDE.has(gi)) return;
+    g.forEach((a,ai)=>{ let P, isMv=a.type==="move"; if(!SHOW[isMv?"mv":"ps"]) return; const G=E("g",{"data-g":gi,"data-a":ai});
+      if(isMv){ if(!s.p[a.id]) return; P=movePath(a,s.p[a.id]); }
+      else { if(!s.h||a.to===s.h) return; P=passPoly(a,s.p[s.h],e.p[a.to]); }
+      E("polyline",{points:P.map(q=>q.join(",")).join(" "),fill:"none",stroke:"transparent","stroke-width":.8},G);
+      E("polyline",{points:P.map(q=>q.join(",")).join(" "),fill:"none",stroke:isMv?"var(--mv)":"var(--ps)","stroke-width":.12,
+        "stroke-dasharray":isMv?"none":".35 .25","stroke-linecap":"round","marker-end":"url(#ar"+(isMv?"mv":"ps")+")",opacity:anim&&anim.k!==gi&&anim.k>=0?.35:1},G);
+      marks.push(P[Math.floor(P.length/2)]); });
+    if(SHOW.num) marks.forEach(m=>{ E("circle",{cx:m[0],cy:m[1],r:.38,fill:"#333"}); const t=E("text",{x:m[0],y:m[1]+.14,"font-size":.42,"text-anchor":"middle",fill:"#fff","font-weight":700}); t.textContent=gi+1; }); });
+  if(cur){ const P=cur.path; E("polyline",{points:P.map(q=>q.join(",")).join(" "),fill:"none",stroke:cur.type==="move"?"var(--mv)":"var(--ps)","stroke-width":.12,"stroke-dasharray":cur.type==="pass"?".35 .25":"none"}); }
+  const V=anim||(mode==="drag"?{p:st.pieces,h:st.holder}:baseState(S));
+  if(SHOW.free) for(const id in V.p){ if(id[0]!=="b") continue; const [x,y]=V.p[id];   // フリーの 輪：守りから はなれた 攻め
+    let m=1e9; for(const r in V.p) if(r[0]==="r") m=Math.min(m,dist(V.p[r],[x,y]));
+    if(m>=FREE){ E("circle",{cx:x,cy:y,r:.78,fill:"rgba(26,155,75,.15)",stroke:"#1a9b4b","stroke-width":.1,"stroke-dasharray":".25 .15"}); } }
+  for(const id in V.p){ const [x,y]=V.p[id];
+    E("circle",{cx:x,cy:y,r:.45,fill:COL(id),stroke:id===GOALMAN?"#f2a400":"#fff","stroke-width":id===GOALMAN?.14:.08,"data-id":id});
+    const t=E("text",{x,y:y+.17,"font-size":.5,"text-anchor":"middle",fill:"#fff","font-weight":700,"pointer-events":"none"}); t.textContent=id[1]; }
+  const b=V.ball||(V.h&&V.p[V.h]?[V.p[V.h][0]+.45,V.p[V.h][1]-.45]:[10,5]);
+  E("circle",{cx:b[0],cy:b[1],r:.25,fill:"#fff",stroke:"#222","stroke-width":.06,"data-id":"ball"});
+  if(window.STAGE3D) STAGE3D.update({p:V.p,h:V.h,ball:V.ball||null});
+  listSteps(anim?anim.k:null); }
+
+function gapEl(k){ const g=document.createElement("div"); const on=cursor.kind==="new"&&cursor.at===k;
+  g.className="gap"+(on?" on":""); g.textContent=on?"▶ ここに 新しい 番号":"＋ ここに 入れる";
+  g.onclick=()=>{ cursor={kind:"new",at:k}; draw(); }; return g; }
+function listSteps(now){ const box=document.getElementById("steps"); box.innerHTML=""; const S=simulate();
+  box.appendChild(gapEl(0));
+  st.groups.forEach((g,gi)=>{ const r=document.createElement("div");
+    r.className="grp"+(HIDE.has(gi)?" off":"")+(cursor.kind==="join"&&cursor.g===gi?" join":"")+(now===gi?" now":"");
+    r.innerHTML=`<div class="hd"><span class="num">${gi+1}</span><button class="eye">${HIDE.has(gi)?"🙈":"👁"}</button><span style="margin-left:auto;white-space:nowrap">${cursor.kind==="join"&&cursor.g===gi?"▶ いま ここ":"タップで ここに 足す"}</span></div>`;
+    r.querySelector(".eye").onclick=()=>{ HIDE.has(gi)?HIDE.delete(gi):HIDE.add(gi); draw(); };
+    r.onclick=e=>{ if(e.target.classList.contains("x")||e.target.classList.contains("eye")) return; cursor={kind:"join",g:gi}; draw(); };
+    g.forEach((a,ai)=>{ const s=S[gi], ok=a.type==="move"||(s.h&&a.to!==s.h);
+      const row=document.createElement("div"); row.className="act";
+      row.innerHTML=`<span class="dot" style="background:${a.type==="move"?"var(--mv)":"var(--ps)"}"></span>`+
+        (a.type==="move"?`${a.id[1]} が 動く`:ok?`${s.h[1]} → ${a.to[1]} パス`:`<s>${a.to[1]} へ パス</s>`)+`<button class="x">×</button>`;
+      row.querySelector(".x").onclick=()=>removeAct(gi,ai); r.appendChild(row); });
+    box.appendChild(r); box.appendChild(gapEl(gi+1)); }); }
+
+/* ===== 足す・消す ===== */
+const MINPASS=3;   // 近すぎる パスは させない（m）
+function addAct(a){
+  if(a.type==="move"){ const B=baseState(simulate()); const g=cursor.kind==="join"?st.groups[cursor.g]:null;
+    if(B.h===a.id&&!(g&&g.some(x=>x.type==="pass"&&x.to!==a.id))) return hint("ボールを 持ったまま 動けない。先に パスを 足すと、投げてから 動ける。"); }
+  if(a.type==="pass"){ const B=baseState(simulate()), F=B.p[B.h], T=B.p[a.to]; if(F&&T&&dist(F,T)<MINPASS) return hint("近すぎる パスは しない。"+MINPASS+"m 以上 はなれた 人へ。"); }
+  if(cursor.kind==="join"){ const g=st.groups[cursor.g];
+    if(a.type==="pass"&&g.some(x=>x.type==="pass")) return hint("1つの 番号に パスは 1つだけ。");
+    if(a.type==="move"){ const i=g.findIndex(x=>x.type==="move"&&x.id===a.id); if(i>=0) g.splice(i,1); }
+    g.push(a); lastAdded=cursor.g; }
+  else { HIDE=new Set([...HIDE].map(x=>x>=cursor.at?x+1:x)); st.groups.splice(cursor.at,0,[a]); lastAdded=cursor.at; cursor={kind:"join",g:cursor.at}; }
+  hint((cursor.g+1)+" 番に 足した。同じ 番号は 同時に 動く。次の 番号は ➕。"+(SHOW[a.type==="move"?"mv":"ps"]?"":"（線は 👀 見る で 出せる）")); }
+function removeAct(gi,ai){ const shift=()=>{ HIDE=new Set([...HIDE].filter(x=>x!==gi).map(x=>x>gi?x-1:x)); }; st.groups[gi].splice(ai,1); if(!st.groups[gi].length){ st.groups.splice(gi,1); shift();
+    if(cursor.kind==="join") cursor={kind:"new",at:Math.min(gi,st.groups.length)}; else if(cursor.at>gi) cursor.at--; }
+  draw(); }
+
+/* ===== 指・ペンの 操作 ===== */
+function pt(ev){ const p=svg.createSVGPoint(); p.x=ev.clientX; p.y=ev.clientY; const q=p.matrixTransform(svg.getScreenCTM().inverse()); return [q.x,q.y]; }
+function near(p,P,r){ let best=null,bd=r||.7; for(const id in P){ const d=dist(P[id],p); if(d<bd){bd=d;best=id;} } return best; }
+svg.addEventListener("pointerdown",ev=>{ if(playing) return; svg.setPointerCapture(ev.pointerId); const p=pt(ev);
+  if(mode==="erase"){ const g=ev.target.closest("g[data-g]"); if(g) removeAct(+g.dataset.g,+g.dataset.a); return; }
+  if(mode==="drag"){ const id=ev.target.dataset.id; if(id) drawing={drag:id}; return; }
+  const B=baseState(simulate()), id=near(p,B.p); if(!id) return;
+  if(mode==="move"){ if(id[0]==="r"&&defMode!=="off") return hint("守りは 自動で 動く。手で 動かす ときは 🛡 を「止まる」に。");
+    cur={type:"move",id,path:[B.p[id].slice()]}; drawing=cur; return; }
+  if(id===B.h){ cur={type:"pass",path:[B.p[id].slice()]}; drawing=cur; }      // ボールを 持つ 人から 引く
+  else drawing={tap:id};                                                        // 受ける 人の タップ
+});
+svg.addEventListener("pointermove",ev=>{ if(!drawing) return; const p=pt(ev);
+  if(drawing.drag){ if(drawing.drag==="ball"){ const id=near(p,st.pieces,1); if(id) st.holder=id; } else st.pieces[drawing.drag]=p; draw(); return; }
+  if(!cur) return; const l=cur.path[cur.path.length-1]; if(dist(p,l)>.25){ cur.path.push(p); draw(); } });
+svg.addEventListener("pointerup",ev=>{ if(!drawing) return; const B=baseState(simulate());
+  if(drawing.tap){ if(B.h&&B.h[0]===drawing.tap[0]) addAct({type:"pass",to:drawing.tap,path:null}); else hint("パスは 同じ チームの 人へ。"); }
+  else if(cur&&cur.type==="move"&&cur.path.length>2){ const o=cur.path[0]; addAct({type:"move",id:cur.id,path:cur.path.map(q=>[q[0]-o[0],q[1]-o[1]])}); }
+  else if(cur&&cur.type==="pass"){ const to=near(cur.path[cur.path.length-1],B.p,1);
+    if(to&&to!==B.h&&to[0]===B.h[0]){ cur.path.push(B.p[to].slice()); addAct({type:"pass",to,path:cur.path}); } else if(cur.path.length>2) hint("受ける 駒の 上で 指を はなしてね。"); }
+  drawing=null; cur=null; draw(); });
+
+/* ===== 再生：番号順。同じ 番号は 同時に 動く ===== */
+const flash=()=>{ const c=document.getElementById("cut"); c.style.display="block"; setTimeout(()=>c.style.display="none",900); };
+document.getElementById("play").onclick=async()=>{ if(playing||!st.groups.length) return; playing=true; const S=simulate();
+  for(let k=0;k<st.groups.length;k++){ const g=st.groups[k], s=S[k], e=S[k+1], dur=1600, t0=performance.now();
+    const ps=g.find(a=>a.type==="pass"&&s.h&&a.to!==s.h); let cut=false;
+    await new Promise(res=>{ (function f(now){ const u=Math.min(1,(now-t0)/dur), V={p:{},h:s.h,k};
+      for(const id in s.p){ const mv=g.find(a=>a.type==="move"&&a.id===id);
+        const uu=(mv&&ps&&id===s.h)?Math.max(0,(u-.3)/.7):u;   // 投げた人は 投げおわってから 動き出す（投げながら 走らない）
+        V.p[id]=mv?along(movePath(mv,s.p[id]),uu):lerp(s.p[id],e.p[id],u); }
+      if(ps){ V.h=null; const mt=g.find(a=>a.type==="move"&&a.id===ps.to), C=mt?along(movePath(mt,s.p[ps.to]),1):e.p[ps.to];
+        V.ball=lerp(s.p[s.h],C,u);   // ボールは まっすぐ：投げた 場所から、受ける人が 走りこむ 先へ
+        if(!cut&&u>.15&&u<.9) for(const id in V.p) if(id[0]==="r"&&dist(V.p[id],V.ball)<.5){ cut=true; flash(); } }
+      draw(V); u<1?requestAnimationFrame(f):res(); })(t0); });
+    await new Promise(r=>setTimeout(r,350)); }
+  setTimeout(()=>{ playing=false; draw(); },900); };
+
+document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{ const k=c.dataset.v; SHOW[k]=!SHOW[k]; c.classList.toggle("on",SHOW[k]); draw(); });
+document.getElementById("next").onclick=()=>{ const at=cursor.kind==="join"?cursor.g+1:cursor.at;
+  if(cursor.kind==="new") return hint((at+1)+" 番を 書いてね。");
+  cursor={kind:"new",at}; hint((at+1)+" 番の 動きを 書いてね。"); draw(); };
+/* 確かめの画面：ブラウザの confirm は、埋め込み（GAS・プレビュー）で止められて 常に「いいえ」になることがあるので使わない */
+function ask(msg){ return new Promise(res=>{ const a=document.getElementById("ask"); document.getElementById("askMsg").textContent=msg; a.classList.add("on");
+  const done=v=>{ a.classList.remove("on"); res(v); }; document.getElementById("askYes").onclick=()=>done(true); document.getElementById("askNo").onclick=()=>done(false); }); }
+document.getElementById("reset").onclick=async()=>{ if(await ask("線を ぜんぶ 消して、はじめの 並びに もどす？")){ st={pieces:clone(START),holder:"bB",groups:[]}; HIDE=new Set(); curName=""; cursor={kind:"new",at:0}; lastAdded=null; draw(); } };
+/* ===== セーブデータ（モックは この 端末の 中に 保存。本番は Web アプリの 保存先へ） ===== */
+const SKEY="pb-saves";
+/* 見本の作戦（📚 作戦 のトグル。セーブデータとは別で、消せない・上書きされない）。
+   考え方：攻め4人（ゴールマンを除く）に守りは3人なので、フリーが いつも 1人 いる。守りは 一手おくれて 動くので、
+   おとり・ブラフ・後ろへの パス・走りこみで 守りを 動かすと、フリーが 2人に なる＝パスの チャンス。
+   パスは フリーの 人へ、できれば 走りこみながら 受ける（止まって 待つと 守りが 追いつく）。
+   調整の基準（守り「マーク」反応ふつう）：パスの道と守りの間 約1.2m以上、受ける人は守りから約1.5m（フリー）、パスは3m以上。
+   出典の考え方：相手のいない所へ動く・はば・数で上回る・おとり・入れかわり・もどってから走る（各県の指導資料、TGfU・ゲームの原則） */
+const mv=(id,...pts)=>({type:"move",id,path:[[0,0],...pts]}), ps=to=>({type:"pass",to,path:null});
+const PRESETS=[
+ {cat:"おとり", name:"ひきつけ作戦", note:"E が ボールの 近くへ よって 守りを ひきつける。空いた はしの D が 走りこんで もらう",
+  pieces:{"bA": [1, 5], "bB": [11, 4.1], "bC": [11, 2.2], "bD": [11, 7.8], "bE": [11, 5.2], "rC": [7, 3], "rD": [7, 5], "rE": [7, 7]},
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-1.8, -0.7], [-3.7, -1.4]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-1.5, 0.8], [-3, 1.5]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-1.8, 0.7], [-3.7, 1.4]]}], [{"type": "move", "id": "bE", "path": [[0, 0], [0.7, -1.8], [1.3, -3.5]]}], [{"type": "pass", "to": "bD", "path": null}, {"type": "move", "id": "bD", "path": [[0, 0], [-2.6, -0.6], [-5.1, -1.1]]}], [{"type": "pass", "to": "bA", "path": null}]]},
+ {cat:"おとり", name:"2人おとり作戦", note:"C と E が 上の がわへ 寄って 守りを 2人 つれていく。下の D が フリーに なる",
+  pieces:{"bA": [1, 5], "bB": [13.2, 4.6], "bC": [11, 2.2], "bD": [11, 7.8], "bE": [11, 5.2], "rC": [7, 3], "rD": [7, 5], "rE": [7, 7]},
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-1.8, -0.6], [-3.6, -1.2]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-1.3, 0.9], [-2.6, 1.8]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-2.5, -0.5], [-5, -1.1]]}], [{"type": "move", "id": "bC", "path": [[0, 0], [0.8, 1.9], [1.5, 3.7]]}, {"type": "move", "id": "bE", "path": [[0, 0], [1.4, -1.3], [2.8, -2.7]]}], [{"type": "pass", "to": "bD", "path": null}, {"type": "move", "id": "bD", "path": [[0, 0], [-1.4, -1.2], [-2.8, -2.4]]}, {"type": "move", "id": "bA", "path": [[0, 0], [0, -1.7], [0, -3.5]]}], [{"type": "pass", "to": "bA", "path": null}]]},
+ {cat:"おとり", name:"まんなかおとり作戦", note:"E が まんなかを 帯の 前まで 走りぬけ、守りを 下げる。空いた 所へ C が 走りこむ",
+  pieces:{"bA": [1, 5], "bB": [11.7, 3.9], "bC": [11, 2.2], "bD": [11, 7.8], "bE": [11, 5.2], "rC": [7, 3], "rD": [7, 5], "rE": [7, 7]},
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-1.6, -0.5], [-3.2, -1.1]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-1.3, -0.2], [-2.5, -0.4]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-1.9, -0.7], [-3.9, -1.5]]}], [{"type": "move", "id": "bE", "path": [[0, 0], [-1.9, 0.5], [-3.7, 1]]}], [{"type": "pass", "to": "bC", "path": null}, {"type": "move", "id": "bC", "path": [[0, 0], [-1.1, 1.2], [-2.1, 2.5]]}], [{"type": "pass", "to": "bA", "path": null}, {"type": "move", "id": "bA", "path": [[0, 0], [0, -1.6], [0, -3.2]]}]]},
+ {cat:"ブラフ", name:"フェイント作戦", note:"E が 上へ 行くと 見せて、パスと 同時に 下へ 走る。守りは まに あわない",
+  pieces:{"bA": [1, 5], "bB": [12.4, 3.9], "bC": [11, 2.2], "bD": [11, 7.8], "bE": [11, 5.2], "rC": [7, 3], "rD": [7, 5], "rE": [7, 7]},
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-2.7, -0.4], [-5.3, -0.7]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-1.3, 0], [-2.6, 0.1]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-2.5, -0.5], [-5, -1]]}], [{"type": "move", "id": "bE", "path": [[0, 0], [0.7, -0.4], [1.3, -0.7]]}], [{"type": "pass", "to": "bE", "path": null}, {"type": "move", "id": "bE", "path": [[0, 0], [-2.2, 2.3], [-4.3, 4.7]]}], [{"type": "pass", "to": "bA", "path": null}, {"type": "move", "id": "bA", "path": [[0, 0], [0, -1.6], [0, -3.3]]}]]},
+ {cat:"ブラフ", name:"クロス作戦", note:"パスと 同時に C と D が 入れかわる。守りは だれに つくか まよう",
+  pieces:{"bA": [1, 5], "bB": [10.6, 6.1], "bC": [11, 2.2], "bD": [11, 7.8], "bE": [11, 5.2], "rC": [7, 3], "rD": [7, 5], "rE": [7, 7]},
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-1.5, -0.1], [-3, -0.3]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-1.6, 0.8], [-3.2, 1.7]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-2, 0.5], [-4, 1.1]]}], [{"type": "pass", "to": "bD", "path": null}, {"type": "move", "id": "bC", "path": [[0, 0], [-1.6, 2.2], [-3.3, 4.5]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-2.2, -4], [-4.5, -8]]}], [{"type": "pass", "to": "bA", "path": null}]]},
+ {cat:"ブラフ", name:"Vの字作戦", note:"E が いったん ボールの 方へ もどり、守りが ついてきたら 前へ 走って もらう",
+  pieces:{"bA": [1, 5], "bB": [11.4, 5.4], "bC": [11, 2.2], "bD": [11, 7.8], "bE": [11, 5.2], "rC": [7, 3], "rD": [7, 5], "rE": [7, 7]},
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-1.7, -0.2], [-3.3, -0.3]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-1.7, 0.6], [-3.3, 1.3]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-2.9, 0.2], [-5.8, 0.3]]}], [{"type": "move", "id": "bE", "path": [[0, 0], [2, -0.2], [4, -0.4]]}], [{"type": "pass", "to": "bE", "path": null}, {"type": "move", "id": "bE", "path": [[0, 0], [-2, -0.8], [-4, -1.7]]}], [{"type": "pass", "to": "bA", "path": null}, {"type": "move", "id": "bA", "path": [[0, 0], [0, -1.3], [0, -2.7]]}]]},
+ {cat:"もどし", name:"もどしパス作戦", note:"前の C へ わたし、後ろの B へ もどす。守りが 前に 出た すきに E へ",
+  pieces:{"bA": [1, 5], "bB": [12.5, 6.3], "bC": [11, 2.2], "bD": [11, 7.8], "bE": [11, 5.2], "rC": [7, 3], "rD": [7, 5], "rE": [7, 7]},
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-2.7, -0.9], [-5.3, -1.8]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-2, 1], [-4, 1.9]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-2.7, 0.3], [-5.4, 0.7]]}], [{"type": "pass", "to": "bC", "path": null}, {"type": "move", "id": "bB", "path": [[0, 0], [-0.8, -1], [-1.6, -2]]}], [{"type": "pass", "to": "bB", "path": null}], [{"type": "pass", "to": "bE", "path": null}, {"type": "move", "id": "bE", "path": [[0, 0], [-1.5, 1.1], [-3, 2.2]]}], [{"type": "pass", "to": "bA", "path": null}]]},
+ {cat:"もどし", name:"リターン作戦", note:"E に あずけて B が 走りこみ、走りながら もどしを もらって ゴールマンへ",
+  pieces:{"bA": [1, 5], "bB": [11.3, 5.9], "bC": [11, 2.2], "bD": [11, 7.8], "bE": [11, 5.2], "rC": [7, 3], "rD": [7, 5], "rE": [7, 7]},
+  groups:[[{"type": "move", "id": "bE", "path": [[0, 0], [-1.2, 1.4], [-2.4, 2.8]]}, {"type": "move", "id": "bC", "path": [[0, 0], [-2.3, -1], [-4.7, -1.9]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-2.7, 0.8], [-5.4, 1.6]]}], [{"type": "pass", "to": "bE", "path": null}], [{"type": "pass", "to": "bB", "path": null}, {"type": "move", "id": "bB", "path": [[0, 0], [-3.3, -0.7], [-6.5, -1.4]]}], [{"type": "pass", "to": "bA", "path": null}, {"type": "move", "id": "bA", "path": [[0, 0], [0, -0.9], [0, -1.9]]}]]},
+ {cat:"もどし", name:"うしろから作戦", note:"E から 後ろの B へ もどし、守りを ボールに 集めてから、走りこむ C へ",
+  pieces:{"bA": [1, 5], "bB": [11.1, 3.9], "bC": [11, 2.2], "bD": [11, 7.8], "bE": [11, 5.2], "rC": [7, 3], "rD": [7, 5], "rE": [7, 7]},
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-3.2, -0.9], [-6.4, -1.7]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-2.6, 0.1], [-5.2, 0.3]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-2.4, 0.1], [-4.9, 0.2]]}], [{"type": "pass", "to": "bE", "path": null}, {"type": "move", "id": "bB", "path": [[0, 0], [-0.4, 1.3], [-0.9, 2.5]]}], [{"type": "pass", "to": "bB", "path": null}], [{"type": "pass", "to": "bC", "path": null}, {"type": "move", "id": "bC", "path": [[0, 0], [-1.1, 1.8], [-2.1, 3.6]]}, {"type": "move", "id": "bA", "path": [[0, 0], [0, -2], [0, -4]]}], [{"type": "pass", "to": "bA", "path": null}]]},
+ {cat:"いれかわり", name:"三角形作戦", note:"B・C・E の 三角形で 回し、守りが 追いつく 前に B が 走りこんで もらう",
+  pieces:{"bA": [1, 5], "bB": [11.2, 3.4], "bC": [11, 2.2], "bD": [11, 7.8], "bE": [11, 5.2], "rC": [7, 3], "rD": [7, 5], "rE": [7, 7]},
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-0.8, -0.7], [-1.7, -1.4]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-1.1, 0.1], [-2.1, 0.1]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-2.4, 1], [-4.8, 1.9]]}], [{"type": "pass", "to": "bC", "path": null}], [{"type": "pass", "to": "bE", "path": null}, {"type": "move", "id": "bB", "path": [[0, 0], [-2.4, 0.2], [-4.7, 0.4]]}], [{"type": "pass", "to": "bB", "path": null}, {"type": "move", "id": "bB", "path": [[0, 0], [-0.3, -0.8], [-0.7, -1.6]]}], [{"type": "pass", "to": "bA", "path": null}, {"type": "move", "id": "bA", "path": [[0, 0], [0, 0.2], [0, 0.4]]}]]},
+ {cat:"いれかわり", name:"逆サイド作戦", note:"C → E → D と はしから はしへ ふる。守りは 左右に ゆさぶられる",
+  pieces:{"bA": [1, 5], "bB": [12.6, 3.6], "bC": [11, 2.2], "bD": [11, 7.8], "bE": [11, 5.2], "rC": [7, 3], "rD": [7, 5], "rE": [7, 7]},
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-1.3, -0.3], [-2.7, -0.6]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-2.9, 0.8], [-5.8, 1.6]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-1.4, 0.3], [-2.8, 0.6]]}], [{"type": "pass", "to": "bC", "path": null}], [{"type": "pass", "to": "bE", "path": null}], [{"type": "pass", "to": "bD", "path": null}, {"type": "move", "id": "bD", "path": [[0, 0], [-1.2, -1.1], [-2.5, -2.3]]}], [{"type": "pass", "to": "bA", "path": null}, {"type": "move", "id": "bA", "path": [[0, 0], [0, -1.1], [0, -2.3]]}]]},
+ {cat:"いれかわり", name:"うらぬけ作戦", note:"パスと 同時に E が 守りの うしろへ 走りぬける",
+  pieces:{"bA": [1, 5], "bB": [11.2, 4.6], "bC": [11, 2.2], "bD": [11, 7.8], "bE": [11, 5.2], "rC": [7, 3], "rD": [7, 5], "rE": [7, 7]},
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-1.8, -0.2], [-3.6, -0.4]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-1.8, 0.4], [-3.6, 0.8]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-2, 0], [-4, 0.1]]}], [{"type": "pass", "to": "bE", "path": null}, {"type": "move", "id": "bE", "path": [[0, 0], [-1, 0.7], [-4.2, -1.7]]}, {"type": "move", "id": "bA", "path": [[0, 0], [0, 1.4], [0, 2.7]]}], [{"type": "pass", "to": "bA", "path": null}]]},
+ {cat:"いれかわり", name:"4人ひろがり作戦", note:"4人が 広がると 守り3人では 足りない。いちばん 空いた C へ。B も 投げてから 走りこむ",
+  pieces:{"bA": [1, 5], "bB": [13, 4.1], "bC": [11, 2.2], "bD": [11, 7.8], "bE": [11, 5.2], "rC": [7, 3], "rD": [7, 5], "rE": [7, 7]},
+  groups:[[{"type": "move", "id": "bC", "path": [[0, 0], [-2.2, -0.4], [-4.4, -0.8]]}, {"type": "move", "id": "bD", "path": [[0, 0], [-3.1, 0.5], [-6.3, 1]]}, {"type": "move", "id": "bE", "path": [[0, 0], [-3, -0.7], [-5.9, -1.3]]}], [{"type": "pass", "to": "bC", "path": null}, {"type": "move", "id": "bC", "path": [[0, 0], [-1.8, -0.5], [-3.5, -1.1]]}, {"type": "move", "id": "bB", "path": [[0, 0], [-1.5, -0.3], [-2.9, -0.6]]}], [{"type": "pass", "to": "bA", "path": null}]]}
+].map(x=>({cat:x.cat,name:x.name,note:x.note,preset:true,data:{pieces:x.pieces?clone(x.pieces):clone(START),holder:"bB",groups:x.groups}}));
+function loadSaves(){ try{ return JSON.parse(localStorage.getItem(SKEY)||"[]"); }catch(e){ return []; } }
+function putSaves(a){ try{ localStorage.setItem(SKEY,JSON.stringify(a)); return true; }catch(e){ return false; } }
+const toName=t=>{ t=t.trim().replace(/\s+/g," ").replace(/(作戦)+$/,"").trim(); return t?t+"作戦":""; };
+const dlg=document.getElementById("dlg"), nm=document.getElementById("nm");
+function openDlg(which){ dlg.classList.add("on"); document.getElementById("dlgSave").style.display=which==="save"?"block":"none"; document.getElementById("dlgLoad").style.display=which==="load"?"block":"none"; }
+const closeDlg=()=>dlg.classList.remove("on");
+document.getElementById("save").onclick=()=>{ if(!st.groups.length) return hint("線を 書いてから 保存してね。"); nm.value=curName.replace(/作戦$/,""); openDlg("save"); setTimeout(()=>nm.focus(),50); };
+document.getElementById("dlgOk").onclick=async()=>{ const name=toName(nm.value); if(!name){ nm.focus(); return; }
+  const a=loadSaves(), i=a.findIndex(x=>x.name===name);
+  if(i>=0&&!(await ask("「"+name+"」は もう あります。上書きする？"))) return;
+  const rec={name,t:Date.now(),data:clone(st)}; if(i>=0) a[i]=rec; else a.unshift(rec);
+  if(putSaves(a)){ curName=name; closeDlg(); hint("「"+name+"」を 保存した。"); } else hint("保存できなかった。"); };
+nm.addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("dlgOk").click(); });
+document.getElementById("dlgCancel").onclick=closeDlg;
+document.getElementById("dlgClose").onclick=closeDlg;
+dlg.addEventListener("pointerdown",e=>{ if(e.target===dlg) closeDlg(); });
+document.getElementById("load").onclick=()=>{ listSaves(); openDlg("load"); };
+let openedSnap=null;   // 開いたときのまま（書きかえていない）なら、選び直すときに確かめない
+async function openRec(r){ if(st.groups.length&&JSON.stringify(st)!==openedSnap&&!(await ask("いまの 線は 消えて、「"+r.name+"」に なる。いい？"))) return;
+  st=clone(r.data); openedSnap=JSON.stringify(st); curName=r.preset?"":r.name; HIDE=new Set(); cursor=!st.groups.length?{kind:"new",at:0}:r.preset?{kind:"join",g:0}:{kind:"join",g:st.groups.length-1}; lastAdded=null; closeDlg(); draw();   // 見本は はじめの 並びを 見せる（すきを 見つけるため）
+  hint("「"+r.name+"」を ひらいた。"+(r.cat==="すき"?"守りの すきは どこ？ ":"")+"▶ 再生で 見られる。"); }
+function listSaves(){ const box=document.getElementById("saves"); box.innerHTML="";
+  const h=t=>{ const e=document.createElement("h3"); e.textContent=t; e.style.cssText="margin:6px 0;font-size:18px;color:#555"; box.appendChild(e); };
+  if(!loadSaves().length){ const e=document.createElement("div"); e.textContent="まだ ありません"; e.style.cssText="color:#888;font-size:18px;padding:4px 0 8px"; box.appendChild(e); }
+  loadSaves().forEach((r,i)=>{ const b=document.createElement("button"); b.className="sv"; const d=new Date(r.t);
+    b.innerHTML=`📋 ${r.name}<small>${d.getMonth()+1}/${d.getDate()} ・ ${r.data.groups.length} 手</small><span class="del" title="消す">🗑</span>`;
+    b.onclick=async e=>{ if(e.target.classList.contains("del")){ if(await ask("「"+r.name+"」を 消す？")){ const a=loadSaves(); a.splice(i,1); putSaves(a); listSaves(); } return; }
+      openRec(r); };
+    box.appendChild(b); }); }
+/* ===== 作戦のトグル：系統ごとに並べる ===== */
+let curTac=null;
+function listTac(){ const box=document.getElementById("tacList"); box.innerHTML="";
+  ["おとり","ブラフ","もどし","いれかわり"].forEach(c=>{ const h=document.createElement("h4"); h.textContent={おとり:"🎣 おとり（守りを ひきつける）",ブラフ:"🃏 ブラフ（守りを まよわせる）",もどし:"↩ もどし（後ろへの パスで さそう）",いれかわり:"🔄 いれかわり（走りこんで 空ける）"}[c]; box.appendChild(h);
+    PRESETS.filter(r=>r.cat===c).forEach(r=>{ const b=document.createElement("button"); b.className="tc"+(curTac===r.name?" on":"");
+      b.innerHTML=`${r.name}<small>${r.note}</small>`; b.onclick=async()=>{ await openRec(r); if(st.groups.length&&JSON.stringify(st)===openedSnap){ curTac=r.name; closeTg(); listTac(); } }; box.appendChild(b); }); }); }
+/* ===== トグル（開くのは1つ。外をさわると閉じる） ===== */
+const closeTg=()=>document.querySelectorAll(".tg.open").forEach(t=>t.classList.remove("open"));
+document.querySelectorAll(".tg>.tgh").forEach(h=>h.onclick=e=>{ const t=h.parentElement, was=t.classList.contains("open"); closeTg(); if(!was){ t.classList.add("open"); if(t.id==="tgTac") listTac(); } e.stopPropagation(); });
+document.addEventListener("pointerdown",e=>{ if(!e.target.closest(".tg")&&!e.target.closest("#ask")&&!e.target.closest("#dlg")) closeTg(); });
+document.querySelectorAll("[data-lag]").forEach(b=>b.onclick=()=>{ defLag=b.dataset.lag==="1";
+  document.querySelectorAll("[data-lag]").forEach(x=>x.classList.toggle("on",x===b));
+  hint(defLag?"守りは 一手 おくれて 動く。走りこむと マークが 外れる。":"守りは 先を 読んで 動く（強い 守り）。"); draw(); });
+document.querySelectorAll("[data-def]").forEach(b=>b.onclick=()=>{ defMode=b.dataset.def;
+  document.querySelectorAll("[data-def]").forEach(x=>x.classList.toggle("on",x===b)); document.getElementById("lbDef").textContent=b.textContent;
+  hint({off:"守りは 動かない（手で 動かせる）。",mark:"守りは 近くの 攻めに 1人ずつ つく。",goal:"守りは ゴールマンの 前を かためる。",lane:"守りは パスの 通り道に 入る。"}[defMode]); closeTg(); draw(); });
+/* ===== 平面・立体の切り替え ===== */
+let is3d=false;
+function set3d(v){ if(v&&!window.STAGE3D) return hint("立体の 準備中…（ネットにつながっているか 確かめてね）");
+  is3d=v; document.getElementById("svg").style.display=v?"none":"";
+  document.getElementById("stage").style.display=v?"block":"none";
+  document.getElementById("views3d").classList.toggle("on",v);
+  const b=document.getElementById("v3d"); b.textContent=v?"📄 平面":"🧊 立体"; b.classList.toggle("on",v);
+  if(window.STAGE3D) STAGE3D.show(v); if(v) hint("立体で 見ている。指で まわせる。線を 書くときは 📄 平面 へ。"); draw(); }
+document.getElementById("v3d").onclick=()=>set3d(!is3d);
+document.querySelectorAll("[data-cam]").forEach(b=>b.onclick=()=>{ STAGE3D.view(b.dataset.cam); document.querySelectorAll("[data-cam]").forEach(x=>x.classList.toggle("on",x===b)); });
+document.querySelectorAll(".tool[data-m]").forEach(b=>b.onclick=()=>{ if(is3d) set3d(false); mode=b.dataset.m; document.getElementById("lbDraw").textContent=b.textContent.replace(/^\S+\s/,""); closeTg(); document.querySelectorAll(".tool[data-m]").forEach(x=>x.classList.toggle("on",x===b)); hint(HINT[mode]); draw(); });
+function hint(s){ document.getElementById("hint").textContent=s; }
+hint(HINT.move);
+
+/* ===== 画面の 切り替え ===== */
+function go(id){ document.querySelectorAll(".scr").forEach(x=>x.classList.toggle("on",x.id===id)); if(id==="boardScr") draw(); if(id==="quiz") startQuiz(); }
+document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go));
+document.querySelectorAll(".back").forEach(b=>b.onclick=()=>go("home"));
+
+/* ===== はんだん トレーニング =====
+ 問題：type "pass"＝ボールを 持つ 人が だれに パス？（味方を タップ）
+       type "move"＝me が どこへ 動く？（場所を タップ）
+ 見きわめ（だれでも 同じ 結果になる 決まり）：
+   パスの 道と いちばん 近い 守りの きょり  1.6m以上＝○  0.9〜1.6m＝△  0.9m未満＝×
+   動く 先は さらに「守りから 1.6m以上」「持つ人から 2m以上」「今の 場所から 5m以内」 */
+const ruby=t=>t.replace(/\{([^|}]+)\|([^}]+)\}/g,"<ruby>$1<rt>$2</rt></ruby>");
+const QS=[
+ {type:"pass",h:"bB",p:{bA:[1,5],bB:[12,5],bC:[5,1.2],bD:[5,8.6],bE:[13.6,7],rC:[6.6,5],rD:[8.4,6.8],rE:[5.6,7.7]}},
+ {type:"move",h:"bB",me:"bD",p:{bA:[1,5],bB:[12,5],bC:[6,1.2],bD:[11,7.8],bE:[11,4],rC:[7,2],rD:[7,5],rE:[5,7.5]}},
+ {type:"pass",h:"bC",p:{bA:[1,6],bB:[11,5],bC:[4.5,2],bD:[7,5],bE:[4,8.6],rC:[2.6,4.4],rD:[6.4,5.8],rE:[6.5,8.4]}},
+ {type:"pass",h:"bD",p:{bA:[1,4],bB:[11,5],bC:[4,1.2],bD:[5,8],bE:[8,6],rC:[3.2,2.2],rD:[6.8,6.4],rE:[7,9]}},
+ {type:"move",h:"bE",me:"bC",p:{bA:[1,5],bB:[11,5],bC:[6,1],bD:[8,8.5],bE:[5,6],rC:[6.6,1.8],rD:[3.6,4.4],rE:[7,7.6]}},
+ {type:"move",h:"bC",me:"bA",p:{bA:[1,4.5],bB:[11,5],bC:[4.5,8.4],bD:[7,3],bE:[8,6],rC:[3,6.6],rD:[6,4],rE:[6,8]}},
+ {type:"pass",h:"bB",p:{bA:[1,5],bB:[11,5],bC:[8,1],bD:[8,9],bE:[4,5],rC:[7.6,2],rD:[6,6.6],rE:[6,5]}},
+ {type:"move",h:"bB",me:"bE",p:{bA:[1,5],bB:[12,2],bC:[7,1],bD:[11,8.5],bE:[11,5],rC:[8,2.6],rD:[7,5],rE:[6,8]}},
+];
+const qsvg=document.getElementById("qsvg");
+const QE=(t,a,par)=>{const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); (par||qsvg).appendChild(e); return e;};
+function segDist(P,A,B){ const vx=B[0]-A[0],vy=B[1]-A[1],L2=vx*vx+vy*vy; let u=L2?((P[0]-A[0])*vx+(P[1]-A[1])*vy)/L2:0; u=Math.max(0,Math.min(1,u)); return dist(P,[A[0]+vx*u,A[1]+vy*u]); }
+/* 投げた 直後の 1mは 数えない（守りは 持つ人から 2歩 はなれて いるので、いつも 近く なって しまう） */
+function laneClear(q,F0,T){ const L=dist(F0,T), k=L?Math.min(1,L/2)/L:0, F=[F0[0]+(T[0]-F0[0])*k,F0[1]+(T[1]-F0[1])*k]; let m=1e9, who=null; for(const id in q.p) if(id[0]==="r"){ const d=segDist(q.p[id],F,T); if(d<m){m=d;who=id;} } return [m,who]; }
+const isBack=(q,to)=>q.p[to][0]>q.p[q.h][0]+1&&q.p[to][0]>MID;
+function passRate(q,to){ const r=rate(laneClear(q,q.p[q.h],q.p[to])[0]); return r==="o"&&isBack(q,to)?"t":r; }
+const rate=m=>m>=1.6?"o":m>=0.9?"t":"x";
+const RC={o:"#1a9b4b",t:"#e0a100",x:"#d02a2a"}, RM={o:"○",t:"△",x:"×"};
+function moveJudge(q,P){ const me=q.p[q.me], H=q.p[q.h], gm=q.me===GOALMAN;
+  if(P[0]<0||P[0]>20||P[1]<0||P[1]>10) return {r:"x",why:"コートの 外。"};
+  if(gm&&P[0]>2) return {r:"x",why:"ゴールマンは {帯|おび}の 中で {動|うご}く。"};
+  if(!gm&&P[0]<2) return {r:"x",why:"{帯|おび}には ゴールマンしか 入れない。"};
+  if(!gm&&P[0]>MID) return {r:"t",why:"自分の じんに いると、{前|まえ}に すすめない。{相手|あいて}の じんへ 入ろう。"};
+  if(dist(me,P)>5) return {r:"x",why:"{遠|とお}すぎて、まに あわない。"};
+  if(dist(H,P)<2) return {r:"t",why:"ボールの 人に {近|ちか}すぎる。守りも あつまる。"};
+  let dm=1e9; for(const id in q.p) if(id[0]==="r") dm=Math.min(dm,dist(q.p[id],P));
+  const [m]=laneClear(q,H,P);
+  if(m<0.9) return {r:"x",why:"パスの {道|みち}に {守|まも}りが いる。"};
+  if(dm<1.6) return {r:"t",why:"{守|まも}りが すぐ そばに いる。"};
+  if(m<1.6) return {r:"t",why:"パスの {道|みち}の {近|ちか}くに {守|まも}りが いる。"};
+  return {r:"o",why:"ボールの 人との {間|あいだ}に {守|まも}りが いない！"}; }
+let qi=0, qok=0, answered=false;
+function startQuiz(){ qi=0; qok=0; showQ(); }
+function courtQ(){ qsvg.innerHTML="";
+  QE("rect",{x:0,y:0,width:20,height:10,fill:"#e9d9b4",stroke:"#555","stroke-width":.08});
+  QE("rect",{x:0,y:0,width:2,height:10,fill:"#f2c86a",opacity:.6}); QE("rect",{x:18,y:0,width:2,height:10,fill:"#f2c86a",opacity:.6});
+  QE("line",{x1:MID,y1:0,x2:MID,y2:10,stroke:"#555","stroke-width":.08}); }
+function piecesQ(q){ for(const id in q.p){ const [x,y]=q.p[id];
+    if(q.type==="move"&&id===q.me) QE("circle",{cx:x,cy:y,r:.75,fill:"none",stroke:"#ffd84d","stroke-width":.2});
+    QE("circle",{cx:x,cy:y,r:.45,fill:COL(id),stroke:id===GOALMAN?"#f2a400":"#fff","stroke-width":id===GOALMAN?.14:.08,"data-id":id});
+    const t=QE("text",{x,y:y+.17,"font-size":.5,"text-anchor":"middle",fill:"#fff","font-weight":700,"pointer-events":"none"}); t.textContent=id[1]; }
+  const H=q.p[q.h]; QE("circle",{cx:H[0]+.45,cy:H[1]-.45,r:.25,fill:"#fff",stroke:"#222","stroke-width":.06}); }
+function showQ(){ const q=QS[qi]; answered=false; courtQ(); piecesQ(q);
+  document.getElementById("qno").textContent=(qi+1)+" / "+QS.length;
+  document.getElementById("qq").innerHTML=ruby(q.type==="pass"?q.h[1]+" が ボールを {持|も}って いる。どこに パス？":"あなたは "+q.me[1]+"。"+q.h[1]+" から パスを もらうには、どこへ {動|うご}く？");
+  document.getElementById("qscore").textContent="○ "+qok;
+  document.getElementById("qfb").innerHTML=ruby(q.type==="pass"?"パスする {味方|みかた}を タップ。":"{動|うご}く {場所|ばしょ}を タップ。");
+  document.getElementById("qnext").style.visibility="hidden"; }
+function arrowQ(F,T,c,dash){ QE("line",{x1:F[0],y1:F[1],x2:T[0],y2:T[1],stroke:c,"stroke-width":.14,"stroke-dasharray":dash?".35 .25":"none","stroke-linecap":"round"}); }
+function markQ(P,r,big){ QE("circle",{cx:P[0],cy:P[1]-(big?0:.95),r:big?.55:.4,fill:RC[r]}); const t=QE("text",{x:P[0],y:P[1]-(big?0:.95)+.17,"font-size":big?.6:.5,"text-anchor":"middle",fill:"#fff","font-weight":700}); t.textContent=RM[r]; }
+qsvg.addEventListener("pointerdown",ev=>{ if(answered) return; const q=QS[qi];
+  const pp=qsvg.createSVGPoint(); pp.x=ev.clientX; pp.y=ev.clientY; const c=pp.matrixTransform(qsvg.getScreenCTM().inverse()), P=[c.x,c.y];
+  const H=q.p[q.h], fb=document.getElementById("qfb"); let r, why;
+  if(q.type==="pass"){ let to=null,bd=.9; for(const id in q.p) if(id[0]==="b"&&id!==q.h&&dist(q.p[id],P)<bd){bd=dist(q.p[id],P);to=id;}
+    if(!to) return; answered=true; courtQ();
+    // すべての パス先を 色で 見せる
+    for(const id in q.p) if(id[0]==="b"&&id!==q.h){ arrowQ(H,q.p[id],RC[passRate(q,id)],true); }
+    piecesQ(q); for(const id in q.p) if(id[0]==="b"&&id!==q.h) markQ(q.p[id],passRate(q,id));
+    QE("circle",{cx:q.p[to][0],cy:q.p[to][1],r:.8,fill:"none",stroke:"#222","stroke-width":.14});
+    r=passRate(q,to);
+    if(r==="t"&&isBack(q,to)){ why=to[1]+" へは {通|とお}る。でも うしろへ もどる パス。{前|まえ}に いる {味方|みかた}は？"; }
+    else why=to[1]+" へ："+(r==="o"?(to===GOALMAN?"ゴールマンへの {道|みち}が あいて いる！":"パスの {道|みち}に {守|まも}りが いない！"):r==="t"?"{守|まも}りの {近|ちか}くを {通|とお}る。あぶない。":"{守|まも}りが {道|みち}に いる。カットされる。");
+  } else { answered=true; const J=moveJudge(q,P); r=J.r; why=J.why; courtQ();
+    // よい 場所を 緑の 点で 見せる
+    for(let x=.25;x<20;x+=.5) for(let y=.25;y<10;y+=.5) if(moveJudge(q,[x,y]).r==="o") QE("circle",{cx:x,cy:y,r:.12,fill:RC.o,opacity:.55});
+    QE("line",{x1:q.p[q.me][0],y1:q.p[q.me][1],x2:P[0],y2:P[1],stroke:"var(--mv)","stroke-width":.12,"stroke-dasharray":".2 .15"});
+    arrowQ(H,P,RC[r],true); piecesQ(q); markQ(P,r,true); }
+  if(r==="o") qok++;
+  fb.innerHTML=`<span style="color:${RC[r]}">${RM[r]}</span> `+ruby(why)+(q.type==="move"?ruby("<br><small style='font-size:18px;color:#555'>{緑|みどり}の 点＝よい {場所|ばしょ}</small>"):"");
+  document.getElementById("qscore").textContent="○ "+qok;
+  const nx=document.getElementById("qnext"); nx.style.visibility="visible"; nx.textContent=qi<QS.length-1?"つぎへ ▶":"おわり"; });
+document.getElementById("qnext").onclick=()=>{ if(qi<QS.length-1){ qi++; showQ(); }
+  else { courtQ(); document.getElementById("qq").textContent="おしまい！"; document.getElementById("qfb").innerHTML="○ は "+qok+" / "+QS.length+"。もう {一度|いちど} やる？".replace(/\{([^|}]+)\|([^}]+)\}/g,"<ruby>$1<rt>$2</rt></ruby>");
+    const nx=document.getElementById("qnext"); nx.textContent="もう 一度"; nx.onclick=()=>{ nx.onclick=null; location.hash=""; startQuiz(); bindNext(); }; } };
+function bindNext(){ document.getElementById("qnext").onclick=arguments.callee.orig; }
+bindNext.orig=document.getElementById("qnext").onclick;
+go("home");
+</script>
+<script type="module">
+import { createStage } from "../../../engine/voxel/stage3d.js";
+window.STAGE3D = createStage(document.getElementById("stage"), {
+  colorOf: id => id[0] === "b" ? "#2F6FD6" : "#D63A3A", letterOf: id => id[1], isGoalman: id => id === GOALMAN, bg: "#F4F1EA" });
+if (document.getElementById("boardScr").classList.contains("on")) draw();
+</script></body></html>

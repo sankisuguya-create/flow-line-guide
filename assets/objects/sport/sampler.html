@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ラインポートボールの立体（試作）</title>
+<!-- ラインポートボール（3年）の試合を、ドット立体で動かす見本。
+     ルールの正本：sankisuguya-create/taiiku の linepb/rules.md。コートの形は guides/linepb/rule.html と同じ。
+     - コート 20m×10m、両端の幅2mがゴールマンの帯（仮）。センターラインで自陣・相手陣
+     - 攻め：コート4人＋ゴールマン1人（相手側の帯）。守り：3人（自分の陣から出ない）、2人はベンチ。審判5人は上3人・下2人
+     - ゴールマンが帯の中でキャッチしたら得点。点＝最初にパスした人＋相手陣でさわった人 の人数（ゴールマンは数えない）
+     - カット・ゴールマンがとれない → スタートに戻る。戻るたびに 攻めはゴールマン、守りはベンチと交代
+     - 3分で攻守交代
+     描画：人とコートは同じ倍率（CS）で、実寸の比のまま。ボールだけ画面の解像度で重ねる。 -->
+<style>
+  :root{--ink:#143242;--soft:#4B6C80;--bg:#F7FAFC;--line:#C7DAE7}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;display:flex;flex-direction:column;font-family:"Hiragino Sans","Yu Gothic UI","BIZ UDPGothic","Noto Sans JP",sans-serif;color:var(--ink);background:var(--bg)}
+  header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:8px 16px;border-bottom:2px solid var(--ink);background:#fff}
+  h1{font-size:17px;margin:0}
+  .grp{display:flex;gap:6px;align-items:center;font-weight:700;font-size:14px}
+  button,select{font:inherit;font-size:15px;min-height:44px;padding:0 12px;border:2px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink)}
+  button[aria-pressed="true"]{background:var(--ink);color:#fff}
+  #board{display:flex;gap:14px;align-items:center;font-weight:800;font-variant-numeric:tabular-nums}
+  #board .sc{font-size:20px}
+  #fps{font-size:13px;color:var(--soft);margin-left:auto;font-variant-numeric:tabular-nums}
+  main{flex:1;position:relative;min-height:0}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;image-rendering:pixelated}
+  #msg{position:absolute;left:50%;top:16px;transform:translateX(-50%);background:#fff;border:2px solid var(--ink);padding:8px 16px;border-radius:10px;font-weight:800;font-size:18px;display:none}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "voxel": "../../../engine/voxel/render.js"
+} }
+</script>
+<script src="figure.js"></script>
+</head>
+<body>
+<header>
+  <h1>ラインポートボール（試作）</h1>
+  <div class="grp" id="views">
+    <button data-v="top">真上</button><button data-v="oblique" aria-pressed="true">斜め</button><button data-v="side">横</button>
+  </div>
+  <label class="grp">左<select id="teamA"></select></label>
+  <label class="grp">右<select id="teamB"></select></label>
+  <label class="grp">審判<select id="teamR"></select></label>
+  <label class="grp">細かさ<select id="rows"><option value="270">粗い</option><option value="400" selected>ふつう</option><option value="540">細かい</option></select></label>
+  <div class="grp"><button id="play" aria-pressed="false">試合</button><button id="reset">最初から</button></div>
+  <div id="board"><span id="clock">—</span><span class="sc" id="score">0 − 0</span></div>
+  <span id="fps">—</span>
+</header>
+<main><canvas id="cv"></canvas><div id="msg"></div></main>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { voxelGeometry, voxelMaterial, createPixelRenderer } from "voxel";
+
+/* ===== 寸法（実寸 m、コート中心が原点。x＝長辺、z＝短辺） ===== */
+const HL = 10, HW = 5, BAND = 2;                    // 20m×10m、帯は幅2m（rules.md：仮）
+const CS = 1.6, BIG = 1.6;                          // コートと人の倍率（同じなので実寸の比）
+const GYM = { w: 28.95, h: 23.8 };                  // 体育館のフロア（space.json）。コートは中央に置く
+const LETTERS = "ABCDE";
+
+const cv = document.getElementById("cv");
+const pr = createPixelRenderer(cv, { rows: 400 });
+const scene = new THREE.Scene();
+scene.background = new THREE.Color("#E9EEF2");
+scene.add(new THREE.HemisphereLight("#ffffff", "#8a7a66", 1.6));
+const sun = new THREE.DirectionalLight("#ffffff", 1.6);
+sun.position.set(-8, 20, 10); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left: -14 * CS, right: 14 * CS, top: 10 * CS, bottom: -10 * CS, near: 1, far: 100 });
+scene.add(sun);
+
+/* 床：木の床に、ラインポートボールのコート（白のテープ）。帯はうすく色をつける */
+function floor() {
+  const S = 50, c = document.createElement("canvas"); c.width = GYM.w * S; c.height = GYM.h * S;
+  const g = c.getContext("2d");
+  g.fillStyle = "#D8B488"; g.fillRect(0, 0, c.width, c.height);
+  g.setTransform(S, 0, 0, S, c.width / 2, c.height / 2);
+  g.fillStyle = "rgba(255,231,184,.75)";
+  g.fillRect(-HL, -HW, BAND, HW * 2); g.fillRect(HL - BAND, -HW, BAND, HW * 2);
+  g.strokeStyle = "#FFFFFF"; g.lineWidth = 0.1;
+  g.strokeRect(-HL, -HW, HL * 2, HW * 2);
+  [-HL + BAND, 0, HL - BAND].forEach(x => { g.beginPath(); g.moveTo(x, -HW); g.lineTo(x, HW); g.stroke(); });
+  g.beginPath(); g.arc(0, 0, 0.35, 0, Math.PI * 2); g.stroke();
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(GYM.w * CS, GYM.h * CS), new THREE.MeshLambertMaterial({ map: tex }));
+  m.rotation.x = -Math.PI / 2; m.receiveShadow = true; scene.add(m);
+}
+
+/* ===== 人 ===== */
+const mat = voxelMaterial(), geoCache = {};
+const geoOf = id => geoCache[id] || (geoCache[id] = voxelGeometry(SPORT.figure(SPORT.BIBS.find(b => b.id === id).col), SPORT.CELL));
+const sel = { A: document.getElementById("teamA"), B: document.getElementById("teamB"), R: document.getElementById("teamR") };
+const DEF = { A: "red", B: "blue", R: "green" };
+Object.entries(sel).forEach(([k, el]) => { SPORT.BIBS.forEach(b => el.add(new Option(b.name, b.id))); el.value = DEF[k]; });
+const bibName = id => SPORT.BIBS.find(b => b.id === id).name;
+
+let people = [];                                    // {m, team(0/1/2), k(0..4), x, z}
+function makePeople() {
+  people.forEach(p => scene.remove(p.m));
+  people = [];
+  ["A", "B", "R"].forEach((t, team) => {
+    for (let k = 0; k < 5; k++) {
+      const m = new THREE.Mesh(geoOf(sel[t].value), mat);
+      m.castShadow = true; m.scale.setScalar(BIG); scene.add(m);
+      people.push({ m, team, k, x: 0, z: 0 });
+    }
+  });
+}
+const teamOf = t => people.filter(p => p.team === t);
+
+/* ===== ボール：なめらかな球を画面の解像度で重ねる。影は 影だけの複製で落とす ===== */
+const overlay = new THREE.Scene();
+overlay.add(new THREE.HemisphereLight("#ffffff", "#8a7a66", 1.6));
+const sun2 = new THREE.DirectionalLight("#ffffff", 1.6); sun2.position.copy(sun.position); overlay.add(sun2);
+const ballGeo = new THREE.SphereGeometry(0.105, 24, 16);
+const ballMesh = new THREE.Mesh(ballGeo, new THREE.MeshLambertMaterial({ color: "#F08A24" }));
+const ballShadow = new THREE.Mesh(ballGeo, new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }));
+ballShadow.castShadow = true; overlay.add(ballMesh); scene.add(ballShadow);
+[ballMesh, ballShadow].forEach(m => m.scale.setScalar(BIG));
+
+/* ===== 試合（rules.md に合わせた簡単な動き） =====
+   左チーム(0)の陣は x<0、右チーム(1)は x>0。攻めは相手の陣へ攻め、ゴールマンは相手側の帯に立つ。 */
+const SPEED = 3.0, PASS_V = 8, HOLD = 1.0, HALF_TIME = 180;
+const S = { off: 0, gm: [0, 0], bench: [0, 0], score: [0, 0], clock: HALF_TIME, play: false,
+            stat: { pass: 0, gmTry: 0, cut: 0, drop: 0, goal: 0 }, hold: null, fly: null, holdT: 0, touched: new Set(), first: null, pause: 0, msgT: 0 };
+const dirOf = t => t === 0 ? 1 : -1;                // 攻める向き
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+function segDist(q, a, b) {
+  const dx = b.x - a.x, dz = b.z - a.z, t = clamp(((q.x - a.x) * dx + (q.z - a.z) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+  return Math.hypot(q.x - a.x - dx * t, q.z - a.z - dz * t);
+}
+function roles() {                                  // いまの役割
+  const o = S.off, d = 1 - o, O = teamOf(o), D = teamOf(d);
+  const gm = O[S.gm[o] % 5];
+  const field = O.filter(p => p !== gm);
+  const onCourt = [0, 1, 2].map(i => D[(S.bench[d] + i) % 5]);
+  const bench = D.filter(p => !onCourt.includes(p));
+  return { o, d, dir: dirOf(o), gm, field, onCourt, bench };
+}
+function say(t, sec) { const m = document.getElementById("msg"); m.textContent = t; m.style.display = "block"; S.msgT = sec || 2; }
+function updateBoard() {
+  document.getElementById("score").textContent = S.score[0] + " − " + S.score[1];
+  const s = Math.max(0, Math.ceil(S.clock)), id = S.off ? sel.B.value : sel.A.value;
+  document.getElementById("clock").textContent = "せめ " + bibName(id) + "　" + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+/* スタート：攻めは自陣から。ボールを持たない人は相手陣へ。守りは自分の陣、ベンチはコートの外 */
+function start() {
+  const R = roles();
+  R.field.forEach((p, i) => {
+    p.x = -R.dir * (2 + Math.random() * 5); p.z = clamp((i - 1.5) * 2.4 + (Math.random() - 0.5), -HW + 0.5, HW - 0.5); p.tx = null;
+  });
+  R.gm.x = R.dir * (HL - BAND / 2); R.gm.z = 0;
+  R.onCourt.forEach((p, i) => { p.x = R.dir * (3 + i * 1.8); p.z = (i - 1) * 2.5; });
+  R.bench.forEach((p, i) => { p.x = -R.dir * (HL - 1.5 - i * 1.2); p.z = -HW - 1.5; });
+  /* 攻めにベンチはいない（5人全員が出る） */
+  S.hold = R.field[Math.floor(Math.random() * 4)]; S.hold.x = -R.dir * 3; S.hold.z = 0;
+  S.fly = null; S.holdT = 0; S.touched = new Set(); S.first = null;
+}
+function refs() {                                   // 審判：上のラインに3人、下に2人
+  const R = teamOf(2), spots = [[-6, -HW - 0.8], [0, -HW - 0.8], [6, -HW - 0.8], [-4, HW + 0.8], [4, HW + 0.8]];
+  R.forEach((p, i) => { [p.x, p.z] = spots[i]; p.m.rotation.y = p.z < 0 ? 0 : Math.PI; });
+}
+function backToStart(text) {                        // スタートに戻る：ゴールマン・ベンチを交代
+  const R = roles();
+  S.gm[R.o]++; S.bench[R.d]++;
+  say(text, 1.8); S.pause = 1.8;
+}
+function choosePass(h, R) {
+  const lane = (a, b) => !R.onCourt.some(q => segDist(q, a, b) < 0.6);
+  const dg = dist(h, R.gm);
+  if (dg < 15 && (lane(h, R.gm) || Math.random() < 0.1)) return R.gm;
+  let best = null, bs = -1e9;
+  R.field.filter(q => q !== h).forEach(q => {
+    const near = Math.min(...R.onCourt.map(o => dist(o, q)));
+    const sc = (q.x - h.x) * R.dir * 0.5 + Math.min(near, 3) * 1.5 - (lane(h, q) ? 0 : 5) + Math.random();
+    if (sc > bs) { bs = sc; best = q; }
+  });
+  return best;
+}
+function move(p, tx, tz, dt, face) {
+  const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz), v = Math.min(d, SPEED * dt);
+  if (d > 0.05) { p.x += dx / d * v; p.z += dz / d * v; p.m.rotation.y = Math.atan2(dx, dz); }
+  else if (face) p.m.rotation.y = Math.atan2(face.x - p.x, face.z - p.z);
+}
+function step(dt) {
+  if (S.msgT > 0 && (S.msgT -= dt) <= 0) document.getElementById("msg").style.display = "none";
+  S.clock -= dt;
+  if (S.clock <= 0 && S.pause <= 0) { S.off = 1 - S.off; S.clock = HALF_TIME; say("攻守交代", 2); S.pause = 2; }
+  if (S.pause > 0) { if ((S.pause -= dt) <= 0) start(); updateBoard(); return; }
+  const R = roles(), ball = S.fly || S.hold;
+  /* 攻め：持っている人は動かない（持ったまま動くのはファウル）。ほかは相手陣の空いた所へ */
+  R.field.forEach(p => {
+    if (p === S.hold) { p.m.rotation.y = Math.atan2(R.gm.x - p.x, R.gm.z - p.z); return; }
+    if (S.fly && S.fly.to === p) { move(p, p.x, p.z, dt, S.fly); return; }
+    if (p.tx == null || Math.random() < dt * 0.6) { p.tx = R.dir * (1 + Math.random() * (HL - BAND - 1.6)); p.tz = (Math.random() * 2 - 1) * (HW - 0.6); }
+    move(p, p.tx, p.tz, dt, ball);
+    p.x = clamp(p.x, -HL + BAND + 0.3, HL - BAND - 0.3); p.z = clamp(p.z, -HW + 0.3, HW - 0.3);
+  });
+  /* ゴールマン：帯の中で、ボールからの道が守りに一番ふさがれていない所へ動く */
+  if (!R.gm.tz || Math.random() < dt * 2) {
+    let bz = 0, bs = -1;
+    for (let z = -HW + 0.5; z <= HW - 0.5; z += 0.5) {
+      const q = { x: R.dir * (HL - BAND / 2), z }, sc = Math.min(...R.onCourt.map(o => segDist(o, ball, q))) - Math.abs(z - R.gm.z) * 0.1;
+      if (sc > bs) { bs = sc; bz = z; }
+    }
+    R.gm.tz = bz;
+  }
+  move(R.gm, R.dir * (HL - BAND / 2), R.gm.tz, dt, ball);
+  /* 守り：1人はゴールマンへの道、2人はゴールマンに近い攻めへの道に立つ。自分の陣から出ない、持つ人から2歩はなれる */
+  const threats = R.field.filter(p => p !== S.hold).sort((a, b) => dist(a, R.gm) - dist(b, R.gm));
+  const targets = [R.gm, threats[0], threats[1]];
+  R.onCourt.forEach((p, i) => {
+    const t = targets[i] || R.gm, k = i === 0 ? 0.6 : 0.75;   // 1人は道の途中、2人は相手の近く
+    let tx = ball.x + (t.x - ball.x) * k, tz = ball.z + (t.z - ball.z) * k;
+    if (S.hold) { const dh = Math.hypot(tx - S.hold.x, tz - S.hold.z); if (dh < 1.3) { tx = S.hold.x + (tx - S.hold.x) / (dh || 1) * 1.3; tz = S.hold.z + (tz - S.hold.z) / (dh || 1) * 1.3; } }
+    const lo = R.dir > 0 ? 0.2 : -HL + BAND + 0.3, hi = R.dir > 0 ? HL - BAND - 0.3 : -0.2;
+    move(p, clamp(tx, lo, hi), clamp(tz, -HW + 0.3, HW - 0.3), dt, ball);
+    p.x = clamp(p.x, lo, hi);
+  });
+  R.bench.forEach(p => p.m.rotation.y = Math.atan2(ball.x - p.x, ball.z - p.z));
+  /* ボール */
+  if (S.hold) {
+    if ((S.holdT += dt) > HOLD) {
+      const to = choosePass(S.hold, R);
+      if (!S.first) { S.first = S.hold; S.touched.add(S.hold); }   // 最初にパスした人（自陣からでも数える）
+      S.fly = { from: S.hold, to, x: S.hold.x, z: S.hold.z, t: 0, T: Math.max(0.2, dist(S.hold, to) / PASS_V) };
+      S.hold = null; S.stat.pass++; if (to === R.gm) S.stat.gmTry++;
+    }
+  } else if (S.fly) {
+    const f = S.fly; f.t += dt; const k = Math.min(1, f.t / f.T);
+    f.x = f.from.x + (f.to.x - f.from.x) * k; f.z = f.from.z + (f.to.z - f.from.z) * k;
+    const cut = k > 0.2 && k < 0.85 && !f.miss && R.onCourt.find(q => Math.hypot(q.x - f.x, q.z - f.z) < 0.4);
+    if (cut) { if (Math.random() < 0.4) { S.stat.cut++; S.fly = null; backToStart("カットされた → スタートへ"); return; } f.miss = true; }
+    if (k >= 1) {
+      if (f.to === R.gm) {
+        if (Math.random() < 0.15) { S.stat.drop++; S.fly = null; backToStart("ゴールマンがとれなかった → スタートへ"); return; }
+        const pts = S.touched.size, names = [...S.touched].map(p => LETTERS[p.k]).join("・");
+        S.score[R.o] += pts; S.stat.goal++; S.fly = null; S.hold = R.gm;
+        backToStart(bibName(R.o ? sel.B.value : sel.A.value) + " " + pts + "点！（" + names + "）");
+      } else {
+        if (f.to.x * R.dir > 0) S.touched.add(f.to);                  // 相手陣でさわった人
+        S.hold = f.to; S.fly = null; S.holdT = 0;
+      }
+    }
+  }
+  updateBoard();
+}
+function draw() {
+  people.forEach(p => p.m.position.set(p.x * CS, 0, p.z * CS));
+  let bx, bz, by;
+  if (S.hold) { const a = S.hold.m.rotation.y; bx = S.hold.x + Math.sin(a) * 0.25; bz = S.hold.z + Math.cos(a) * 0.25; by = 0.75; }
+  else if (S.fly) { const k = Math.min(1, S.fly.t / S.fly.T); bx = S.fly.x; bz = S.fly.z; by = 0.9 + Math.sin(Math.PI * k) * Math.min(1.5, S.fly.T * 2); }
+  else return;
+  [ballMesh, ballShadow].forEach(m => m.position.set(bx * CS, by * BIG, bz * CS));
+}
+function resetAll() {
+  makePeople(); refs();
+  Object.assign(S, { off: 0, gm: [0, 0], bench: [0, 0], score: [0, 0], clock: HALF_TIME, pause: 0 });
+  start(); updateBoard(); draw();
+}
+const playBtn = document.getElementById("play");
+playBtn.onclick = () => { S.play = !S.play; playBtn.setAttribute("aria-pressed", S.play); playBtn.textContent = S.play ? "止める" : "試合"; };
+document.getElementById("reset").onclick = resetAll;
+Object.values(sel).forEach(el => el.onchange = resetAll);
+
+/* ===== カメラ：正射影。3つの決まった見方＋指で回す ===== */
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.5, 160);
+const ctl = new OrbitControls(cam, cv);
+ctl.enableDamping = false; ctl.enablePan = false; ctl.maxPolarAngle = THREE.MathUtils.degToRad(86);
+ctl.minZoom = 0.8; ctl.maxZoom = 6; ctl.zoomToCursor = true;
+const VIEWS = { top: [0.001, 0], oblique: [55, -30], side: [84, 0] };
+function view(name) {
+  const [pol, az] = VIEWS[name].map(THREE.MathUtils.degToRad), r = 70;
+  cam.position.set(r * Math.sin(pol) * Math.sin(az), r * Math.cos(pol), r * Math.sin(pol) * Math.cos(az));
+  cam.zoom = 1; ctl.target.set(0, 0, 0); cam.updateProjectionMatrix(); ctl.update();
+  document.querySelectorAll("#views button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === name));
+}
+document.querySelectorAll("#views button").forEach(b => b.onclick = () => view(b.dataset.v));
+ctl.addEventListener("start", () => document.querySelectorAll("#views button").forEach(b => b.setAttribute("aria-pressed", "false")));
+function resize() {
+  const { w, h } = pr.size();
+  const half = 12 * CS, a = w / h;                  // コート20m＋審判・ベンチが収まる幅
+  if (a >= 24 / 15) { cam.top = half * 0.62; cam.bottom = -cam.top; cam.right = cam.top * a; cam.left = -cam.right; }
+  else { cam.right = half; cam.left = -half; cam.top = half / a; cam.bottom = -cam.top; }
+  cam.updateProjectionMatrix();
+}
+document.getElementById("rows").onchange = e => { pr.setRows(+e.target.value); resize(); };
+addEventListener("resize", resize);
+
+/* 毎秒のコマ数（直近1秒の平均） */
+let frames = 0, last = performance.now(), prev = 0;
+const fpsEl = document.getElementById("fps");
+function loop(t) {
+  const dt = Math.min(0.05, (t - (prev || t)) / 1000); prev = t;
+  if (S.play) { step(dt); draw(); }
+  pr.render(scene, cam, overlay); frames++;
+  if (t - last >= 1000) { const f = frames * 1000 / (t - last); fpsEl.textContent = f.toFixed(0) + " コマ/秒"; window.__fps = f; frames = 0; last = t; }
+  requestAnimationFrame(loop);
+}
+window.__S = S;
+floor(); resetAll(); resize(); view("oblique");
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
