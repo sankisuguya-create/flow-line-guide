@@ -12,6 +12,12 @@
 </script>
 <script src="../../../assets/objects/sport/figure.js"></script>
 <style>
+/* 待ちの表示：点を0〜3個で回す（正本は - の skills/ui-layout/SKILL.md「待ちの表示」） */
+.ldots{display:inline-block;width:1.6em;text-align:left}
+.ldots::after{content:'';animation:ldots 1.2s steps(1,end) infinite}
+@keyframes ldots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+@media (prefers-reduced-motion:reduce){.ldots::after{animation:none;content:'...'}}
+
 :root{--bg:#f4f1ea;--ink:#222;--red:#d63a3a;--blue:#2f6fd6;--mv:#1f5fd0;--ps:#d02a2a;--ui:#fff;--sel:#ffd84d}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"BIZ UDPGothic","Hiragino Sans","Noto Sans JP",sans-serif;
@@ -443,7 +449,7 @@ document.querySelectorAll("[data-def]").forEach(b=>b.onclick=()=>{ defMode=b.dat
   hint({off:"守りは 動かない（手で 動かせる）。",mark:"守りは 近くの 攻めに 1人ずつ つく。",goal:"守りは ゴールマンの 前を かためる。",lane:"守りは パスの 通り道に 入る。"}[defMode]); closeTg(); draw(); });
 /* ===== 平面・立体の切り替え ===== */
 let is3d=false;
-function set3d(v){ if(v&&!window.STAGE3D) return hint("立体の 準備中…（ネットにつながっているか 確かめてね）");
+function set3d(v){ if(v&&!window.STAGE3D) return hint("立体の 準備中（ネットにつながっているか 確かめてね）",true);
   is3d=v; document.getElementById("svg").style.display=v?"none":"";
   document.getElementById("stage").style.display=v?"block":"none";
   document.getElementById("views3d").classList.toggle("on",v);
@@ -452,7 +458,7 @@ function set3d(v){ if(v&&!window.STAGE3D) return hint("立体の 準備中…（
 document.getElementById("v3d").onclick=()=>set3d(!is3d);
 document.querySelectorAll("[data-cam]").forEach(b=>b.onclick=()=>{ STAGE3D.view(b.dataset.cam); document.querySelectorAll("[data-cam]").forEach(x=>x.classList.toggle("on",x===b)); });
 document.querySelectorAll(".tool[data-m]").forEach(b=>b.onclick=()=>{ if(is3d) set3d(false); mode=b.dataset.m; document.getElementById("lbDraw").textContent=b.textContent.replace(/^\S+\s/,""); closeTg(); document.querySelectorAll(".tool[data-m]").forEach(x=>x.classList.toggle("on",x===b)); hint(HINT[mode]); draw(); });
-function hint(s){ document.getElementById("hint").textContent=s; }
+function hint(s,wait){ var h=document.getElementById("hint"); h.textContent=s; if(wait) h.innerHTML=h.innerHTML.replace("準備中","準備中<span class=\"ldots\" aria-hidden=\"true\"></span>"); } /* wait：準備中の後ろで点を回す */
 hint(HINT.move);
 
 /* ===== 画面の 切り替え ===== */
